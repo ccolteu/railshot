@@ -1,0 +1,447 @@
+# Railshot art playbook
+
+Steal the **machine language** of 90s arcade volley games, not anyone else’s roster. All art is original Railshot IP.
+
+## Style lock (every prompt)
+
+Paste this on every generation:
+
+```
+1994 Neo Geo / CPS1 arcade pixel art, 4:3, high-resolution pixel art for a modern phone, 1440x1080 canvas, chunky pixels still visible, limited 32-color palette, hard 1px outlines, dithering, no anti-aliasing, no photorealism, no 3D, no modern UI, original IP for a game called Railshot, 1990s arcade fighting-game anatomy, adult characters only, do not copy Battle Flip Shot, Street Fighter, or King of Fighters characters, no logos from other games
+```
+
+If a model drifts: `same character as previous image, identical face, hair, and colors`.
+
+Do not paste Flip Shot screenshots into the generator as style refs.
+
+## Technical specs
+
+Canonical arena: **1440×1080** (4:3). That matches the short side of most 1080p phones in landscape, so the court is pixel-even on height and letterboxed left/right on 16:9 / 20:9. QHD and iPhone scale up slightly; we do not author a second atlas.
+
+Keep the 90s pixel look; just draw it on a phone-sized canvas. Do not generate 384×288 and blow it up.
+
+| Use | Size | Background |
+| --- | --- | --- |
+| Courts, full screens | **1440×1080** | Opaque scene |
+| Cabinet frame overlay | **1440×1080** | Magenta `#FF00FF` with a transparent center hole |
+| In-game fighters | **192×233** | Magenta `#FF00FF` — final packed size for every idle/walk/hit frame |
+| Face tiles | **192×192** | Magenta `#FF00FF`. **No drawn border.** Content flush left, right, and bottom. |
+| Standing select portraits | **480×720** | Magenta `#FF00FF` |
+| VS busts | **480×600** | Magenta `#FF00FF` |
+| Word banners | **960×240** (`WIN` **768×384**, `VS` **384×384**) | Magenta `#FF00FF` |
+| Digits | **120×150** each | Magenta `#FF00FF` |
+| Ball | **60×60** | Magenta `#FF00FF` |
+| Life chips | **60×60** | Magenta `#FF00FF` |
+| Nameplates | **480×90** | Magenta `#FF00FF` |
+| Ending still | **1440×840** letterboxed in 4:3 | Opaque |
+
+## Chroma lock (every keyed sprite)
+
+**One key color:** magenta `#FF00FF` (RGB 255, 0, 255). Every sprite that composites over wallpaper, court, or another layer uses this field. Not “close enough” pink.
+
+Applies to faces, select full-bodies, VS busts, court idle/walk/hit, nameplates, `PLAYER SELECT`, `VS`, banners, ball, chips — the whole keyed set.
+
+**After generation, rewrite the backdrop to exact `#FF00FF`.** Flood only the field (including pink trapped in hair gaps). Do not eat the drawing. Do not leave the generator’s hot pink, salmon, or black.
+
+**No bleed.** Magenta is a hard field, not a wash. It must not mix into outlines, hair, skin, metal, or clothes — no pink halo, no salmon fringe, no dark fuchsia leftovers along the silhouette. After the field rewrite, **defringe**: leftover field-pink pixels become `#FF00FF`; mixed edge pixels are pulled to the nearest sprite color (or dropped to the key if they are still mostly magenta). If a halo is visible after chroma-key, the PNG is wrong. The engine will not hide near-pink.
+
+**Forbidden as a key:** hot pink, fuchsia that is not `#FF00FF`, black, checkerboard, or alpha-only RGB leftovers. Do not invent a second key per character or per screen. 2P violet clothes are **not** the key.
+
+**Engine:** key `#FF00FF` only (a few levels of tolerance for compression). Do not key purple jackets.
+
+## Art on disk
+
+Canonical sprites live in **`art/`** (`art/{name}/…png`, `art/ui_*.png`). Do **not** copy them into `res/drawable` or `drawable-nodpi`. The app reads `art/` as Android assets. Edit and generate only under `art/`.
+
+**Launcher icon** is the exception: source `art/ui_launcher.png` (Rivet face, arcade plate, **no magenta**). Pack into `res/mipmap-*` and adaptive `ic_launcher_foreground`. Do not use the old pong/chip vector.
+
+The Android court is already a centered 4:3 playfield; bitmap courts should be `FIT_XY` / `ContentScale.FillBounds` inside that box.
+
+## Produce a sprite (mandatory)
+
+The generator will ignore size, exact magenta, and “mirror.” Do not trust it. After every generate:
+
+1. **Rewrite the field** to exact `#FF00FF` (flood backdrop + field-pink hair gaps only). **Defringe the silhouette** so no magenta bleeds into the drawing.
+2. **Pack to the table size** (nearest-neighbor). Never clip. Uniform scale; extra magenta is padding.
+3. **Save only under `art/`.**
+4. **Mirrors are code, not the model.** `vs_right` and all `*_right` court frames = bitmap horizontal flip + 2P recolor. Do not GenerateImage a mirror.
+5. **Stop for approval** on **A**, then **idle_left**, then **vs_left**. Do not generate walk/hit or vs_right until those are approved.
+6. **Wire** new files in `Fighter.art()` asset paths. Placeholders stay until the file exists.
+
+Court proportion ref: `art/rivet/rivet_game_idle_left.png` (bulky chibi). Do not use select full-body A as the court anatomy.
+
+## Roster
+
+Three women, three men. Lock faces and bodies here first. Do not invent extra fighters until each of the six has every sprite in **Character art set**.
+
+### Women (sexy 90s arcade)
+
+Long legs, slim waist, large bust, adult cheesecake proportions like 1994 fighting games. Revealing but still a fighter costume (shield in hand). Distinct hair color is mandatory.
+
+| ID | Name | Hair | Body and costume |
+| --- | --- | --- | --- |
+| 1 | **Rivet** | **Blonde**, long, wind-swept | Tall, long-legged, large bust. Teal mechanic: visor pushed up, cropped jacket, short shorts, thigh boots, wrench-shaped shield. Confident, sexy idle. |
+| 5 | **Quill** | **Red**, long, with a bird-crest | Tall, long-legged, large bust. Feathered cape, cropped top, high-cut bottoms, talon boots, kite shield. Predatory smile. |
+| 6 | **Hex** | **Brunette**, long, under a moon hat | Tall, long-legged, large bust. Dark mage: moon hat, high slit robe over a fitted bodice, staff that doubles as a paddle. Cool, seductive stare. |
+
+Always include in female prompts: `adult woman, sexy 1990s arcade fighter, long legs, large breasts, slim waist, cheesecake posing, not a child, not realistic`.
+
+### Men (military / Street Fighter body)
+
+Tall, thick muscle, broad shoulders, fighter stance. Military or combat-athlete costume, not slim, not lanky, not a mascot.
+
+| ID | Name | Hair | Body and costume |
+| --- | --- | --- | --- |
+| 2 | **Ash** | Short black, undercut | Huge street-fighter build, scarred, red combat jacket open on a muscled chest, dog tags, round buckler, cargo pants, boots. |
+| 3 | **Kite** | Short dark brown, high-and-tight | Very tall military striker, V-torso, olive flight suit unzipped at the collar, harness, kite-shaped riot shield, jump boots. |
+| 4 | **Maru** | Shaved sides, dark crew cut | Tall heavyweight bruiser, biggest of the three, khaki tank top, ammo belt, disc riot shield, dog tags, wrapped fists. |
+
+Always include in male prompts: `adult man, tall, extremely muscular, military fighter, Street Fighter 2 body type, broad shoulders, thick arms, not skinny`.
+
+**Facing.** Select full-body **A** and face tile **B** both face **left** (nose / gaze toward the left edge of the PNG). They sit on the right of character select and must look toward the left UI. If the generator draws them facing right, **horizontal-flip the bitmap** — do not GenerateImage a new pose. Left-court and `vs_left` face **right**. Right-court and `vs_right` face **left**. Those court/VS right-facing→left files are flipped in bitmap code, not drawn as a new pose.
+
+## Character art set
+
+Every fighter needs pieces **A–F**. A–E share the same face and costume. The **name sprites** are letters only. Generate in this order per character (Rivet first, then Ash, Kite, Maru, Quill, Hex).
+
+| # | Piece | Size | Use |
+| --- | --- | --- | --- |
+| A | **Select full-body** | **480×720** | Character select, **right** side of the screen. Standing, full-body, **left-facing** 3/4 (like Rivet). This is the **face lock**. |
+| B | **Face tile** | **192×192** | Character select roster strip. Same **left-facing** head as A. |
+| C | **VS profile** | **480×600** | `{name}_vs_left.png` = P1. `{name}_vs_right.png` = horizontal flip of vs_left + 2P clothing colors |
+| D | **In-game paddle** | **192×233** | Left: `idle_left` / `walk_left` / `hit_left`. Right: same with `_right`, from left + vs_right |
+| E | **Ending full-body** | **480×720** (or full 1440×1080 card) | Congratulations / No.1 screen |
+| F | **Name sprites** | **480×90** | `{name}_name_select.png` on select. `{name}_name_vs.png` under VS busts |
+
+### Consistency rules (all characters)
+
+1. **Face lock.** Piece **B** (and C, D, E) must match piece **A**: same face, same hair, same visor/hat if A has one. Crop the head from A; do not invent a new face. Men keep the male cut from A — do not add long hair.
+2. **VS left is P1.** `{name}_vs_left.png` uses the **same clothing as full-body (A)** and the left court sprites. **Build vs_right only after vs_left exists** — bitmap flip + 2P clothes. Do not generate vs_right.
+3. **In-game sprites are animation frames, not portraits.** Idle / walk / hit are bulky, cartoony 1994 court sprites (Battle Flip Shot: big head, thick body, short legs, shield = paddle). They replace the paddle and are **swapped on top of the same world position** to animate move and hit. **Costume must match piece A** (see overlay rules). Not a pinup.
+4. **Hit has no ball.** The ball is a separate sprite composited in playback. Hit is only the character pose (shield swing / strike). No ball, no projectile, no extra orb.
+5. **Two name sprites, no portraits as input.** `{name}_name_select.png` is a **small blue plate with yellow letters** (select, under PLAYER SELECT on the left). `{name}_name_vs.png` is **blue letters with a white edge**, no plate (VS, under each bust). Do not typeset names in code when the sprite exists. Do not use one file for both screens.
+
+### 2P apparel palettes
+
+Hair and skin never change. Only clothes, visor, metal trim, and shield tint.
+
+| Character | P1 (VS left, first select, left court) | P2 (VS right, mirror match) |
+| --- | --- | --- |
+| Rivet | Teal jacket, teal boots, gold buckles, teal visor | Magenta-violet jacket and boots, silver buckles, purple visor |
+| Ash | Red open jacket, gold trim, brown boots, steel buckler | Blue open jacket, silver trim, dark boots, steel buckler |
+| Kite | Olive flight suit, tan harness, jump boots | Desert-tan flight suit, olive harness, same boots |
+| Maru | Khaki tank, ammo belt, wrapped fists | Steel-blue tank, dark belt, wrapped fists |
+| Quill | Earth/feather costume, warm browns and reds (hair stays red) | Cool purple/blue feather costume (hair stays red) |
+| Hex | Dark violet robe, moon-hat silver | Teal-black robe, moon-hat gold |
+
+### Character locks (paste after the style lock)
+
+**Rivet**
+```
+Rivet, adult blonde woman, long wind-swept blonde hair, visor pushed up, teal cropped mechanic jacket, short shorts, thigh boots, large breasts, very long legs, sexy 1990s arcade fighter, wrench-shaped shield, original Railshot character
+```
+
+**Ash**
+```
+Ash, adult man, short black undercut, extremely muscular Street Fighter body, broad shoulders, red combat jacket open, dog tags, scar, cargo pants, round buckler, military-street hybrid, original Railshot character
+```
+
+**Kite**
+```
+Kite, adult man, high-and-tight dark brown hair, very tall, thick muscle, V-torso, olive military flight suit, harness, jump boots, kite-shaped riot shield, original Railshot character
+```
+
+**Maru**
+```
+Maru, adult man, dark crew cut, tallest heavyweight, massive chest and arms, khaki tank top, ammo belt, dog tags, wrapped fists, disc riot shield, military bruiser, original Railshot character
+```
+
+**Quill**
+```
+Quill, adult red-haired woman, long red hair, bird-crest, feathered cape, cropped top, high-cut bottoms, talon boots, large breasts, very long legs, sexy 1990s arcade fighter, kite shield, original Railshot character
+```
+
+**Hex**
+```
+Hex, adult brunette woman, long dark brown hair, moon hat, high-slit mage robe over fitted bodice, large breasts, very long legs, sexy 1990s arcade fighter, staff paddle, original Railshot character
+```
+
+### A — Select full-body
+
+**Left pose, shown on the right.** Piece A is drawn on the **right** of character select, next to the left UI stack. Every fighter uses a **left-facing 3/4 standing pose** like Rivet: body and gaze toward the **left** (toward PLAYER SELECT), weight in a heroic idle, full body in frame. Do **not** face A to the right (that is `vs_left` / court). If A faces right, **horizontal-flip the bitmap**. Do not GenerateImage a mirror of A. Pose reference: `art/rivet/rivet_select_fullbody.png` (direction only — copy that facing, not Rivet’s clothes or body).
+
+```
+Large 1994 arcade standing portrait, [CHARACTER LOCK], full body, 3/4 view FACING LEFT toward the left edge (same pose direction as Rivet select full-body), heroic or sexy idle, pixel art, no text, 480x720, magenta background #FF00FF
+```
+
+### B — Face tile (character select)
+
+Must look like a close crop of **A**: same face, same hair (long hair on the women, male cut on the men), same eyes, same visor/hat if A has one, **same left-facing direction**. Use A as the reference image. If B faces right, horizontal-flip the bitmap. Do not GenerateImage a mirror.
+
+**No outline, flush crop.** Do **not** draw a colored frame, box, or outline around the portrait (no teal, red, gold, or black rectangle). The roster tile border is drawn in **code**. Pack **192×192**. After removing any generator frame, the drawing must touch the **left, right, and bottom** edges — no magenta padding on those three sides. Magenta may sit **above** the hair only. Do not clip the face; if the crop is too tall, scale so width fills 192 and sit on the bottom (trim extra from the top field, not the chin).
+
+```
+Square 1994 arcade face portrait cropped from the select full-body of [CHARACTER LOCK], identical face and hair, head and shoulders FACING LEFT (nose toward the left edge, same direction as the full-body), visor/hat only if the full-body has one, NO colored border, NO frame, NO outline rectangle, 192x192, magenta background #FF00FF
+```
+
+Roster strip (all six once faces exist):
+
+```
+Row of six square 192x192 arcade face portraits, NO colored borders on the portraits, 1994 pixel faces of Rivet Ash Kite Maru Quill Hex in that order, one 1P cursor box drawn in UI, magenta around the row
+```
+
+### C — VS profile
+
+**`{name}_vs_left.png` first.** Same outfit as A and as the court animation set. This is fighter 1: left VS slot, left court.
+
+**Tight bust, like Rivet.** VS is a **zoomed head-and-shoulders** fill of **480×600**, not a waist-up figure in empty magenta. Match the crop of `art/rivet/rivet_vs_left.png`: huge face, shoulders, upper chest; head near the top; very little field around the silhouette. Do not show belt, hips, or a tiny character. Framing reference is Rivet’s vs_left (crop only — not her face or clothes).
+
+```
+Large arcade bust, TIGHT head-and-shoulders close-up filling the frame like Rivet vs_left, [CHARACTER LOCK], P1 apparel matching the full-body sprite, facing toward the right (into the VS center), hair and face matching the select full-body, 480x600, magenta background #FF00FF
+```
+
+**`{name}_vs_right.png`** is **vs_left flipped in bitmap code** (not generated), with **2P clothing colors**, for the right VS slot.
+
+Do not GenerateImage a mirror. Recolor apparel to the 2P palette (hair and skin unchanged), then horizontal-flip so they face left into the VS center. Same face. Pack **480×600**, magenta `#FF00FF`.
+
+File names must include `vs_left` / `vs_right` (example: `rivet_vs_left.png`).
+
+### D — In-game paddle sprites
+
+These replace the paddle. The game **does not pan inside the PNG**. It draws whichever frame is active (idle, walk, hit) at the **same court position**. Frames must read as a short movie: only the pose changes.
+
+#### Overlay animation rules
+
+1. **Costume lock from full-body (A).** The idle court sprite is a bulky chibi of **the same outfit as piece A**, not a new character. Copy visor placement (on the head vs over the eyes), jacket cut, under-layer, **pants length** (Ash: long cargo to the boots — stubby chibi legs do not turn them into shorts), boots, hair, and a paddle-shaped version of A's weapon. If A has a cropped teal jacket, black top, denim shorts, visor pushed up, and long blonde hair, idle must have those — not a closed visor, long coat, or different trousers. Walk and hit are **that idle with a new pose**, not a redesign.
+2. **Idle first, then pivots.** Generate and approve **idle_left** against A. Only then generate **`walk_left`** and **`hit_left`** using that idle as the reference (`same character, identical clothes, only the pose changes`). Three left-court files: `{name}_game_idle_left.png`, `{name}_game_walk_left.png`, `{name}_game_hit_left.png`. These pair with `{name}_vs_left.png` and play on the **left side of the court**.
+3. **No shadows.** No drop shadow, ground blob, contact shadow, or floor ellipse. Magenta `#FF00FF` goes right up to the boots.
+4. **Same character height as idle.** After cropping magenta, scale every frame **uniformly** so its bounding-box **height equals idle’s height**. Walk and hit often come out larger — shrink them to idle. Width scales with height (no squash).
+5. **Shared box, then pack to 192×233.** After height-match, `W = max(content widths)`, `H = idle height`. Place every frame in a temporary `W×H` box, bottom-aligned, horizontally centered, **never clipped**. Then scale that shared box **uniformly** (nearest-neighbor) to **fit 192×233**. Final file is always **192×233** with `#FF00FF` padding. Do not ship a custom canvas size. Rivet is the packed example: `art/rivet/rivet_game_*_{left,right}.png`.
+6. **Placement in the final box.** Feet on the bottom row. Center horizontally. Hair of the tallest pose (idle height-match) sits on the **top** row — do not leave a magenta band above the character. Magenta may sit **beside** slimmer poses (idle vs hit). Clipping is forbidden — if hit is too wide, the shared scale shrinks **all** frames until hit fits.
+7. **Shared camera.** Walk is a **stride pose**, not a character sliding across the PNG. Hit is a **swing pose** with feet planted. Onion-skin: heads, hips, and feet overlap; only limbs and shield differ.
+8. **Three left-court frames: idle_left, walk_left, hit_left.** While moving, show **`walk_left`**. When still, **`idle_left`**. On contact, **`hit_left`** for a few ticks, then back. **No ball** in hit art. No two-frame walk cycle.
+9. **Shield is the paddle.** Same shield as idle, swung on hit. **P1 / vs_left / left court** uses `*_left` frames (facing right, toward the opponent).
+10. **Right-court frames from left + vs_right.** Once **all three left sprites** and **`vs_right`** exist, build `{name}_game_idle_right.png`, `{name}_game_walk_right.png`, `{name}_game_hit_right.png` **in bitmap code**. Do **not** generate them. Pipeline: each packed `*_left` → **horizontal flip** → **recolor clothes to vs_right** (hair and skin unchanged). Same **192×233** box. Right side of the court.
+
+Idle prompt (reference **A** for clothes, **Rivet idle** for proportions):
+
+```
+Bulky 1994 arcade court sprite of [CHARACTER LOCK], SAME bulky chibi proportions as Rivet idle (big head, thick body, short legs), EXACT same clothing as the full-body reference (do not add a visor/hat/jacket piece A does not have), paddle-shaped version of A's shield. Facing right, IDLE. NO drop shadow. Full sprite visible. Solid magenta #FF00FF. Pixel art.
+```
+
+Walk / hit prompt (reference **idle**, not a new design):
+
+```
+Same pixel character as the idle reference, identical clothes hair and shield, only the pose changes. NO drop shadow. Full sprite visible, not cropped. Magenta #FF00FF. [WALK one foot forward in a stride | HIT swinging the shield, NO BALL, feet planted]
+```
+
+### E — Ending / congratulations full-body
+
+Women: cheesecake victory pose. Men: arms-up champion pose, still fully muscled in costume.
+
+```
+4:3 ending card, left third teal embossed RAILSHOT logo wallpaper, right two-thirds cyan studio backdrop, full-body 1994 arcade sprite of [CHARACTER LOCK], victory pose, empty space on the left for text, 1440x1080
+```
+
+## Generation order
+
+Do not skip ahead: later files are derived from earlier ones.
+
+1. **A select full-body.** Pack 480×720, chroma `#FF00FF`. **Approve A** before B.
+2. **B face** from A. Pack **192×192**, no drawn border, flush left/right/bottom, chroma `#FF00FF`. **Approve A** before B.
+3. **Name sprites** `{name}_name_select.png` and `{name}_name_vs.png`. Pack 480×90. No portrait input.
+4. **`vs_left`.** P1 clothes matching A. Pack 480×600. **Approve vs_left** before vs_right.
+5. **Left court:** `idle_left` (approve against A + Rivet idle), then `walk_left` and `hit_left` from idle_left. Pack all to **192×233**. Required before right court.
+6. **`vs_right` AFTER vs_left.** Bitmap flip + 2P recolor. Do not generate.
+7. **Right court AFTER left sprites AND vs_right.** Bitmap flip + 2P recolor of each packed left frame. **192×233**.
+8. **E ending** from that face.
+9. **Courts** + **cabinet frame**.
+10. **Words**, **digits**, **ball**, **chips**.
+11. **Select wallpaper.** Until it exists, code draws a placeholder stamp.
+12. **Wire** `Fighter.art()` paths. Missing files stay empty placeholders in UI.
+13. Win / bonus / congratulations layout.
+
+## Court floors
+
+No fighters, no HUD, no chips. Leave **empty vertical gutters** on left and right so in-game chips sit there.
+
+**Circuit stadium**
+
+```
+Top-down 4:3 empty sports court floor, teal circuit-board tiles, gold broken circle with X in the center, faint purple traces, dashed center line, no people, no HUD, no text, pixel art arcade background, 1440x1080
+```
+
+**Parking garage**
+
+```
+Top-down 4:3 empty parking garage lane as a sports court, grey concrete with oil specks, yellow-black hazard stripes on floor rails, cars barely visible at the far top, pink neon edge lights, empty left and right margins for life chips, no people, no HUD, pixel art, 1440x1080
+```
+
+**Cave temple**
+
+```
+Top-down 4:3 empty stone court, cracked brown rock tiles, bright white center line, icy blue side columns, dark cave doors at left and right edges, no people, no HUD, pixel art, 1440x1080
+```
+
+**Soccer pitch**
+
+```
+Top-down 4:3 empty soccer pitch court, green checkerboard grass, white penalty arcs and center circle, yard numbers 5 and 10, empty side gutters for chips, no people, no HUD, pixel art, 1440x1080
+```
+
+**Night city grid**
+
+```
+Top-down 4:3 empty neon grid court, deep blue PCB city map, green center beam, pink and gold vertical rails, empty chip gutters, no people, no HUD, pixel art, 1440x1080
+```
+
+**Cabinet frame only** (overlay on every court)
+
+```
+4:3 arcade machine chrome frame only, top bar with empty slots for score and timer, left and right metal posts with hazard stripes, bottom rail like a wooden bumper, transparent center hole, pixel art UI, magenta background #FF00FF, 1440x1080
+```
+
+## In-game extras
+
+Use section **D** for player sprites. Optional later: Hex projectile (`small blue star shot`).
+
+**Ball**
+
+```
+60x60 arcade volley ball, red and cream pixels, hard outline, magenta background #FF00FF
+```
+
+**P1 chip**
+
+```
+60x60 arcade life chip puck, teal and white, numeral 1 in the center, pixel art, magenta background
+```
+
+**Rival chips** — one themed puck per opponent (star, orb, blob, feather, hex), same 60×60 size.
+
+## Word and banner sprites
+
+One word per image, huge, centered, magenta background.
+
+```
+Arcade pixel word ROUND, fat brush letters, red-to-yellow horizontal gradient, thick blue outline, white highlight, 1994 Neo Geo title, no other text, magenta background #FF00FF, 960x240
+```
+
+```
+Arcade pixel word FIGHT, icy blue metallic gradient, orange outline, 1994 title, magenta background, 960x240
+```
+
+```
+Arcade pixel word WIN, huge brush letters, yellow-orange-red gradient, blue outline, magenta background, 768x384
+```
+
+```
+Arcade pixel letters VS, overlapping block capitals V and S (not script, not italic), gold chrome fill, orange outline, magenta #FF00FF, 384x384
+```
+
+File: `art/ui_vs.png`. No drop shadow. Rewrite field to `#FF00FF`.
+
+```
+Arcade pixel word PLAYER SELECT, stacked two lines, yellow outline, solid red fill (not brick), tight black outline, NO drop shadow, magenta #FF00FF, 960x240
+```
+
+File: `art/ui_player_select.png`.
+
+```
+Pixel digits 0-9 sheet, gold with blue outline, 120x150 each, for TIME and SCORE, magenta background
+```
+
+Bonus tally labels:
+
+```
+Pixel words TARGET, PERFECT, STRAIGHT, TOTAL, blue-to-yellow gradient, outlined, one row, magenta background
+```
+
+## Character select layout
+
+4:3 letterboxed screen. Use pieces **A** (full-body), **B** (face), **F** (name), plus `ui_player_select.png`. Overlay cursor, arrows, and SELECT in code. Wallpaper has no portraits and no UI.
+
+Wallpaper only:
+
+```
+4:3 arcade select screen wallpaper only, repeating green stamp of the word RAILSHOT at 45 degrees, paper texture, no portraits, 1440x1080
+```
+
+**Name sprites** (piece **F**, two files per fighter)
+
+Portraits are **not** inputs. Pack each to **480×90**, magenta `#FF00FF`.
+
+**Select plate** `{name}_name_select.png` — small blue box, gold-yellow border, yellow letters:
+
+```
+Small arcade nameplate, dark blue rectangle, gold-yellow border, the word [NAME] in yellow capitals, black outline, no character, 480x90, magenta #FF00FF
+```
+
+Use on **player select**, left column, under `PLAYER SELECT`.
+
+**VS word** `{name}_name_vs.png` — letters only, blue with white edge:
+
+```
+Arcade word [NAME], fat blue capitals, white left highlight, dark outline, no gold, no box, no character, 480x90, magenta #FF00FF
+```
+
+Use on **VS**, under each bust. Missing file: placeholder.
+
+### Select screen rules (code)
+
+Same flow as a 90s arcade vs-select (Flip Shot layout language, original roster):
+
+1. **Roster strip** along the **bottom**: six face tiles in order **Rivet, Ash, Kite, Maru, Quill, Hex**. Missing **B** art is an empty bordered placeholder with the name (or initial), same tile size.
+2. **Browse with on-screen arrows.** A **left arrow** on the **left of the strip** and a **right arrow** on the **right of the strip** move the cursor. Wrap at the ends. Arrows do not confirm.
+3. **Confirm with SELECT.** An on-screen **SELECT** button **under the PLAYER SELECT title** (left side) locks the highlighted fighter. First press = **first fighter** (left court, `vs_left`, P1 clothes). Second press = **second fighter** (right court, `vs_right`, 2P clothes). Same fighter twice is a legal mirror match.
+4. **Full-body on the right.** Piece **A** for the **currently highlighted** tile is drawn on the **right**, **almost the full 4:3 height** (`FillHeight`, no crop-zoom of the face), with a **small margin** top and bottom so it does not clip the screen edge. A must be the **left-facing** select pose so they look toward the left stack. Missing **A** is an empty placeholder. Switching left/right updates this portrait immediately. Do not keep showing the already-locked first fighter while browsing for the second.
+5. **Cursor badges.** While picking the first fighter, show **1P** on the highlighted tile. After the first lock, **1P** stays on that tile; **2P** rides the cursor until the second lock.
+6. **Left stack.** Top to bottom: large `ui_player_select.png`, then `{name}_name_select.png`, then the SELECT button. All on the **left**. Do not typeset PLAYER SELECT or the fighter name.
+7. **After both are selected:** freeze input, linger **1.5 seconds**, then go to the **VS screen**. Do not skip the linger.
+
+## VS screen layout
+
+Use pieces **C** and **F** plus `ui_vs.png`. Composite two busts + name sprites + VS mark in code. Wallpaper has no portraits.
+
+```
+4:3 VS screen wallpaper only, repeating green stamp of the word RAILSHOT at 45 degrees, paper texture, no portraits, 1440x1080
+```
+
+### VS screen rules (code)
+
+1. **Left slot** = first selected fighter’s `{name}_vs_left.png` (P1 clothes, facing the center).
+2. **Right slot** = second selected fighter’s `{name}_vs_right.png` (2P clothes, facing the center).
+3. Missing **C** art is an empty bust placeholder in that slot (same box).
+4. Draw `ui_vs.png` in the center. Under each bust draw `{name}_name_vs.png` (first pick left, second pick right). Missing name sprite: placeholder.
+5. Stay on VS until the match starts (tap / continue). Left court then uses the first fighter’s `*_left` anims; right court uses the second’s `*_right` anims.
+
+## Win / bonus / congratulations layout
+
+Round win in-court is the `WIN` sprite overlay. Use piece **E** for the champion. Other cards:
+
+**Bonus tally**
+
+```
+4:3 arcade results screen, large bust of [CHARACTER LOCK] on a white background, empty right side for score numbers, 1994 pixel portrait, no text, 1440x1080
+```
+
+**You are No.1** — same as **E**, leave left side empty for title text.
+
+**Staff / group ending**
+
+```
+4:3 sepia pixel group photo of six original Railshot fighters posed together against a brick wall, 1994 arcade ending still, no real-world people, 1440x840 with black letterbox
+```
+
+## What we overlay in code (do not bake in)
+
+- Score, timer, `CREDIT`
+- Six chips per rail (holes when a chip dies)
+- Paddles / fighters in the lane
+- Ball
+- `ROUND` / `FIGHT` / `WIN` banners
+- Select cursor (`1P` / `2P`), left/right arrows, SELECT button
+- Linger-then-VS transition
+- Tally numbers
+
+Courts stay empty. Portraits stay without UI text so we can localize and animate later.
