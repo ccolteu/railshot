@@ -16,6 +16,7 @@ data class FighterArt(
   val idleRight: String? = null,
   val walkRight: String? = null,
   val hitRight: String? = null,
+  val ending: String? = null,
 )
 
 object UiArt {
@@ -59,6 +60,7 @@ fun Fighter.art(): FighterArt =
         idleRight = "rivet/rivet_game_idle_right.png",
         walkRight = "rivet/rivet_game_walk_right.png",
         hitRight = "rivet/rivet_game_hit_right.png",
+        ending = "rivet/rivet_ending.png",
       )
     Fighter.ASH ->
       FighterArt(
@@ -74,9 +76,24 @@ fun Fighter.art(): FighterArt =
         idleRight = "ash/ash_game_idle_right.png",
         walkRight = "ash/ash_game_walk_right.png",
         hitRight = "ash/ash_game_hit_right.png",
+        ending = "ash/ash_ending.png",
       )
     Fighter.KITE ->
-      FighterArt(nameSelect = "kite/kite_name_select.png", nameVs = "kite/kite_name_vs.png")
+      FighterArt(
+        selectFullBody = "kite/kite_select_fullbody.png",
+        face = "kite/kite_face.png",
+        vsLeft = "kite/kite_vs_left.png",
+        vsRight = "kite/kite_vs_right.png",
+        nameSelect = "kite/kite_name_select.png",
+        nameVs = "kite/kite_name_vs.png",
+        idleLeft = "kite/kite_game_idle_left.png",
+        walkLeft = "kite/kite_game_walk_left.png",
+        hitLeft = "kite/kite_game_hit_left.png",
+        idleRight = "kite/kite_game_idle_right.png",
+        walkRight = "kite/kite_game_walk_right.png",
+        hitRight = "kite/kite_game_hit_right.png",
+        ending = "kite/kite_ending.png",
+      )
     Fighter.MARU ->
       FighterArt(nameSelect = "maru/maru_name_select.png", nameVs = "maru/maru_name_vs.png")
     Fighter.QUILL ->
