@@ -299,7 +299,7 @@ Top-down 4:3 empty neon grid court, deep blue PCB city map, green center beam, p
 
 The cabinet **is 4:3** (canonical **1440×1080**). It is the machine, not the court.
 
-**Layout first.** Spec every inset in pixels on the 1440×1080 canvas. Author the sprite **to that table** (steel rims around those rects, magenta interiors). Code uses the **same constants**. Do not generate a freeform cabinet and then reverse-engineer wells.
+**Layout first.** Spec every inset in pixels on the 1440×1080 canvas. Author the sprite **on that 1440×1080 canvas, to that table** (steel rims around those rects, magenta interiors). Code uses the **same constants**. Do not generate a freeform cabinet and then reverse-engineer wells. Do **not** draw a small cabinet and scale it up. Match the in-game fighter sprites: 1994 Neo Geo / CPS1 pixels, hard outlines, dither, limited palette.
 
 ### Inset table (exclusive right / bottom)
 
