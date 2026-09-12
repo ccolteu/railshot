@@ -23,7 +23,7 @@ Keep the 90s pixel look; just draw it on a phone-sized canvas. Do not generate 3
 | Use | Size | Background |
 | --- | --- | --- |
 | Courts, full screens | **1440×1080** | Opaque scene |
-| Cabinet frame overlay | **1440×1080** | Magenta `#FF00FF` with a transparent center hole |
+| Cabinet frame overlay | **1440×1080** (4:3) | Magenta `#FF00FF` in every inset (HUD wells + 4:3 playfield hole) |
 | In-game fighters | **192×233** | Magenta `#FF00FF` — final packed size for every idle/walk/hit frame |
 | Face tiles | **192×192** | Magenta `#FF00FF`. **No drawn border.** Content flush left, right, and bottom. |
 | Standing select portraits | **480×720** | Magenta `#FF00FF` |
@@ -55,7 +55,7 @@ Canonical sprites live in **`art/`** (`art/{name}/…png`, `art/ui_*.png`). Do *
 
 **Launcher icon** is the exception: source `art/ui_launcher.png` (Rivet face, arcade plate, **no magenta**). Pack into `res/mipmap-*` and adaptive `ic_launcher_foreground`. Do not use the old pong/chip vector.
 
-The Android court is already a centered 4:3 playfield; bitmap courts should be `FIT_XY` / `ContentScale.FillBounds` inside that box.
+The Android stage is a centered **4:3 cabinet** (`ui_cabinet.png`, 1440×1080). **Define inset pixels first** (`World` cabinet constants). Draw / generate the cabinet **around those rects** so chrome and wells are the same layout. Never measure wells after the fact and nudge HUD to match a mismatched PNG. The **playfield** is a **4:3 magenta inset** (1152×864). Court floors `FIT_XY` in that inset. HUD text is **typeset in code** and **scaled to the well** so it stays inside. Do not use name sprites in cabinet wells.
 
 ## Produce a sprite (mandatory)
 
@@ -263,12 +263,12 @@ Do not skip ahead: later files are derived from earlier ones.
 
 ## Court floors
 
-No fighters, no HUD, no chips. Leave **empty vertical gutters** on left and right so in-game chips sit there.
+No fighters, no HUD, no chips. Leave **empty vertical gutters** on left and right so in-game chips sit there. No purple IC squares. No top or bottom metal rails — the cabinet supplies those.
 
 **Circuit stadium**
 
 ```
-Top-down 4:3 empty sports court floor, teal circuit-board tiles, gold broken circle with X in the center, faint purple traces, dashed center line, no people, no HUD, no text, pixel art arcade background, 1440x1080
+Top-down 4:3 empty sports court floor, teal circuit-board traces only, gold broken circle with X in the center, dashed center line, empty side gutters, NO purple squares, NO IC pads, NO top or bottom rails, no people, no HUD, no text, pixel art arcade background, 1440x1080
 ```
 
 **Parking garage**
@@ -295,11 +295,47 @@ Top-down 4:3 empty soccer pitch court, green checkerboard grass, white penalty a
 Top-down 4:3 empty neon grid court, deep blue PCB city map, green center beam, pink and gold vertical rails, empty chip gutters, no people, no HUD, pixel art, 1440x1080
 ```
 
-**Cabinet frame only** (overlay on every court)
+**Cabinet** (`art/ui_cabinet.png`) — overlay on every court
+
+The cabinet **is 4:3** (canonical **1440×1080**). It is the machine, not the court.
+
+**Layout first.** Spec every inset in pixels on the 1440×1080 canvas. Author the sprite **to that table** (steel rims around those rects, magenta interiors). Code uses the **same constants**. Do not generate a freeform cabinet and then reverse-engineer wells.
+
+### Inset table (exclusive right / bottom)
+
+Wells share **y = 32…100** (68px tall). Top bar, left → right:
+
+| Well | Pixels (x0, y0)–(x1, y1) | Content (code, not baked) |
+| --- | --- | --- |
+| P1 score | (220, 32)–(324, 100) | Left player current-set points, two digits |
+| P1 name | (340, 32)–(528, 100) | Typeset `displayName`, uppercase. **No name sprite.** |
+| P1 sets | (544, 32)–(620, 100) | Two dots, 0–2 filled |
+| Time | (636, 32)–(804, 100) | Countdown 99→00, two digits |
+| P2 sets | (820, 32)–(896, 100) | Two dots, 0–2 filled |
+| P2 name | (912, 32)–(1100, 100) | Typeset `displayName`, uppercase. **No name sprite.** |
+| P2 score | (1116, 32)–(1220, 100) | Right player current-set points, two digits |
+| **Playfield** | **(144, 128)–(1296, 992)** | **1152×864 = 4:3.** Court, chips, fighters, ball |
+
+Empty wells in the PNG: magenta `#FF00FF` only. No digits, letters, or dots in the art. HUD text **must fit the well**: scale font size from well width and height (`WellText`); clip, do not overflow chrome.
+
+**Playfield** is the only playable surface. Both cabinet and playfield are 4:3; `FillBounds` in the hole. Chrome never occludes gameplay.
+
+`World` constants: `HOLE_*_PX`, `P1_SCORE_INSET`, `P1_NAME_INSET`, `P1_SETS_INSET`, `TIME_INSET`, `P2_SETS_INSET`, `P2_NAME_INSET`, `P2_SCORE_INSET`. `COURT_ASPECT` = 4/3.
 
 ```
-4:3 arcade machine chrome frame only, top bar with empty slots for score and timer, left and right metal posts with hazard stripes, bottom rail like a wooden bumper, transparent center hole, pixel art UI, magenta background #FF00FF, 1440x1080
+4:3 arcade cabinet 1440x1080, chrome drawn around these magenta wells only: P1 score 220,32,324,100; P1 name 340,32,528,100; P1 sets 544,32,620,100; time 636,32,804,100; P2 sets 820,32,896,100; P2 name 912,32,1100,100; P2 score 1116,32,1220,100; playfield hole 144,128,1296,992 (1152x864 4:3); hazard posts in side margins; wooden bumper below y=992; no text, no digits, no dots
 ```
+
+### Match, time, score, sets (code)
+
+A **match** is **best of three sets** (first to **2** sets wins). Each set is one round of chips. After a set, reset chips and current-set points, fill one set dot, serve. At **2** dots, match over.
+
+- **Time:** **99 → 00** in the TIME well. Runs in `PLAYING`. At **00**, more chips remaining wins the set; if tied, next chip wins (sudden death).
+- **Score:** P1 points in the **left score well**, P2 in the **right score well**. Current-set chip-hits only.
+- **Names:** typeset in the name wells. Never `{name}_name_*.png` on the cabinet.
+- **Sets:** two dots per sets well. Match ends at two filled dots.
+
+Round `WIN` overlay on a set; match win then results / piece **E**.
 
 ## In-game extras
 
@@ -417,7 +453,7 @@ Use pieces **C** and **F** plus `ui_vs.png`. Composite two busts + name sprites 
 
 ## Win / bonus / congratulations layout
 
-Round win in-court is the `WIN` sprite overlay. Use piece **E** for the champion. Other cards:
+Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to **2** of **3** sets wins the match). Use piece **E** for the match champion. Other cards:
 
 **Bonus tally**
 
@@ -435,7 +471,10 @@ Round win in-court is the `WIN` sprite overlay. Use piece **E** for the champion
 
 ## What we overlay in code (do not bake in)
 
-- Score, timer, `CREDIT`
+- P1 score in the left score well, P2 score in the right score well
+- Typeset names in the P1 / P2 name wells (no name sprites)
+- Set dots (2 of 3) in the sets wells
+- Time countdown **99 → 00** in the TIME well
 - Six chips per rail (holes when a chip dies)
 - Paddles / fighters in the lane
 - Ball

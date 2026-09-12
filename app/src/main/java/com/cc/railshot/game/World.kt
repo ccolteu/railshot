@@ -12,6 +12,12 @@ enum class Side {
   CPU,
 }
 
+enum class PaddlePose {
+  IDLE,
+  WALK,
+  HIT,
+}
+
 data class Chip(
   val x: Float,
   val y: Float,
@@ -22,12 +28,35 @@ data class Chip(
   var alive: Boolean = true,
 )
 
+/** Pixel well on the 1440×1080 cabinet. Right/bottom exclusive. */
+data class CabinetInset(val left: Int, val top: Int, val right: Int, val bottom: Int) {
+  val leftF: Float get() = left / CABINET_W
+  val topF: Float get() = top / CABINET_H
+  val rightF: Float get() = right / CABINET_W
+  val bottomF: Float get() = bottom / CABINET_H
+  val widthF: Float get() = (right - left) / CABINET_W
+  val heightF: Float get() = (bottom - top) / CABINET_H
+
+  private companion object {
+    const val CABINET_W = 1440f
+    const val CABINET_H = 1080f
+  }
+}
+
 class World {
   var phase: Phase = Phase.SERVE
     private set
   var youScore: Int = 0
     private set
   var cpuScore: Int = 0
+    private set
+  var youSets: Int = 0
+    private set
+  var cpuSets: Int = 0
+    private set
+  var timeLeft: Float = SET_TIME
+    private set
+  var suddenDeath: Boolean = false
     private set
   var youPaddleY: Float = 0.5f
     private set
@@ -41,20 +70,32 @@ class World {
 
   private var vx = 0f
   private var vy = 0f
+  private var youHitT = 0f
+  private var cpuHitT = 0f
+  private var youWalkT = 0f
+  private var cpuMoved = false
 
   init {
     dealChips()
     parkBall()
   }
 
+  fun timeDisplay(): String = timeLeft.toInt().coerceIn(0, SET_TIME.toInt()).toString().padStart(2, '0')
+
   fun youChipsLeft(): Int = chips.count { it.side == Side.YOU && it.alive }
 
   fun cpuChipsLeft(): Int = chips.count { it.side == Side.CPU && it.alive }
 
   fun moveYouPaddle(normalizedY: Float) {
-    youPaddleY = normalizedY.coerceIn(PADDLE_LEN / 2f, 1f - PADDLE_LEN / 2f)
+    val next = normalizedY.coerceIn(PADDLE_LEN / 2f, 1f - PADDLE_LEN / 2f)
+    if (kotlin.math.abs(next - youPaddleY) > WALK_EPS) youWalkT = WALK_HOLD
+    youPaddleY = next
     if (phase == Phase.SERVE) parkBall()
   }
+
+  fun youPose(): PaddlePose = pose(youHitT, youWalkT > 0f)
+
+  fun cpuPose(): PaddlePose = pose(cpuHitT, cpuMoved)
 
   fun launch() {
     if (phase == Phase.YOU_WIN || phase == Phase.CPU_WIN) {
@@ -72,12 +113,25 @@ class World {
   }
 
   fun step(dt: Float) {
-    if (phase != Phase.PLAYING) return
-    var left = dt.coerceAtMost(0.05f)
+    val clamped = dt.coerceAtMost(0.05f)
+    tickHits(clamped)
+    if (phase != Phase.PLAYING) {
+      cpuMoved = false
+      return
+    }
+    tickClock(clamped)
+    if (phase != Phase.PLAYING) {
+      cpuMoved = false
+      return
+    }
+    var left = clamped
     val slice = 1f / 120f
+    cpuMoved = false
     while (left > 0f && phase == Phase.PLAYING) {
       val step = if (left < slice) left else slice
+      val beforeCpu = cpuPaddleY
       steerCpu(step)
+      cpuMoved = cpuMoved || kotlin.math.abs(cpuPaddleY - beforeCpu) > WALK_EPS
       advance(step)
       left -= step
     }
@@ -95,6 +149,10 @@ class World {
     phase = Phase.PLAYING
   }
 
+  internal fun setTimeLeft(seconds: Float) {
+    timeLeft = seconds.coerceAtLeast(0f)
+  }
+
   internal fun killAllBut(side: Side, keep: Chip) {
     chips.forEach { chip ->
       if (chip.side == side && chip !== keep) chip.alive = false
@@ -102,10 +160,22 @@ class World {
   }
 
   private fun resetMatch() {
+    youSets = 0
+    cpuSets = 0
+    resetSet()
+  }
+
+  private fun resetSet() {
     youScore = 0
     cpuScore = 0
     youPaddleY = 0.5f
     cpuPaddleY = 0.5f
+    youHitT = 0f
+    cpuHitT = 0f
+    youWalkT = 0f
+    cpuMoved = false
+    suddenDeath = false
+    timeLeft = SET_TIME
     dealChips()
     phase = Phase.SERVE
     parkBall()
@@ -129,37 +199,44 @@ class World {
       ballY = 1f - BALL_R
       vy = -kotlin.math.abs(vy)
     }
-    if (ballX - BALL_R <= 0f) {
-      ballX = BALL_R
+    if (ballX - BALL_R_X <= 0f) {
+      ballX = BALL_R_X
       vx = kotlin.math.abs(vx)
-    } else if (ballX + BALL_R >= 1f) {
-      ballX = 1f - BALL_R
+    } else if (ballX + BALL_R_X >= 1f) {
+      ballX = 1f - BALL_R_X
       vx = -kotlin.math.abs(vx)
     }
-    bouncePaddle(youPaddleY, YOU_PADDLE_X, incomingLeft = true)
-    bouncePaddle(cpuPaddleY, CPU_PADDLE_X, incomingLeft = false)
+    bounceSprite(youPaddleY, YOU_FRONT_X, incomingLeft = true, youSide = true)
+    bounceSprite(cpuPaddleY, CPU_FRONT_X, incomingLeft = false, youSide = false)
     bounceChips()
-    if (cpuChipsLeft() == 0) {
-      phase = Phase.YOU_WIN
-      return
-    }
-    if (youChipsLeft() == 0) {
-      phase = Phase.CPU_WIN
+    if (phase != Phase.PLAYING) return
+    when {
+      cpuChipsLeft() == 0 -> finishSet(Side.YOU)
+      youChipsLeft() == 0 -> finishSet(Side.CPU)
     }
   }
 
-  private fun bouncePaddle(paddleY: Float, paddleX: Float, incomingLeft: Boolean) {
+  private fun bounceSprite(
+    paddleY: Float,
+    frontX: Float,
+    incomingLeft: Boolean,
+    youSide: Boolean,
+  ) {
     if (incomingLeft && vx >= 0f) return
     if (!incomingLeft && vx <= 0f) return
+    // Past the sprite toward the chip rail — do not collide from behind.
+    if (incomingLeft && ballX < frontX) return
+    if (!incomingLeft && ballX > frontX) return
     val top = paddleY - PADDLE_LEN / 2f
     val bottom = top + PADDLE_LEN
-    if (ballX + BALL_R < paddleX || ballX - BALL_R > paddleX + PADDLE_THICK) return
-    if (ballY < top - BALL_R || ballY > bottom + BALL_R) return
     if (incomingLeft) {
-      ballX = paddleX + PADDLE_THICK + BALL_R
+      if (ballX - BALL_R_X > frontX) return
     } else {
-      ballX = paddleX - BALL_R
+      if (ballX + BALL_R_X < frontX) return
     }
+    if (ballY < top - BALL_R || ballY > bottom + BALL_R) return
+    if (youSide) youHitT = HIT_HOLD else cpuHitT = HIT_HOLD
+    ballX = if (incomingLeft) frontX + BALL_R_X else frontX - BALL_R_X
     val hit = ((ballY - paddleY) / (PADDLE_LEN / 2f)).coerceIn(-1f, 1f)
     val speed = BALL_SPEED * 1.03f
     vy = hit * speed * 0.9f
@@ -174,11 +251,15 @@ class World {
       } ?: return
     hit.alive = false
     if (hit.side == Side.CPU) youScore += 1 else cpuScore += 1
+    if (suddenDeath) {
+      finishSet(if (hit.side == Side.CPU) Side.YOU else Side.CPU)
+      return
+    }
     val cx = hit.x + hit.w / 2f
     val cy = hit.y + hit.h / 2f
     val dx = ballX - cx
     val dy = ballY - cy
-    val px = hit.w / 2f + BALL_R
+    val px = hit.w / 2f + BALL_R_X
     val py = hit.h / 2f + BALL_R
     val ox = px - kotlin.math.abs(dx)
     val oy = py - kotlin.math.abs(dy)
@@ -194,9 +275,9 @@ class World {
   private fun overlaps(chip: Chip): Boolean {
     val closestX = ballX.coerceIn(chip.x, chip.x + chip.w)
     val closestY = ballY.coerceIn(chip.y, chip.y + chip.h)
-    val dx = ballX - closestX
-    val dy = ballY - closestY
-    return dx * dx + dy * dy <= BALL_R * BALL_R
+    val nx = (ballX - closestX) / BALL_R_X
+    val ny = (ballY - closestY) / BALL_R
+    return nx * nx + ny * ny <= 1f
   }
 
   private fun dealChips() {
@@ -230,8 +311,48 @@ class World {
   private fun parkBall() {
     vx = 0f
     vy = 0f
-    ballX = YOU_PADDLE_X + PADDLE_THICK + BALL_R + 0.004f
+    ballX = YOU_FRONT_X + BALL_R_X + 0.004f
     ballY = youPaddleY
+  }
+
+  private fun tickClock(dt: Float) {
+    if (suddenDeath) return
+    timeLeft = (timeLeft - dt).coerceAtLeast(0f)
+    if (timeLeft > 0f) return
+    val yours = youChipsLeft()
+    val cpus = cpuChipsLeft()
+    when {
+      yours > cpus -> finishSet(Side.YOU)
+      cpus > yours -> finishSet(Side.CPU)
+      else -> suddenDeath = true
+    }
+  }
+
+  private fun finishSet(winner: Side) {
+    if (winner == Side.YOU) youSets += 1 else cpuSets += 1
+    vx = 0f
+    vy = 0f
+    if (youSets >= SETS_TO_WIN) {
+      phase = Phase.YOU_WIN
+      return
+    }
+    if (cpuSets >= SETS_TO_WIN) {
+      phase = Phase.CPU_WIN
+      return
+    }
+    resetSet()
+  }
+
+  private fun tickHits(dt: Float) {
+    if (youHitT > 0f) youHitT = (youHitT - dt).coerceAtLeast(0f)
+    if (cpuHitT > 0f) cpuHitT = (cpuHitT - dt).coerceAtLeast(0f)
+    if (youWalkT > 0f) youWalkT = (youWalkT - dt).coerceAtLeast(0f)
+  }
+
+  private fun pose(hitT: Float, moving: Boolean): PaddlePose {
+    if (hitT > 0f) return PaddlePose.HIT
+    if (moving) return PaddlePose.WALK
+    return PaddlePose.IDLE
   }
 
   private fun normalize(speed: Float) {
@@ -250,10 +371,54 @@ class World {
     const val CHIP_W = 0.046f
     const val YOU_CHIP_X = 0.012f
     const val CPU_CHIP_X = 1f - 0.012f - CHIP_W
-    const val YOU_PADDLE_X = YOU_CHIP_X + CHIP_W + 0.032f
-    const val CPU_PADDLE_X = CPU_CHIP_X - 0.032f - PADDLE_THICK
+    /** Small gap from chip rail; fighter sprites extend inward toward midcourt. */
+    const val PADDLE_LANE = 0.028f
+    const val YOU_PADDLE_X = YOU_CHIP_X + CHIP_W + PADDLE_LANE
+    const val CPU_PADDLE_X = CPU_CHIP_X - PADDLE_LANE - PADDLE_THICK
     const val CPU_SPEED = 0.28f
     const val CPU_REACT_X = 0.52f
     const val CPU_AIM_BIAS = 0.06f
+    const val HIT_HOLD = 0.18f
+    const val WALK_HOLD = 0.12f
+    const val WALK_EPS = 0.0008f
+    const val SPRITE_W = 192
+    const val SPRITE_H = 233
+    const val SET_TIME = 99f
+    const val SETS_TO_WIN = 2
+    const val CABINET_W_PX = 1440
+    const val CABINET_H_PX = 1080
+    /** Playfield hole — 1152×864 = 4:3. Exclusive right/bottom. */
+    const val HOLE_LEFT_PX = 144
+    const val HOLE_TOP_PX = 128
+    const val HOLE_RIGHT_PX = 1296
+    const val HOLE_BOTTOM_PX = 992
+    val FRAME_LEFT: Float = HOLE_LEFT_PX / CABINET_W_PX.toFloat()
+    val FRAME_TOP: Float = HOLE_TOP_PX / CABINET_H_PX.toFloat()
+    val FRAME_RIGHT: Float = (CABINET_W_PX - HOLE_RIGHT_PX) / CABINET_W_PX.toFloat()
+    val FRAME_BOTTOM: Float = (CABINET_H_PX - HOLE_BOTTOM_PX) / CABINET_H_PX.toFloat()
+    const val COURT_ASPECT = 4f / 3f
+    const val WELL_TOP_PX = 32
+    const val WELL_BOTTOM_PX = 100
+    val P1_SCORE_INSET = CabinetInset(220, WELL_TOP_PX, 324, WELL_BOTTOM_PX)
+    val P1_NAME_INSET = CabinetInset(340, WELL_TOP_PX, 528, WELL_BOTTOM_PX)
+    val P1_SETS_INSET = CabinetInset(544, WELL_TOP_PX, 620, WELL_BOTTOM_PX)
+    val TIME_INSET = CabinetInset(636, WELL_TOP_PX, 804, WELL_BOTTOM_PX)
+    val P2_SETS_INSET = CabinetInset(820, WELL_TOP_PX, 896, WELL_BOTTOM_PX)
+    val P2_NAME_INSET = CabinetInset(912, WELL_TOP_PX, 1100, WELL_BOTTOM_PX)
+    val P2_SCORE_INSET = CabinetInset(1116, WELL_TOP_PX, 1220, WELL_BOTTOM_PX)
+    /**
+     * Magenta pad on the court-facing side of packed 192×233 frames
+     * (Rivet idle opaque x=25..165).
+     */
+    const val SPRITE_FRONT_PAD = 26
+    /** Dest width in X, matching GameScreen on the cabinet hole. */
+    val SPRITE_SPAN: Float = PADDLE_LEN * SPRITE_W / SPRITE_H / COURT_ASPECT
+    val BALL_R_X: Float = BALL_R / COURT_ASPECT
+    /** Opaque court-facing edge of the left fighter. */
+    val YOU_FRONT_X: Float = YOU_PADDLE_X + SPRITE_SPAN * (SPRITE_W - SPRITE_FRONT_PAD) / SPRITE_W
+    /** Opaque court-facing edge of the right fighter. */
+    val CPU_FRONT_X: Float = CPU_PADDLE_X + PADDLE_THICK - SPRITE_SPAN * (SPRITE_W - SPRITE_FRONT_PAD) / SPRITE_W
+    val YOU_HIT_X: Float = YOU_FRONT_X - PADDLE_THICK
+    val CPU_HIT_X: Float = CPU_FRONT_X
   }
 }

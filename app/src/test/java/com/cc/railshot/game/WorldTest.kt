@@ -20,7 +20,7 @@ class WorldTest {
   fun hittingACpuChipScoresForYou() {
     val world = World()
     val target = world.chips.first { it.side == Side.CPU && it.slot == 2 && it.alive }
-    world.placeBall(target.x - World.BALL_R - 0.001f, target.y + target.h / 2f, 0.9f, 0f)
+    world.placeBall(target.x - World.BALL_R_X - 0.001f, target.y + target.h / 2f, 0.9f, 0f)
     var guard = 0
     while (world.youScore == 0 && world.phase == Phase.PLAYING && guard++ < 40) {
       world.step(1f / 60f)
@@ -30,16 +30,47 @@ class WorldTest {
   }
 
   @Test
-  fun clearingCpuChipsWins() {
+  fun clearingCpuChipsWinsASetNotTheMatch() {
     val world = World()
     val keep = world.chips.first { it.side == Side.CPU && it.slot == 2 && it.alive }
     world.killAllBut(Side.CPU, keep)
-    world.placeBall(keep.x - World.BALL_R - 0.001f, keep.y + keep.h / 2f, 0.9f, 0f)
+    world.placeBall(keep.x - World.BALL_R_X - 0.001f, keep.y + keep.h / 2f, 0.9f, 0f)
     var guard = 0
-    while (world.phase == Phase.PLAYING && guard++ < 40) {
+    while (world.youSets == 0 && world.phase == Phase.PLAYING && guard++ < 40) {
       world.step(1f / 60f)
     }
+    assertEquals(1, world.youSets)
+    assertEquals(0, world.cpuSets)
+    assertEquals(Phase.SERVE, world.phase)
+  }
+
+  @Test
+  fun twoSetsWinsTheMatch() {
+    val world = World()
+    repeat(2) {
+      val keep = world.chips.first { it.side == Side.CPU && it.slot == 2 && it.alive }
+      world.killAllBut(Side.CPU, keep)
+      world.placeBall(keep.x - World.BALL_R_X - 0.001f, keep.y + keep.h / 2f, 0.9f, 0f)
+      var guard = 0
+      while (world.phase == Phase.PLAYING && guard++ < 40) {
+        world.step(1f / 60f)
+      }
+    }
+    assertEquals(2, world.youSets)
     assertEquals(Phase.YOU_WIN, world.phase)
+  }
+
+  @Test
+  fun timeExpiryAwardsTheSetToTheSideWithMoreChips() {
+    val world = World()
+    world.launch()
+    val keep = world.chips.first { it.side == Side.CPU && it.slot == 0 }
+    world.killAllBut(Side.CPU, keep)
+    world.setTimeLeft(0.01f)
+    world.step(1f / 30f)
+    assertEquals(1, world.youSets)
+    assertEquals(0, world.cpuSets)
+    assertEquals(Phase.SERVE, world.phase)
   }
 
   @Test
@@ -69,5 +100,58 @@ class WorldTest {
     val start = world.cpuPaddleY
     world.step(1f / 60f)
     assertEquals(start, world.cpuPaddleY, 0.0001f)
+  }
+
+  @Test
+  fun paddleStartsIdleAndWalksWhenMoved() {
+    val world = World()
+    assertEquals(PaddlePose.IDLE, world.youPose())
+    world.moveYouPaddle(0.7f)
+    assertEquals(PaddlePose.WALK, world.youPose())
+  }
+
+  @Test
+  fun paddleShowsHitAfterContact() {
+    val world = World()
+    world.moveYouPaddle(0.5f)
+    world.placeBall(
+      World.YOU_FRONT_X + World.BALL_R_X + 0.001f,
+      world.youPaddleY,
+      -0.8f,
+      0f,
+    )
+    var guard = 0
+    while (world.youPose() != PaddlePose.HIT && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertEquals(PaddlePose.HIT, world.youPose())
+  }
+
+  @Test
+  fun serveParksTheBallInFrontOfTheYouSprite() {
+    val world = World()
+    assertEquals(World.YOU_FRONT_X + World.BALL_R_X + 0.004f, world.ballX, 0.0001f)
+  }
+
+  @Test
+  fun youFrontIsInsideTheDrawnSpriteBox() {
+    val destRight = World.YOU_PADDLE_X + World.SPRITE_SPAN
+    assertTrue(World.YOU_FRONT_X < destRight)
+    assertTrue(World.YOU_FRONT_X > World.YOU_PADDLE_X)
+  }
+
+  @Test
+  fun playfieldHoleIsInsideTheCabinet() {
+    assertTrue(World.FRAME_LEFT > 0f)
+    assertTrue(World.FRAME_TOP > 0f)
+    assertTrue(World.FRAME_RIGHT > 0f)
+    assertTrue(World.FRAME_BOTTOM > 0f)
+    assertEquals(4f / 3f, World.COURT_ASPECT, 0.0001f)
+    assertEquals(
+      (World.HOLE_RIGHT_PX - World.HOLE_LEFT_PX).toFloat() /
+        (World.HOLE_BOTTOM_PX - World.HOLE_TOP_PX).toFloat(),
+      World.COURT_ASPECT,
+      0.0001f,
+    )
   }
 }
