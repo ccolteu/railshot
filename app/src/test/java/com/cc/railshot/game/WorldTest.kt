@@ -29,6 +29,7 @@ class WorldTest {
     }
     assertEquals(1, world.youScore)
     assertEquals(World.CHIP_COUNT - 1, world.cpuChipsLeft())
+    assertTrue(world.drainSfx().contains(GameSfx.CHIP))
   }
 
   @Test
@@ -138,6 +139,7 @@ class WorldTest {
       world.step(1f / 60f)
     }
     assertEquals(PaddlePose.HIT, world.youPose())
+    assertTrue(world.drainSfx().contains(GameSfx.SHIELD))
   }
 
   @Test

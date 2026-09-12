@@ -57,6 +57,20 @@ Canonical sprites live in **`art/`** (`art/{name}/…png`, `art/ui_*.png`). Do *
 
 The Android stage is a centered **4:3 cabinet** (`ui_cabinet.png`, 1440×1080). **Define inset pixels first** (`World` cabinet constants). Draw / generate the cabinet **around those rects** so chrome and wells are the same layout. Never measure wells after the fact and nudge HUD to match a mismatched PNG. The **playfield** is a **4:3 magenta inset** (1152×864). Court floors `FIT_XY` in that inset. HUD text is **typeset in code** and **scaled to the well** so it stays inside. Do not use name sprites in cabinet wells.
 
+## Audio
+
+WAV clips live in `app/src/main/res/raw/` (16-bit PCM, 44.1 kHz, uncompressed). `SoundManager` is SoundPool SFX + dual MediaPlayer BGM, same shape as WW2 Blitz. Original IP only — do not rip Flip Shot or other cabinets.
+
+| Cue | File | When |
+| --- | --- | --- |
+| Arrow | `sfx_arrow.wav` | Select roster arrows |
+| Select | `sfx_select.wav` | SELECT confirm |
+| Round 1/2/3 | `sfx_round1.wav` … `sfx_round3.wav` | Enter `Phase.ROUND` (announcer) |
+| Fight | `sfx_fight.wav` | Enter `Phase.SERVE` |
+| Shield hit | `sfx_shield.wav` | Ball bounces off a fighter |
+| Chip off | `sfx_chip.wav` | Ball kills a life tile |
+| Match BGM | `bgm_match.wav` | Loops from app start |
+
 ## Produce a sprite (mandatory)
 
 The generator will ignore size, exact magenta, and “mirror.” Do not trust it. After every generate:
@@ -456,7 +470,8 @@ Wallpaper (`art/ui_vs_bg.png`): quiet dark navy with a faint center glow for the
 2. **Right slot** = second selected fighter’s `{name}_vs_right.png` (2P clothes, facing the center).
 3. Missing **C** art is an empty bust placeholder in that slot (same box).
 4. Draw `ui_vs.png` in the center. Under each bust draw `{name}_name_vs.png` (first pick left, second pick right). Missing name sprite: placeholder.
-5. Stay on VS until the match starts (tap / continue). Left court then uses the first fighter’s `*_left` anims; right court uses the second’s `*_right` anims.
+5. Between the names, on the same horizontal row, draw `ui_btn_start.png` (same gold-bezel ivory arcade button as SELECT, word **START**). Vertically center it with the nameplates. Do not typeset START. Pressing START continues to the match (select confirm SFX).
+6. Stay on VS until START. Left court then uses the first fighter’s `*_left` anims; right court uses the second’s `*_right` anims.
 
 ## Win / bonus / congratulations layout
 

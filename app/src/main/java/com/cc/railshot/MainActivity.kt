@@ -1,5 +1,6 @@
 package com.cc.railshot
 
+import android.media.AudioManager
 import android.os.Bundle
 import android.view.View
 import android.view.WindowManager
@@ -20,9 +21,11 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     installSplashScreen()
     super.onCreate(savedInstanceState)
+    volumeControlStream = AudioManager.STREAM_MUSIC
     WindowCompat.setDecorFitsSystemWindows(window, false)
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     hideSystemBars()
+    SoundManager.instance.initialize(this)
     setContent {
       RailshotTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -30,6 +33,21 @@ class MainActivity : ComponentActivity() {
         }
       }
     }
+  }
+
+  override fun onPause() {
+    SoundManager.instance.pauseAll()
+    super.onPause()
+  }
+
+  override fun onResume() {
+    super.onResume()
+    SoundManager.instance.resumeAll()
+  }
+
+  override fun onDestroy() {
+    SoundManager.instance.release()
+    super.onDestroy()
   }
 
   override fun onWindowFocusChanged(hasFocus: Boolean) {

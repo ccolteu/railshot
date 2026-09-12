@@ -32,6 +32,10 @@ android {
       shaders = false
     }
 
+    androidResources {
+      noCompress += "wav"
+    }
+
     sourceSets {
       getByName("main") {
         assets.srcDir("../art")

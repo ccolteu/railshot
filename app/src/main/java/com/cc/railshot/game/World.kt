@@ -19,6 +19,11 @@ enum class PaddlePose {
   HIT,
 }
 
+enum class GameSfx {
+  SHIELD,
+  CHIP,
+}
+
 data class Chip(
   val x: Float,
   val y: Float,
@@ -76,6 +81,7 @@ class World {
   private var youWalkT = 0f
   private var cpuMoved = false
   private var roundHold = ROUND_HOLD
+  private val pendingSfx = ArrayDeque<GameSfx>()
 
   init {
     dealChips()
@@ -83,6 +89,13 @@ class World {
   }
 
   fun roundNumber(): Int = (youSets + cpuSets + 1).coerceIn(1, 3)
+
+  fun drainSfx(): List<GameSfx> {
+    if (pendingSfx.isEmpty()) return emptyList()
+    val out = pendingSfx.toList()
+    pendingSfx.clear()
+    return out
+  }
 
   fun timeDisplay(): String = timeLeft.toInt().coerceIn(0, SET_TIME.toInt()).toString().padStart(2, '0')
 
@@ -255,6 +268,7 @@ class World {
     }
     if (ballY < top - BALL_R || ballY > bottom + BALL_R) return
     if (youSide) youHitT = HIT_HOLD else cpuHitT = HIT_HOLD
+    pendingSfx += GameSfx.SHIELD
     ballX = if (incomingLeft) frontX + BALL_R_X else frontX - BALL_R_X
     val hit = ((ballY - paddleY) / (PADDLE_LEN / 2f)).coerceIn(-1f, 1f)
     val speed = BALL_SPEED * 1.03f
@@ -269,6 +283,7 @@ class World {
         chip.alive && overlaps(chip)
       } ?: return
     hit.alive = false
+    pendingSfx += GameSfx.CHIP
     if (hit.side == Side.CPU) youScore += 1 else cpuScore += 1
     if (suddenDeath) {
       finishSet(if (hit.side == Side.CPU) Side.YOU else Side.CPU)

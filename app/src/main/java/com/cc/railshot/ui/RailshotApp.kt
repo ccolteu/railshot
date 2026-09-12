@@ -1,10 +1,12 @@
 package com.cc.railshot.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.cc.railshot.SoundManager
 import com.cc.railshot.game.Fighter
 
 private sealed interface AppScreen {
@@ -17,6 +19,9 @@ private sealed interface AppScreen {
 
 @Composable
 fun RailshotApp() {
+  LaunchedEffect(Unit) {
+    SoundManager.instance.switchBGM(SoundManager.BGM_MATCH)
+  }
   var screen by remember { mutableStateOf<AppScreen>(AppScreen.Select) }
   when (val current = screen) {
     AppScreen.Select ->

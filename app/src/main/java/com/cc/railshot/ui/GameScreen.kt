@@ -50,7 +50,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cc.railshot.SoundManager
 import com.cc.railshot.game.CabinetInset
+import com.cc.railshot.game.GameSfx
 import com.cc.railshot.game.Chip
 import com.cc.railshot.game.Fighter
 import com.cc.railshot.game.PaddlePose
@@ -74,11 +76,27 @@ fun GameScreen(you: Fighter = Fighter.RIVET, rival: Fighter = Fighter.RIVET) {
 
   LaunchedEffect(Unit) {
     var last = 0L
+    var announced: Phase? = null
     while (true) {
       withFrameNanos { now ->
         val dt = if (last == 0L) 0f else ((now - last) / 1_000_000_000f).coerceAtMost(0.05f)
         last = now
         world.step(dt)
+        for (sfx in world.drainSfx()) {
+          when (sfx) {
+            GameSfx.SHIELD -> SoundManager.instance.playSFX(SoundManager.SFX_SHIELD)
+            GameSfx.CHIP -> SoundManager.instance.playSFX(SoundManager.SFX_CHIP)
+          }
+        }
+        val phase = world.phase
+        if (phase != announced) {
+          announced = phase
+          when (phase) {
+            Phase.ROUND -> SoundManager.instance.playSFX(SoundManager.roundCall(world.roundNumber()))
+            Phase.SERVE -> SoundManager.instance.playSFX(SoundManager.SFX_FIGHT)
+            else -> {}
+          }
+        }
         frame++
       }
     }

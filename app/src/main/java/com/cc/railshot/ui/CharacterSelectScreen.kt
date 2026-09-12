@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cc.railshot.SoundManager
 import com.cc.railshot.game.Fighter
 import com.cc.railshot.game.SELECT_LINGER_MS
 import com.cc.railshot.game.SelectSession
@@ -95,17 +96,20 @@ fun CharacterSelectScreen(onBothSelected: (Fighter, Fighter) -> Unit) {
           horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
           StripArrow(flip = false, enabled = !locked) {
+            SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
             session.moveLeft()
             epoch++
           }
           SelectButton(
             enabled = !locked,
             onClick = {
+              SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
               session.confirm()
               epoch++
             },
           )
           StripArrow(flip = true, enabled = !locked) {
+            SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
             session.moveRight()
             epoch++
           }
