@@ -28,7 +28,7 @@ Keep the 90s pixel look; just draw it on a phone-sized canvas. Do not generate 3
 | Face tiles | **192×192** | Magenta `#FF00FF`. **No drawn border.** Content flush left, right, and bottom. |
 | Standing select portraits | **480×720** | Magenta `#FF00FF` |
 | VS busts | **480×600** | Magenta `#FF00FF` |
-| Word banners | **960×240** (`WIN` **768×384**, `VS` **384×384**) | Magenta `#FF00FF` |
+| Word banners | **960** wide (`FIGHT`/`ROUND` height fits letters; `WIN` **768×384**, `VS` **384×384**) | Magenta `#FF00FF` |
 | Digits | **120×150** each | Magenta `#FF00FF` |
 | Ball | **60×60** | Magenta `#FF00FF` |
 | Life chips | **60×60** | Magenta `#FF00FF` |
@@ -53,7 +53,7 @@ Applies to faces, select full-bodies, VS busts, court idle/walk/hit, nameplates,
 
 Canonical sprites live in **`art/`** (`art/{name}/…png`, `art/ui_*.png`). Do **not** copy them into `res/drawable` or `drawable-nodpi`. The app reads `art/` as Android assets. Edit and generate only under `art/`.
 
-**Launcher icon** is the exception: source `art/ui_launcher.png` (Rivet face, arcade plate, **no magenta**). Pack into `res/mipmap-*` and adaptive `ic_launcher_foreground`. Do not use the old pong/chip vector.
+**Launcher icon** is the exception: source `art/ui_launcher.png` (flaming steel play-ball, arcade teal plate, **no magenta**, not a fighter). Pack into `res/mipmap-*` and adaptive `ic_launcher_foreground`. Do not use a roster portrait.
 
 The Android stage is a centered **4:3 cabinet** (`ui_cabinet.png`, 1440×1080). **Define inset pixels first** (`World` cabinet constants). Draw / generate the cabinet **around those rects** so chrome and wells are the same layout. Never measure wells after the fact and nudge HUD to match a mismatched PNG. The **playfield** is a **4:3 magenta inset** (1152×864). Court floors `FIT_XY` in that inset. HUD text is **typeset in code** and **scaled to the well** so it stays inside. Do not use name sprites in cabinet wells.
 
@@ -178,7 +178,7 @@ Large 1994 arcade standing portrait, [CHARACTER LOCK], full body, 3/4 view FACIN
 
 Must look like a close crop of **A**: same face, same hair (long hair on the women, male cut on the men), same eyes, same visor/hat if A has one, **same left-facing direction**. Use A as the reference image. If B faces right, horizontal-flip the bitmap. Do not GenerateImage a mirror.
 
-**No outline, flush crop.** Do **not** draw a colored frame, box, or outline around the portrait (no teal, red, gold, or black rectangle). The roster tile border is drawn in **code**. Pack **192×192**. After removing any generator frame, the drawing must touch the **left, right, and bottom** edges — no magenta padding on those three sides. Magenta may sit **above** the hair only. Do not clip the face; if the crop is too tall, scale so width fills 192 and sit on the bottom (trim extra from the top field, not the chin).
+**No outline on the portrait.** Do **not** bake a frame into the face PNG. Roster chrome is `ui_face_frame_on.png` (cursor) and `ui_face_frame_off.png` (idle). Pack **192×192**. After removing any generator frame, the drawing must touch the **left, right, and bottom** edges — no magenta padding on those three sides. Magenta may sit **above** the hair only. Do not clip the face; if the crop is too tall, scale so width fills 192 and sit on the bottom (trim extra from the top field, not the chin).
 
 ```
 Square 1994 arcade face portrait cropped from the select full-body of [CHARACTER LOCK], identical face and hair, head and shoulders FACING LEFT (nose toward the left edge, same direction as the full-body), visor/hat only if the full-body has one, NO colored border, NO frame, NO outline rectangle, 192x192, magenta background #FF00FF
@@ -337,35 +337,39 @@ A **match** is **best of three sets** (first to **2** sets wins). Each set is on
 
 Round `WIN` overlay on a set; match win then results / piece **E**.
 
+Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1.8s, then `SERVE` with `ui_fight.png`. Tap serves. Do not typeset FIGHT or TAP TO SERVE.
+
 ## In-game extras
 
 Use section **D** for player sprites. Optional later: Hex projectile (`small blue star shot`).
 
-**Ball**
+**Ball** (`art/ui_ball.png`)
+
+Flaming gold **metal orb**. Fire is a **symmetric ring** (same on all sides). Do not draw a comet tail or rotate the sprite — the ball’s heading changes every rally.
 
 ```
-60x60 arcade volley ball, red and cream pixels, hard outline, magenta background #FF00FF
+60x60 gold steel sphere, circular fire halo equal on all sides, no tail, no volleyball, magenta background #FF00FF
 ```
 
-**P1 chip**
+**Life chips** (`art/ui_chip_you.png`, `art/ui_chip_cpu.png`)
 
-```
-60x60 arcade life chip puck, teal and white, numeral 1 in the center, pixel art, magenta background
-```
-
-**Rival chips** — one themed puck per opponent (star, orb, blob, feather, hex), same 60×60 size.
+Hexagonal **life pucks** (energy cells), not shields. Gold rim. P1 teal fill, P2 crimson fill. No numerals. Draw at the chip’s width, centered in the slot — do not stretch to the tall hit rect. Dead chips: same sprite, dim.
 
 ## Word and banner sprites
 
 One word per image, huge, centered, magenta background.
 
 ```
-Arcade pixel word ROUND, fat brush letters, red-to-yellow horizontal gradient, thick blue outline, white highlight, 1994 Neo Geo title, no other text, magenta background #FF00FF, 960x240
+Arcade pixel word ROUND, fat brush letters, red-to-yellow horizontal gradient, thick blue outline, white highlight, 1994 Neo Geo title, no other text, magenta background #FF00FF, 960 wide
 ```
 
+File: `art/ui_round.png`. Show at the start of each set with `art/ui_num_{1,2,3}.png` under it (~1.8s), then `FIGHT`.
+
 ```
-Arcade pixel word FIGHT, icy blue metallic gradient, orange outline, 1994 title, magenta background, 960x240
+Arcade pixel word FIGHT, icy blue metallic gradient, orange outline, 1994 title, magenta background, 960 wide
 ```
+
+File: `art/ui_fight.png`. Serve prompt — no typeset TAP TO SERVE. Tap still serves.
 
 ```
 Arcade pixel word WIN, huge brush letters, yellow-orange-red gradient, blue outline, magenta background, 768x384
@@ -378,7 +382,7 @@ Arcade pixel letters VS, overlapping block capitals V and S (not script, not ita
 File: `art/ui_vs.png`. No drop shadow. Rewrite field to `#FF00FF`.
 
 ```
-Arcade pixel word PLAYER SELECT, stacked two lines, yellow outline, solid red fill (not brick), tight black outline, NO drop shadow, magenta #FF00FF, 960x240
+Arcade pixel words SELECT FIGHTER, stacked two lines, icy blue metallic gradient, orange outline, 1994 Neo Geo title like FIGHT, magenta #FF00FF
 ```
 
 File: `art/ui_player_select.png`.
@@ -397,20 +401,20 @@ Pixel words TARGET, PERFECT, STRAIGHT, TOTAL, blue-to-yellow gradient, outlined,
 
 4:3 letterboxed screen. Use pieces **A** (full-body), **B** (face), **F** (name), plus `ui_player_select.png`. Overlay cursor, arrows, and SELECT in code. Wallpaper has no portraits and no UI.
 
-Wallpaper only:
+Wallpaper only (`art/ui_select_bg.png`): quiet dark teal stage, no portraits, no UI, not busy.
 
 ```
-4:3 arcade select screen wallpaper only, repeating green stamp of the word RAILSHOT at 45 degrees, paper texture, no portraits, 1440x1080
+4:3 quiet arcade select wallpaper, dark teal navy gradient, sparse dither, no people, no text, no tiles, 1440x1080
 ```
 
 **Name sprites** (piece **F**, two files per fighter)
 
 Portraits are **not** inputs. Pack each to **480×90**, magenta `#FF00FF`.
 
-**Select plate** `{name}_name_select.png` — small blue box, gold-yellow border, yellow letters:
+**Select name** `{name}_name_select.png` — letters only, same 90s fighter-name lettering as the VS names (no chip, no plate):
 
 ```
-Small arcade nameplate, dark blue rectangle, gold-yellow border, the word [NAME] in yellow capitals, black outline, no character, 480x90, magenta #FF00FF
+Arcade fighter name [NAME], fat Neo Geo capitals, gold-yellow fill, blue outline, white left highlight, LETTERS ONLY no box no plate, 480x90, magenta #FF00FF
 ```
 
 Use on **player select**, left column, under `PLAYER SELECT`.
@@ -427,20 +431,23 @@ Use on **VS**, under each bust. Missing file: placeholder.
 
 Same flow as a 90s arcade vs-select (Flip Shot layout language, original roster):
 
-1. **Roster strip** along the **bottom**: six face tiles in order **Rivet, Ash, Kite, Maru, Quill, Hex**. Missing **B** art is an empty bordered placeholder with the name (or initial), same tile size.
-2. **Browse with on-screen arrows.** A **left arrow** on the **left of the strip** and a **right arrow** on the **right of the strip** move the cursor. Wrap at the ends. Arrows do not confirm.
-3. **Confirm with SELECT.** An on-screen **SELECT** button **under the PLAYER SELECT title** (left side) locks the highlighted fighter. First press = **first fighter** (left court, `vs_left`, P1 clothes). Second press = **second fighter** (right court, `vs_right`, 2P clothes). Same fighter twice is a legal mirror match.
+1. **Roster strip** along the **bottom**, **full 4:3 width**: six face tiles in order **Rivet, Ash, Kite, Maru, Quill, Hex**. Missing **B** art is an empty framed placeholder with the name (or initial), same tile size.
+2. **Browse with on-screen arrows.** Arrows sit **left and right of the SELECT button**. They move the roster cursor. Wrap at the ends. Arrows do not confirm.
+3. **Confirm with SELECT.** The SELECT button (between the arrows, left stack) locks the highlighted fighter. First press = **first fighter** (left court, `vs_left`, P1 clothes). Second press = **second fighter** (right court, `vs_right`, 2P clothes). Same fighter twice is a legal mirror match.
 4. **Full-body on the right.** Piece **A** for the **currently highlighted** tile is drawn on the **right**, **almost the full 4:3 height** (`FillHeight`, no crop-zoom of the face), with a **small margin** top and bottom so it does not clip the screen edge. A must be the **left-facing** select pose so they look toward the left stack. Missing **A** is an empty placeholder. Switching left/right updates this portrait immediately. Do not keep showing the already-locked first fighter while browsing for the second.
-5. **Cursor badges.** While picking the first fighter, show **1P** on the highlighted tile. After the first lock, **1P** stays on that tile; **2P** rides the cursor until the second lock.
-6. **Left stack.** Top to bottom: large `ui_player_select.png`, then `{name}_name_select.png`, then the SELECT button. All on the **left**. Do not typeset PLAYER SELECT or the fighter name.
+5. **Cursor badges.** While picking the first fighter, show **1P** on the highlighted tile. After the first lock, **1P** stays on that tile; **2P** rides the cursor until the second lock. Tile frames: `ui_face_frame_on.png` when highlighted, `ui_face_frame_off.png` otherwise — not Compose borders.
+6. **Left stack.** Top to bottom: large `ui_player_select.png` (**SELECT FIGHTER** title), then `{name}_name_select.png`, then `ui_btn_select.png`. All on the **left**. Do not typeset SELECT FIGHTER, SELECT, or the fighter name.
+7. **Chrome sprites.** `ui_btn_select.png` and `ui_arrow_left.png` are **beveled arcade push buttons**, not floating letters. Right arrow = horizontal flip of the left button in code. Cursor badges are `ui_1p.png` / `ui_2p.png`. Do not typeset 1P, 2P, SELECT, or ◀▶.
 7. **After both are selected:** freeze input, linger **1.5 seconds**, then go to the **VS screen**. Do not skip the linger.
 
 ## VS screen layout
 
 Use pieces **C** and **F** plus `ui_vs.png`. Composite two busts + name sprites + VS mark in code. Wallpaper has no portraits.
 
+Wallpaper (`art/ui_vs_bg.png`): quiet dark navy with a faint center glow for the VS mark. No portraits, no letters, not busy.
+
 ```
-4:3 VS screen wallpaper only, repeating green stamp of the word RAILSHOT at 45 degrees, paper texture, no portraits, 1440x1080
+4:3 quiet arcade VS wallpaper, dark navy vignette, faint warm center glow, no people, no text, 1440x1080
 ```
 
 ### VS screen rules (code)
@@ -479,7 +486,7 @@ Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to
 - Paddles / fighters in the lane
 - Ball
 - `ROUND` / `FIGHT` / `WIN` banners
-- Select cursor (`1P` / `2P`), left/right arrows, SELECT button
+- Select cursor (`ui_1p.png` / `ui_2p.png`), arrows (`ui_arrow_left.png` + flip), SELECT (`ui_btn_select.png`)
 - Linger-then-VS transition
 - Tally numbers
 

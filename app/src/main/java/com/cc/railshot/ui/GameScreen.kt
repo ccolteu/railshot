@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -38,7 +39,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -51,9 +51,11 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cc.railshot.game.CabinetInset
+import com.cc.railshot.game.Chip
 import com.cc.railshot.game.Fighter
 import com.cc.railshot.game.PaddlePose
 import com.cc.railshot.game.Phase
+import com.cc.railshot.game.Side
 import com.cc.railshot.game.World
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -66,6 +68,9 @@ fun GameScreen(you: Fighter = Fighter.RIVET, rival: Fighter = Fighter.RIVET) {
   val youFrames = remember(you) { loadCourtBitmaps(context, you.art(), left = true) }
   val rivalFrames = remember(rival) { loadCourtBitmaps(context, rival.art(), left = false) }
   val courtFloor = remember { loadOpaqueAsset(context, "court_circuit.png") }
+  val ballSprite = remember { loadKeyedAsset(context, "ui_ball.png") }
+  val youChipSprite = remember { loadKeyedAsset(context, "ui_chip_you.png") }
+  val cpuChipSprite = remember { loadKeyedAsset(context, "ui_chip_cpu.png") }
 
   LaunchedEffect(Unit) {
     var last = 0L
@@ -132,26 +137,12 @@ fun GameScreen(you: Fighter = Fighter.RIVET, rival: Fighter = Fighter.RIVET) {
                 filterQuality = FilterQuality.None,
               )
               world.chips.forEach { chip ->
-                val left = chip.x * w
-                val top = chip.y * h
-                val cw = chip.w * w
-                val ch = chip.h * h
-                if (chip.alive) {
-                  drawRoundRect(
-                    color = chipColor(chip.side, chip.slot),
-                    topLeft = Offset(left, top),
-                    size = Size(cw, ch),
-                    cornerRadius = CornerRadius(cw * 0.45f, ch * 0.45f),
-                  )
-                } else {
-                  drawRoundRect(
-                    color = Line.copy(alpha = 0.55f),
-                    topLeft = Offset(left, top),
-                    size = Size(cw, ch),
-                    cornerRadius = CornerRadius(cw * 0.45f, ch * 0.45f),
-                    style = Stroke(width = 2f),
-                  )
-                }
+                drawChip(
+                  sprite = if (chip.side == Side.YOU) youChipSprite else cpuChipSprite,
+                  chip = chip,
+                  courtW = w,
+                  courtH = h,
+                )
               }
               drawFighter(
                 frames = youFrames,
@@ -173,29 +164,65 @@ fun GameScreen(you: Fighter = Fighter.RIVET, rival: Fighter = Fighter.RIVET) {
                 courtW = w,
                 courtH = h,
               )
-              drawCircle(
-                color = Ball,
-                radius = World.BALL_R * min(w, h),
-                center = Offset(world.ballX * w, world.ballY * h),
+              drawBall(
+                sprite = ballSprite,
+                ballX = world.ballX,
+                ballY = world.ballY,
+                courtW = w,
+                courtH = h,
               )
             }
-            val banner =
-              when (world.phase) {
-                Phase.SERVE -> "FIGHT\nTAP TO SERVE"
-                Phase.YOU_WIN -> "WIN\nTAP TO RESTART"
-                Phase.CPU_WIN -> "CPU WINS\nTAP TO RESTART"
-                Phase.PLAYING -> null
+            when (world.phase) {
+              Phase.ROUND -> {
+                Column(
+                  modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.88f),
+                  horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                  MagentaKeyedImage(
+                    assetPath = UiArt.ROUND,
+                    contentDescription = "ROUND",
+                    modifier = Modifier.fillMaxWidth().aspectRatio(960f / 547f),
+                    contentScale = ContentScale.Fit,
+                  )
+                  MagentaKeyedImage(
+                    assetPath = UiArt.roundNum(world.roundNumber()),
+                    contentDescription = world.roundNumber().toString(),
+                    modifier = Modifier.fillMaxWidth(0.28f).aspectRatio(240f / 300f).padding(top = 4.dp),
+                    contentScale = ContentScale.Fit,
+                  )
+                }
               }
-            if (banner != null) {
-              Text(
-                text = banner,
-                color = Cream,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-                fontSize = 28.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.align(Alignment.Center),
-              )
+              Phase.SERVE -> {
+                MagentaKeyedImage(
+                  assetPath = UiArt.FIGHT,
+                  contentDescription = "FIGHT",
+                  modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.92f).aspectRatio(960f / 547f),
+                  contentScale = ContentScale.Fit,
+                )
+              }
+              Phase.YOU_WIN -> {
+                Text(
+                  text = "WIN\nTAP TO RESTART",
+                  color = Cream,
+                  fontFamily = FontFamily.Monospace,
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 28.sp,
+                  textAlign = TextAlign.Center,
+                  modifier = Modifier.align(Alignment.Center),
+                )
+              }
+              Phase.CPU_WIN -> {
+                Text(
+                  text = "CPU WINS\nTAP TO RESTART",
+                  color = Cream,
+                  fontFamily = FontFamily.Monospace,
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 28.sp,
+                  textAlign = TextAlign.Center,
+                  modifier = Modifier.align(Alignment.Center),
+                )
+              }
+              Phase.PLAYING -> Unit
             }
           }
         }
@@ -285,6 +312,57 @@ private fun DrawScope.drawFighter(
       cornerRadius = CornerRadius(6f, 6f),
     )
   }
+}
+
+private fun DrawScope.drawChip(
+  sprite: ImageBitmap,
+  chip: Chip,
+  courtW: Float,
+  courtH: Float,
+) {
+  val slotW = chip.w * courtW
+  val slotH = chip.h * courtH
+  val aspect = sprite.height / sprite.width.toFloat()
+  var dw = slotW
+  var dh = dw * aspect
+  if (dh > slotH) {
+    dh = slotH
+    dw = dh / aspect
+  }
+  val left = (chip.x * courtW + (slotW - dw) / 2f).roundToInt()
+  val top = (chip.y * courtH + (slotH - dh) / 2f).roundToInt()
+  drawImage(
+    image = sprite,
+    srcOffset = IntOffset.Zero,
+    srcSize = IntSize(sprite.width, sprite.height),
+    dstOffset = IntOffset(left, top),
+    dstSize = IntSize(dw.roundToInt().coerceAtLeast(1), dh.roundToInt().coerceAtLeast(1)),
+    alpha = if (chip.alive) 1f else 0.22f,
+    filterQuality = FilterQuality.None,
+  )
+}
+
+private fun DrawScope.drawBall(
+  sprite: ImageBitmap,
+  ballX: Float,
+  ballY: Float,
+  courtW: Float,
+  courtH: Float,
+) {
+  val radius = World.BALL_R * min(courtW, courtH) * 1.45f
+  val cx = ballX * courtW
+  val cy = ballY * courtH
+  val side = (radius * 2f).roundToInt().coerceAtLeast(2)
+  val left = (cx - side / 2f).roundToInt()
+  val top = (cy - side / 2f).roundToInt()
+  drawImage(
+    image = sprite,
+    srcOffset = IntOffset.Zero,
+    srcSize = IntSize(sprite.width, sprite.height),
+    dstOffset = IntOffset(left, top),
+    dstSize = IntSize(side, side),
+    filterQuality = FilterQuality.None,
+  )
 }
 
 @Composable

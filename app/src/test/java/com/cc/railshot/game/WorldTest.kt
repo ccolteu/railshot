@@ -8,6 +8,8 @@ class WorldTest {
   @Test
   fun launchLeavesServeAndMovesTheBallRight() {
     val world = World()
+    assertEquals(Phase.ROUND, world.phase)
+    world.skipToServe()
     assertEquals(Phase.SERVE, world.phase)
     world.launch()
     assertEquals(Phase.PLAYING, world.phase)
@@ -41,7 +43,8 @@ class WorldTest {
     }
     assertEquals(1, world.youSets)
     assertEquals(0, world.cpuSets)
-    assertEquals(Phase.SERVE, world.phase)
+    assertEquals(Phase.ROUND, world.phase)
+    assertEquals(2, world.roundNumber())
   }
 
   @Test
@@ -63,6 +66,7 @@ class WorldTest {
   @Test
   fun timeExpiryAwardsTheSetToTheSideWithMoreChips() {
     val world = World()
+    world.skipToServe()
     world.launch()
     val keep = world.chips.first { it.side == Side.CPU && it.slot == 0 }
     world.killAllBut(Side.CPU, keep)
@@ -70,6 +74,15 @@ class WorldTest {
     world.step(1f / 30f)
     assertEquals(1, world.youSets)
     assertEquals(0, world.cpuSets)
+    assertEquals(Phase.ROUND, world.phase)
+  }
+
+  @Test
+  fun roundCallBecomesServeAfterTheHold() {
+    val world = World()
+    assertEquals(Phase.ROUND, world.phase)
+    assertEquals(1, world.roundNumber())
+    repeat(40) { world.step(World.ROUND_HOLD) }
     assertEquals(Phase.SERVE, world.phase)
   }
 

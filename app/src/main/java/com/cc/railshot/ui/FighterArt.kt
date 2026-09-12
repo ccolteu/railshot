@@ -21,6 +21,18 @@ data class FighterArt(
 object UiArt {
   const val PLAYER_SELECT = "ui_player_select.png"
   const val VS = "ui_vs.png"
+  const val SELECT_BG = "ui_select_bg.png"
+  const val VS_BG = "ui_vs_bg.png"
+  const val FIGHT = "ui_fight.png"
+  const val ROUND = "ui_round.png"
+  const val BADGE_1P = "ui_1p.png"
+  const val BADGE_2P = "ui_2p.png"
+  const val BTN_SELECT = "ui_btn_select.png"
+  const val ARROW_LEFT = "ui_arrow_left.png"
+  const val FACE_FRAME_ON = "ui_face_frame_on.png"
+  const val FACE_FRAME_OFF = "ui_face_frame_off.png"
+
+  fun roundNum(n: Int): String = "ui_num_${n.coerceIn(1, 3)}.png"
 }
 
 fun FighterArt.courtFrame(left: Boolean, pose: PaddlePose): String? =

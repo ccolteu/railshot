@@ -1,6 +1,7 @@
 package com.cc.railshot.game
 
 enum class Phase {
+  ROUND,
   SERVE,
   PLAYING,
   YOU_WIN,
@@ -44,7 +45,7 @@ data class CabinetInset(val left: Int, val top: Int, val right: Int, val bottom:
 }
 
 class World {
-  var phase: Phase = Phase.SERVE
+  var phase: Phase = Phase.ROUND
     private set
   var youScore: Int = 0
     private set
@@ -74,11 +75,14 @@ class World {
   private var cpuHitT = 0f
   private var youWalkT = 0f
   private var cpuMoved = false
+  private var roundHold = ROUND_HOLD
 
   init {
     dealChips()
     parkBall()
   }
+
+  fun roundNumber(): Int = (youSets + cpuSets + 1).coerceIn(1, 3)
 
   fun timeDisplay(): String = timeLeft.toInt().coerceIn(0, SET_TIME.toInt()).toString().padStart(2, '0')
 
@@ -90,7 +94,7 @@ class World {
     val next = normalizedY.coerceIn(PADDLE_LEN / 2f, 1f - PADDLE_LEN / 2f)
     if (kotlin.math.abs(next - youPaddleY) > WALK_EPS) youWalkT = WALK_HOLD
     youPaddleY = next
-    if (phase == Phase.SERVE) parkBall()
+    if (phase == Phase.SERVE || phase == Phase.ROUND) parkBall()
   }
 
   fun youPose(): PaddlePose = pose(youHitT, youWalkT > 0f)
@@ -115,6 +119,12 @@ class World {
   fun step(dt: Float) {
     val clamped = dt.coerceAtMost(0.05f)
     tickHits(clamped)
+    if (phase == Phase.ROUND) {
+      cpuMoved = false
+      roundHold -= clamped
+      if (roundHold <= 0f) phase = Phase.SERVE
+      return
+    }
     if (phase != Phase.PLAYING) {
       cpuMoved = false
       return
@@ -177,8 +187,17 @@ class World {
     suddenDeath = false
     timeLeft = SET_TIME
     dealChips()
-    phase = Phase.SERVE
+    callRound()
+  }
+
+  private fun callRound() {
+    roundHold = ROUND_HOLD
+    phase = Phase.ROUND
     parkBall()
+  }
+
+  internal fun skipToServe() {
+    if (phase == Phase.ROUND) phase = Phase.SERVE
   }
 
   private fun steerCpu(dt: Float) {
@@ -385,6 +404,7 @@ class World {
     const val SPRITE_H = 233
     const val SET_TIME = 99f
     const val SETS_TO_WIN = 2
+    const val ROUND_HOLD = 1.8f
     const val CABINET_W_PX = 1440
     const val CABINET_H_PX = 1080
     /** Playfield hole — 1152×864 = 4:3. Exclusive right/bottom. */

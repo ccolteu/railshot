@@ -38,7 +38,7 @@ fun VsScreen(
           .fillMaxSize()
           .clickable(onClick = onContinue),
     ) {
-      RailshotStampWallpaper()
+      ArcadeWallpaper(UiArt.VS_BG)
       Row(modifier = Modifier.fillMaxSize()) {
         VsSlot(
           fighter = first,

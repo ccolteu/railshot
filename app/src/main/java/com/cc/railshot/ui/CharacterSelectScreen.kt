@@ -7,15 +7,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,6 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -57,7 +57,7 @@ fun CharacterSelectScreen(onBothSelected: (Fighter, Fighter) -> Unit) {
 
   Letterbox43 {
     Box(modifier = Modifier.fillMaxSize()) {
-      RailshotStampWallpaper()
+      ArcadeWallpaper(UiArt.SELECT_BG)
       MagentaKeyedPortrait(
         assetPath = art.selectFullBody,
         label = highlighted.displayName,
@@ -73,77 +73,64 @@ fun CharacterSelectScreen(onBothSelected: (Fighter, Fighter) -> Unit) {
         modifier =
           Modifier
             .align(Alignment.TopStart)
-            .fillMaxWidth(0.44f)
-            .padding(start = 16.dp, top = 18.dp, end = 8.dp),
+            .fillMaxWidth(0.50f)
+            .fillMaxHeight(0.72f)
+            .padding(start = 16.dp, top = 18.dp, end = 12.dp, bottom = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceEvenly,
       ) {
         MagentaKeyedImage(
           assetPath = UiArt.PLAYER_SELECT,
-          contentDescription = "PLAYER SELECT",
-          modifier = Modifier.fillMaxWidth().aspectRatio(960f / 240f),
+          contentDescription = "SELECT FIGHTER",
+          modifier = Modifier.fillMaxWidth().aspectRatio(976f / 417f),
           contentScale = ContentScale.Fit,
         )
-        Spacer(modifier = Modifier.height(12.dp))
         FighterNameplate(
           fighter = highlighted,
           kind = NameplateKind.SELECT,
-          modifier = Modifier.fillMaxWidth(0.92f).height(40.dp),
+          modifier = Modifier.fillMaxWidth(0.55f).height(28.dp),
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        ArcadeButton(
-          label = "SELECT",
-          enabled = !locked,
-          onClick = {
-            session.confirm()
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+          StripArrow(flip = false, enabled = !locked) {
+            session.moveLeft()
             epoch++
-          },
-        )
+          }
+          SelectButton(
+            enabled = !locked,
+            onClick = {
+              session.confirm()
+              epoch++
+            },
+          )
+          StripArrow(flip = true, enabled = !locked) {
+            session.moveRight()
+            epoch++
+          }
+        }
       }
       Row(
         modifier =
           Modifier
             .align(Alignment.BottomCenter)
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
       ) {
-        StripArrow("◀", enabled = !locked) {
-          session.moveLeft()
-          epoch++
-        }
-        Row(
-          modifier = Modifier.weight(1f),
-          horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-          Fighter.roster.forEachIndexed { index, fighter ->
-            FaceTile(
-              fighter = fighter,
-              selected = index == session.cursorIndex,
-              p1 = session.firstPick == fighter,
-              showP2 =
-                (session.step == SelectStep.PICK_SECOND || session.step == SelectStep.LOCKED) &&
-                  (index == session.cursorIndex || session.secondPick == fighter),
-              modifier = Modifier.weight(1f),
-            )
-          }
-        }
-        StripArrow("▶", enabled = !locked) {
-          session.moveRight()
-          epoch++
+        Fighter.roster.forEachIndexed { index, fighter ->
+          FaceTile(
+            fighter = fighter,
+            selected = index == session.cursorIndex,
+            p1 = session.firstPick == fighter,
+            showP2 =
+              (session.step == SelectStep.PICK_SECOND || session.step == SelectStep.LOCKED) &&
+                (index == session.cursorIndex || session.secondPick == fighter),
+            modifier = Modifier.weight(1f),
+          )
         }
       }
-      Text(
-        text = "CREDIT 00",
-        color = NameBlue,
-        fontFamily = FontFamily.Monospace,
-        fontWeight = FontWeight.Bold,
-        fontSize = 12.sp,
-        modifier =
-          Modifier
-            .align(Alignment.BottomEnd)
-            .padding(end = 10.dp, bottom = 2.dp),
-      )
     }
   }
 }
@@ -183,38 +170,37 @@ private fun MagentaKeyedPortrait(
 }
 
 @Composable
-private fun ArcadeButton(
-  label: String,
+private fun SelectButton(
   enabled: Boolean,
   modifier: Modifier = Modifier,
   onClick: () -> Unit,
 ) {
-  Text(
-    text = label,
-    color = Ink,
-    fontFamily = FontFamily.Monospace,
-    fontWeight = FontWeight.Black,
-    fontSize = 16.sp,
+  MagentaKeyedImage(
+    assetPath = UiArt.BTN_SELECT,
+    contentDescription = "SELECT",
     modifier =
       modifier
-        .background(if (enabled) SelectYellow else Mute, RoundedCornerShape(4.dp))
-        .clickable(enabled = enabled, onClick = onClick)
-        .padding(horizontal = 16.dp, vertical = 8.dp),
+        .height(56.dp)
+        .aspectRatio(264f / 150f)
+        .alpha(if (enabled) 1f else 0.4f)
+        .clickable(enabled = enabled, onClick = onClick),
+    contentScale = ContentScale.Fit,
   )
 }
 
 @Composable
-private fun StripArrow(label: String, enabled: Boolean, onClick: () -> Unit) {
-  Box(
+private fun StripArrow(flip: Boolean, enabled: Boolean, onClick: () -> Unit) {
+  MagentaKeyedImage(
+    assetPath = UiArt.ARROW_LEFT,
+    contentDescription = if (flip) "Next" else "Previous",
     modifier =
       Modifier
-        .size(width = 36.dp, height = 72.dp)
-        .background(if (enabled) SelectYellow else Mute, RoundedCornerShape(4.dp))
+        .requiredSize(56.dp)
+        .graphicsLayer { if (flip) scaleX = -1f }
+        .alpha(if (enabled) 1f else 0.4f)
         .clickable(enabled = enabled, onClick = onClick),
-    contentAlignment = Alignment.Center,
-  ) {
-    Text(label, color = Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
-  }
+    contentScale = ContentScale.FillBounds,
+  )
 }
 
 @Composable
@@ -226,22 +212,19 @@ private fun FaceTile(
   modifier: Modifier = Modifier,
 ) {
   val face = fighter.art().face
-  Box(
-    modifier =
-      modifier
-        .aspectRatio(1f)
-        .border(3.dp, if (selected) SelectYellow else TileBorder)
-        .background(Ink),
-  ) {
+  Box(modifier = modifier.aspectRatio(1f).background(Ink)) {
     if (face != null) {
       MagentaKeyedImage(
         assetPath = face,
         contentDescription = fighter.displayName,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(8.dp),
         contentScale = ContentScale.Crop,
       )
     } else {
-      Box(Modifier.fillMaxSize().background(PlaceholderFill), contentAlignment = Alignment.Center) {
+      Box(
+        Modifier.fillMaxSize().padding(8.dp).background(PlaceholderFill),
+        contentAlignment = Alignment.Center,
+      ) {
         Text(
           fighter.displayName.take(1),
           color = Cream,
@@ -251,25 +234,30 @@ private fun FaceTile(
         )
       }
     }
+    MagentaKeyedImage(
+      assetPath = if (selected) UiArt.FACE_FRAME_ON else UiArt.FACE_FRAME_OFF,
+      contentDescription = null,
+      modifier = Modifier.fillMaxSize(),
+      contentScale = ContentScale.Fit,
+    )
     val badge =
       when {
-        showP2 -> "2P"
-        p1 -> "1P"
-        selected -> "1P"
+        showP2 -> UiArt.BADGE_2P
+        p1 -> UiArt.BADGE_1P
+        selected -> UiArt.BADGE_1P
         else -> null
       }
     if (badge != null) {
-      Text(
-        text = badge,
-        color = Cream,
-        fontFamily = FontFamily.Monospace,
-        fontWeight = FontWeight.Black,
-        fontSize = 11.sp,
+      MagentaKeyedImage(
+        assetPath = badge,
+        contentDescription = null,
         modifier =
           Modifier
             .align(Alignment.TopStart)
-            .background(SelectRed)
-            .padding(horizontal = 4.dp, vertical = 1.dp),
+            .padding(2.dp)
+            .fillMaxWidth(0.42f)
+            .aspectRatio(1f),
+        contentScale = ContentScale.Fit,
       )
     }
   }
