@@ -3,6 +3,7 @@ package com.cc.railshot.ui
 import com.cc.railshot.game.BallTailBand
 import com.cc.railshot.game.Fighter
 import com.cc.railshot.game.PaddlePose
+import com.cc.railshot.game.Side
 
 data class FighterArt(
   val selectFullBody: String? = null,
@@ -68,6 +69,12 @@ object UiArt {
   }
 
   fun roundNum(n: Int): String = "ui_num_${n.coerceIn(1, 3)}.png"
+
+  /** Standing gutter gate, or flattened after the ball scores that slot. */
+  fun chip(side: Side, standing: Boolean): String {
+    val who = if (side == Side.YOU) "you" else "cpu"
+    return if (standing) "ui_chip_$who.png" else "ui_chip_${who}_down.png"
+  }
 }
 
 fun FighterArt.courtFrame(left: Boolean, pose: PaddlePose): String? =

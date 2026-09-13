@@ -31,7 +31,7 @@ Keep the 90s pixel look; just draw it on a phone-sized canvas. Do not generate 3
 | Word banners | **960** wide (`FIGHT`/`ROUND` height fits letters; `WIN` **768×384**, `VS` **384×384**) | Magenta `#FF00FF` |
 | Digits | **120×150** each | Magenta `#FF00FF` |
 | Ball | **60×60** | Magenta `#FF00FF` |
-| Life chips | **60×60** | Magenta `#FF00FF` |
+| Life chips | standing **22×120**, down **48×120** | Magenta `#FF00FF` |
 | Nameplates | **480×90** | Magenta `#FF00FF` |
 | Ending still | **1440×840** letterboxed in 4:3 | Opaque |
 
@@ -395,9 +395,20 @@ Rules:
 5. **Flicker.** While that band is active, alternate its left/right file as the ball travels (distance-based, not wall-clock). When speed crosses a band, **switch in** that band’s left/right pair.
 6. **Heading.** Canvas-rotate the current tail around the ball center so the cone points opposite velocity. Pocket / attach is the same on every file: KEY hole on the **right**, cone to the **left**. Magenta `#FF00FF`. Draw maps that hole to the ball; do not squash the sprite to a 128px box.
 
-**Life chips** (`art/ui_chip_you.png`, `art/ui_chip_cpu.png`)
+**Life chips** (gutter **gates**, two states)
 
-Hexagonal **life pucks** (energy cells), not shields. Gold rim. P1 teal fill, P2 crimson fill. No numerals. Draw at the chip’s width, centered in the slot — do not stretch to the tall hit rect. Dead chips: same sprite, dim.
+Behind each fighter. Same industrial steel as the cabinet (rivets, hard 1px ink). **Upright:** a thick vertical steel bar on the court-facing edge of the gutter (the gate edge-on, blocking the ball). **Flattened:** the gate has fallen onto its back — a **plain steel plate** filling the gutter slot, gold bolts, thin team accent, no stripes, no lamp cluster. P1 teal accent, P2 crimson. P2 is flipped in code. No numerals. Dead gates still draw (flattened); they do not collide.
+
+| State | P1 | P2 |
+| --- | --- | --- |
+| Standing | `ui_chip_you.png` | `ui_chip_cpu.png` |
+| Flattened | `ui_chip_you_down.png` | `ui_chip_cpu_down.png` |
+
+```
+1994 Neo Geo sprite matching the cabinet metal, flat 2D, chunky pixels, hard 1px black outline, gold rivets, steel plate, dither, no 3D, no isometric. Standing: one thick vertical steel bar, gold rivets, TEAL seam, magenta #FF00FF sides. Flattened: plain steel rectangle filling the canvas, gold bolt grid, thin TEAL accent lines at top AND bottom, NO hazard stripes, NO lamps, NO extra chrome. No text.
+```
+
+P2: same drawing, crimson lamp instead of teal.
 
 ## Word and banner sprites
 
@@ -527,7 +538,7 @@ Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to
 - Typeset names in the P1 / P2 name wells (no name sprites)
 - Set dots (2 of 3) in the sets wells
 - Time countdown **99 → 00** in the TIME well
-- Six chips per rail (holes when a chip dies)
+- Six gutter gates per rail (standing; flattened after a hit)
 - Paddles / fighters in the lane
 - Ball plus speed-banded tail (`ui_ball_tail_{short,medium,long}_{left,right}.png`)
 - `ROUND` / `FIGHT` / `WIN` banners

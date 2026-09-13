@@ -421,10 +421,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val courtH = courtB - courtT
     blitFill(canvas, opaque("court_circuit.png"), courtL, courtT, courtW, courtH)
     for (chip in world.chips) {
-      if (!chip.alive) continue
       drawChip(
         canvas,
-        keyed(if (chip.side == Side.YOU) "ui_chip_you.png" else "ui_chip_cpu.png"),
+        keyed(UiArt.chip(chip.side, standing = chip.alive)),
         chip.x,
         chip.y,
         chip.w,
@@ -433,6 +432,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         courtT,
         courtW,
         courtH,
+        standing = chip.alive,
+        flip = chip.side == Side.CPU,
       )
     }
     drawFighter(canvas, youFrames, world.youPose(), World.YOU_PADDLE_X, world.youPaddleTop(), true, YOU, courtL, courtT, courtW, courtH)
@@ -557,24 +558,38 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     courtT: Float,
     courtW: Float,
     courtH: Float,
+    standing: Boolean,
+    flip: Boolean,
   ) {
+    val slotL = courtL + x * courtW
+    val slotT = courtT + y * courtH
     val slotW = w * courtW
     val slotH = h * courtH
-    val aspect = sprite.height / sprite.width.toFloat()
-    var dw = slotW
-    var dh = dw * aspect
-    if (dh > slotH) {
-      dh = slotH
-      dw = dh / aspect
+    val left: Float
+    val top: Float
+    val fw: Float
+    val fh: Float
+    if (standing) {
+      fh = slotH
+      fw = (fh * sprite.width / sprite.height.toFloat()).coerceAtLeast(1f)
+      // Court-facing edge of the gutter so the bar is the blocker.
+      left = if (flip) slotL else slotL + slotW - fw
+      top = slotT
+    } else {
+      left = slotL
+      top = slotT
+      fw = slotW.coerceAtLeast(1f)
+      fh = slotH.coerceAtLeast(1f)
     }
-    blitFit(
-      canvas,
-      sprite,
-      courtL + x * courtW + (slotW - dw) / 2f,
-      courtT + y * courtH + (slotH - dh) / 2f,
-      dw.coerceAtLeast(1f),
-      dh.coerceAtLeast(1f),
-    )
+    if (flip) {
+      val cx = left + fw / 2f
+      canvas.save()
+      canvas.scale(-1f, 1f, cx, top + fh / 2f)
+      blit(canvas, sprite, left, top, fw, fh)
+      canvas.restore()
+    } else {
+      blit(canvas, sprite, left, top, fw, fh)
+    }
   }
 
   private fun drawBall(canvas: Canvas, courtL: Float, courtT: Float, courtW: Float, courtH: Float) {
