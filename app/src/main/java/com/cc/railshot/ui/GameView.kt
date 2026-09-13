@@ -223,7 +223,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     }
     for (i in faceTiles.indices) {
       if (faceTiles[i].contains(x, y)) {
-        select.setCursor(i)
+        if (i != select.cursorIndex) {
+          SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
+          select.setCursor(i)
+        }
         return
       }
     }
