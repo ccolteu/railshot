@@ -469,6 +469,14 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         val bannerH = bannerW * (banner.height / banner.width.toFloat())
         blitFit(canvas, banner, courtL + (courtW - bannerW) / 2f, courtT + (courtH - bannerH) / 2f, bannerW, bannerH)
       }
+      Phase.SET_WIN -> {
+        if (world.setWinBannerVisible()) {
+          val banner = keyed(UiArt.WIN)
+          val bannerW = courtW * 0.72f
+          val bannerH = bannerW * (banner.height / banner.width.toFloat())
+          blitFit(canvas, banner, courtL + (courtW - bannerW) / 2f, courtT + (courtH - bannerH) / 2f, bannerW, bannerH)
+        }
+      }
       else -> {}
     }
     blitFill(canvas, keyed("ui_cabinet.png", hole = true), 0f, 0f, vw, vh)

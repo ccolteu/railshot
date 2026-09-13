@@ -29,6 +29,7 @@ object UiArt {
   const val VS_BG = "ui_vs_bg.png"
   const val FIGHT = "ui_fight.png"
   const val ROUND = "ui_round.png"
+  const val WIN = "ui_win.png"
   const val TITLE = "ui_title.png"
   const val BADGE_1P = "ui_1p.png"
   const val BADGE_2P = "ui_2p.png"

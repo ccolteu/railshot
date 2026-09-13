@@ -58,6 +58,9 @@ class WorldTest {
     }
     assertEquals(1, world.youSets)
     assertEquals(0, world.cpuSets)
+    assertEquals(Phase.SET_WIN, world.phase)
+    assertEquals(0, world.cpuChipsLeft())
+    world.skipSetWin()
     assertEquals(Phase.ROUND, world.phase)
     assertEquals(2, world.roundNumber())
   }
@@ -73,6 +76,7 @@ class WorldTest {
       while (world.phase == Phase.PLAYING && guard++ < 40) {
         world.step(1f / 60f)
       }
+      world.skipSetWin()
     }
     assertEquals(2, world.youSets)
     assertEquals(Phase.YOU_WIN, world.phase)
@@ -89,7 +93,28 @@ class WorldTest {
     world.step(1f / 30f)
     assertEquals(1, world.youSets)
     assertEquals(0, world.cpuSets)
+    assertEquals(Phase.SET_WIN, world.phase)
+    world.skipSetWin()
     assertEquals(Phase.ROUND, world.phase)
+  }
+
+  @Test
+  fun setWinHoldsTheCourtThenShowsWinThenNextRound() {
+    val world = World()
+    val keep = world.chips.first { it.side == Side.CPU && it.slot == 2 && it.alive }
+    world.killAllBut(Side.CPU, keep)
+    world.placeBall(keep.x - World.BALL_R_X - 0.001f, keep.y + keep.h / 2f, 0.9f, 0f)
+    var guard = 0
+    while (world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertEquals(Phase.SET_WIN, world.phase)
+    assertEquals(false, world.setWinBannerVisible())
+    repeat((World.SET_WIN_FREEZE / 0.05f).toInt() + 2) { world.step(0.05f) }
+    assertEquals(true, world.setWinBannerVisible())
+    repeat((World.SET_WIN_BANNER / 0.05f).toInt() + 2) { world.step(0.05f) }
+    assertEquals(Phase.ROUND, world.phase)
+    assertEquals(World.CHIP_COUNT, world.cpuChipsLeft())
   }
 
   @Test

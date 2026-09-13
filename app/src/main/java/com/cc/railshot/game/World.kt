@@ -4,6 +4,7 @@ enum class Phase {
   ROUND,
   SERVE,
   PLAYING,
+  SET_WIN,
   YOU_WIN,
   CPU_WIN,
 }
@@ -90,6 +91,7 @@ class World {
   private var youPaddleVy = 0f
   private var cpuPaddleVy = 0f
   private var roundHold = ROUND_HOLD
+  private var setWinT = 0f
   private val pendingSfx = ArrayDeque<GameSfx>()
 
   init {
@@ -128,6 +130,7 @@ class World {
       resetMatch()
       return
     }
+    if (phase == Phase.SET_WIN) return
     if (phase != Phase.SERVE) return
     val speed = BALL_SPEED
     val offset = ((ballY - youPaddleY) / (PADDLE_LEN / 2f)).coerceIn(-1f, 1f)
@@ -148,6 +151,13 @@ class World {
       cpuPaddleVy = 0f
       roundHold -= clamped
       if (roundHold <= 0f) phase = Phase.SERVE
+      return
+    }
+    if (phase == Phase.SET_WIN) {
+      cpuMoved = false
+      cpuPaddleVy = 0f
+      setWinT -= clamped
+      if (setWinT <= 0f) endSetWin()
       return
     }
     if (phase != Phase.PLAYING) {
@@ -230,6 +240,12 @@ class World {
     roundHold = ROUND_HOLD
     phase = Phase.ROUND
     parkBall()
+  }
+
+  fun setWinBannerVisible(): Boolean = phase == Phase.SET_WIN && setWinT <= SET_WIN_BANNER
+
+  internal fun skipSetWin() {
+    if (phase == Phase.SET_WIN) endSetWin()
   }
 
   internal fun skipToServe() {
@@ -393,6 +409,11 @@ class World {
     if (winner == Side.YOU) youSets += 1 else cpuSets += 1
     vx = 0f
     vy = 0f
+    setWinT = SET_WIN_FREEZE + SET_WIN_BANNER
+    phase = Phase.SET_WIN
+  }
+
+  private fun endSetWin() {
     if (youSets >= SETS_TO_WIN) {
       phase = Phase.YOU_WIN
       return
@@ -452,6 +473,8 @@ class World {
     const val SET_TIME = 99f
     const val SETS_TO_WIN = 2
     const val ROUND_HOLD = 1.8f
+    const val SET_WIN_FREEZE = 0.5f
+    const val SET_WIN_BANNER = 1.4f
     const val CABINET_W_PX = 1440
     const val CABINET_H_PX = 1080
     /** Playfield hole — 1152×864 = 4:3. Exclusive right/bottom. */

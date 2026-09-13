@@ -353,14 +353,14 @@ Empty wells in the PNG: magenta `#FF00FF` only. No digits, letters, or dots in t
 
 ### Match, time, score, sets (code)
 
-A **match** is **best of three sets** (first to **2** sets wins). Each set is one round of chips. After a set, reset chips and current-set points, fill one set dot, serve. At **2** dots, match over.
+A **match** is **best of three sets** (first to **2** sets wins). Each set is one round of chips. After a set: freeze on the court (~0.5s) so the last flattened gate is visible, then overlay `ui_win.png` (~1.4s), then reset chips and current-set points, fill one set dot, `ROUND`. At **2** dots, the WIN overlay still plays, then match over.
 
 - **Time:** **99 → 00** in the TIME well. Runs in `PLAYING`. At **00**, more chips remaining wins the set; if tied, next chip wins (sudden death).
 - **Score:** P1 points in the **left score well**, P2 in the **right score well**. Current-set chip-hits only.
 - **Names:** typeset in the name wells. Never `{name}_name_*.png` on the cabinet.
 - **Sets:** two dots per sets well. Match ends at two filled dots.
 
-Round `WIN` overlay on a set; match win then results / piece **E**.
+Round `WIN` overlay on a set (`Phase.SET_WIN`); match win then results / piece **E**.
 
 Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1.8s, then `SERVE` with `ui_fight.png`. Tap serves. Do not typeset FIGHT or TAP TO SERVE.
 
@@ -430,6 +430,7 @@ File: `art/ui_fight.png`. Serve prompt — no typeset TAP TO SERVE. Tap still se
 Arcade pixel word WIN, huge brush letters, yellow-orange-red gradient, blue outline, magenta background, 768x384
 ```
 
+File: `art/ui_win.png`. After the last gate of a set flattens: hold the court 0.5s with no banner, then this overlay 1.4s, then next `ROUND` or the ending still.
 ```
 Arcade pixel letters VS, overlapping block capitals V and S (not script, not italic), gold chrome fill, orange outline, magenta #FF00FF, 384x384
 ```
