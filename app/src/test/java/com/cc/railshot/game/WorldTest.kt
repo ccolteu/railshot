@@ -33,6 +33,20 @@ class WorldTest {
   }
 
   @Test
+  fun missingTheYouPaddleKnocksOffAYouChip() {
+    val world = World()
+    val target = world.chips.first { it.side == Side.YOU && it.slot == 0 && it.alive }
+    world.moveYouPaddle(0.85f)
+    world.placeBall(0.22f, target.y + target.h / 2f, -0.9f, 0f)
+    var guard = 0
+    while (world.cpuScore == 0 && world.phase == Phase.PLAYING && guard++ < 80) {
+      world.step(1f / 60f)
+    }
+    assertEquals(1, world.cpuScore)
+    assertEquals(World.CHIP_COUNT - 1, world.youChipsLeft())
+  }
+
+  @Test
   fun clearingCpuChipsWinsASetNotTheMatch() {
     val world = World()
     val keep = world.chips.first { it.side == Side.CPU && it.slot == 2 && it.alive }

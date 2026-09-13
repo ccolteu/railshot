@@ -1,23 +1,19 @@
 package com.cc.railshot
 
+import android.app.Activity
 import android.media.AudioManager
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.ui.Modifier
+import android.widget.FrameLayout
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.cc.railshot.theme.RailshotTheme
-import com.cc.railshot.ui.RailshotApp
+import com.cc.railshot.ui.GameView
 
-class MainActivity : ComponentActivity() {
+class MainActivity : Activity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     installSplashScreen()
     super.onCreate(savedInstanceState)
@@ -26,13 +22,14 @@ class MainActivity : ComponentActivity() {
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     hideSystemBars()
     SoundManager.instance.initialize(this)
-    setContent {
-      RailshotTheme {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-          RailshotApp()
-        }
-      }
-    }
+    SoundManager.instance.switchBGM(SoundManager.BGM_MATCH)
+    val root = FrameLayout(this)
+    val game = GameView(this)
+    root.addView(
+      game,
+      FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+    )
+    setContentView(root)
   }
 
   override fun onPause() {
@@ -43,6 +40,7 @@ class MainActivity : ComponentActivity() {
   override fun onResume() {
     super.onResume()
     SoundManager.instance.resumeAll()
+    hideSystemBars()
   }
 
   override fun onDestroy() {

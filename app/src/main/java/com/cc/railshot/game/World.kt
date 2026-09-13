@@ -231,6 +231,10 @@ class World {
       ballY = 1f - BALL_R
       vy = -kotlin.math.abs(vy)
     }
+    bounceSprite(youPaddleY, YOU_FRONT_X, incomingLeft = true, youSide = true)
+    bounceSprite(cpuPaddleY, CPU_FRONT_X, incomingLeft = false, youSide = false)
+    bounceChips()
+    if (phase != Phase.PLAYING) return
     if (ballX - BALL_R_X <= 0f) {
       ballX = BALL_R_X
       vx = kotlin.math.abs(vx)
@@ -238,10 +242,6 @@ class World {
       ballX = 1f - BALL_R_X
       vx = -kotlin.math.abs(vx)
     }
-    bounceSprite(youPaddleY, YOU_FRONT_X, incomingLeft = true, youSide = true)
-    bounceSprite(cpuPaddleY, CPU_FRONT_X, incomingLeft = false, youSide = false)
-    bounceChips()
-    if (phase != Phase.PLAYING) return
     when {
       cpuChipsLeft() == 0 -> finishSet(Side.YOU)
       youChipsLeft() == 0 -> finishSet(Side.CPU)

@@ -37,6 +37,11 @@ class SelectSession {
     cursorIndex = (cursorIndex + 1) % Fighter.roster.size
   }
 
+  fun setCursor(index: Int) {
+    if (step == SelectStep.LOCKED) return
+    cursorIndex = index.mod(Fighter.roster.size)
+  }
+
   fun confirm(): Boolean {
     if (step == SelectStep.LOCKED) return true
     if (firstPick == null) {
@@ -45,5 +50,11 @@ class SelectSession {
       secondPick = highlighted
     }
     return step == SelectStep.LOCKED
+  }
+
+  fun reset() {
+    cursorIndex = 0
+    firstPick = null
+    secondPick = null
   }
 }
