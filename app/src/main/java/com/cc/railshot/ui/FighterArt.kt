@@ -111,7 +111,21 @@ fun Fighter.art(): FighterArt =
         ending = "maru/maru_ending.png",
       )
     Fighter.QUILL ->
-      FighterArt(nameSelect = "quill/quill_name_select.png", nameVs = "quill/quill_name_vs.png")
+      FighterArt(
+        selectFullBody = "quill/quill_select_fullbody.png",
+        face = "quill/quill_face.png",
+        vsLeft = "quill/quill_vs_left.png",
+        vsRight = "quill/quill_vs_right.png",
+        nameSelect = "quill/quill_name_select.png",
+        nameVs = "quill/quill_name_vs.png",
+        idleLeft = "quill/quill_game_idle_left.png",
+        walkLeft = "quill/quill_game_walk_left.png",
+        hitLeft = "quill/quill_game_hit_left.png",
+        idleRight = "quill/quill_game_idle_right.png",
+        walkRight = "quill/quill_game_walk_right.png",
+        hitRight = "quill/quill_game_hit_right.png",
+        ending = "quill/quill_ending.png",
+      )
     Fighter.HEX ->
       FighterArt(nameSelect = "hex/hex_name_select.png", nameVs = "hex/hex_name_vs.png")
   }
