@@ -157,6 +157,55 @@ class WorldTest {
   }
 
   @Test
+  fun centerHitStaysNearBaseSpeed() {
+    val world = World()
+    val speed = youReturnSpeed(world, paddleY = 0.5f, ballY = 0.5f)
+    assertEquals(World.BALL_SPEED * World.SLICE_CENTER, speed, 0.04f)
+  }
+
+  @Test
+  fun edgeHitIsFasterThanACenterHit() {
+    val center = youReturnSpeed(World(), paddleY = 0.5f, ballY = 0.5f)
+    val edge = youReturnSpeed(World(), paddleY = 0.5f, ballY = 0.58f)
+    assertTrue(edge > center * 1.12f)
+    assertTrue(edge <= World.BALL_SPEED * World.SLICE_CAP + 0.001f)
+  }
+
+  @Test
+  fun swipingThroughContactAddsSpeed() {
+    val still = youReturnSpeed(World(), paddleY = 0.5f, ballY = 0.5f)
+    val world = World()
+    world.moveYouPaddle(0.5f)
+    world.step(1f / 60f)
+    world.moveYouPaddle(0.64f)
+    world.placeBall(
+      World.YOU_FRONT_X + World.BALL_R_X + 0.001f,
+      world.youPaddleY,
+      -0.8f,
+      0f,
+    )
+    waitForYouHit(world)
+    assertTrue(world.ballSpeed() > still * 1.08f)
+    assertTrue(world.ballSpeed() <= World.BALL_SPEED * World.SLICE_CAP + 0.001f)
+  }
+
+  private fun youReturnSpeed(world: World, paddleY: Float, ballY: Float): Float {
+    world.moveYouPaddle(paddleY)
+    world.step(1f / 60f)
+    world.placeBall(World.YOU_FRONT_X + World.BALL_R_X + 0.001f, ballY, -0.8f, 0f)
+    waitForYouHit(world)
+    return world.ballSpeed()
+  }
+
+  private fun waitForYouHit(world: World) {
+    var guard = 0
+    while (world.youPose() != PaddlePose.HIT && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertEquals(PaddlePose.HIT, world.youPose())
+  }
+
+  @Test
   fun serveParksTheBallInFrontOfTheYouSprite() {
     val world = World()
     assertEquals(World.YOU_FRONT_X + World.BALL_R_X + 0.004f, world.ballX, 0.0001f)

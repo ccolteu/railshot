@@ -498,7 +498,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         dh = vh
         dw = dh * aspect
       }
-      blitFit(canvas, bmp, (halfW - dw) / 2f, (vh - dh) / 2f, dw, dh)
+      blitFit(canvas, bmp, halfW - dw, (vh - dh) / 2f, dw, dh)
     }
   }
 

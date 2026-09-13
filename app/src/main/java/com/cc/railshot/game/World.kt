@@ -80,6 +80,9 @@ class World {
   private var cpuHitT = 0f
   private var youWalkT = 0f
   private var cpuMoved = false
+  private var youPaddleYPrev = 0.5f
+  private var youPaddleVy = 0f
+  private var cpuPaddleVy = 0f
   private var roundHold = ROUND_HOLD
   private val pendingSfx = ArrayDeque<GameSfx>()
 
@@ -132,19 +135,24 @@ class World {
   fun step(dt: Float) {
     val clamped = dt.coerceAtMost(0.05f)
     tickHits(clamped)
+    youPaddleVy = (youPaddleY - youPaddleYPrev) / clamped.coerceAtLeast(0.0001f)
+    youPaddleYPrev = youPaddleY
     if (phase == Phase.ROUND) {
       cpuMoved = false
+      cpuPaddleVy = 0f
       roundHold -= clamped
       if (roundHold <= 0f) phase = Phase.SERVE
       return
     }
     if (phase != Phase.PLAYING) {
       cpuMoved = false
+      cpuPaddleVy = 0f
       return
     }
     tickClock(clamped)
     if (phase != Phase.PLAYING) {
       cpuMoved = false
+      cpuPaddleVy = 0f
       return
     }
     var left = clamped
@@ -154,6 +162,7 @@ class World {
       val step = if (left < slice) left else slice
       val beforeCpu = cpuPaddleY
       steerCpu(step)
+      cpuPaddleVy = (cpuPaddleY - beforeCpu) / step
       cpuMoved = cpuMoved || kotlin.math.abs(cpuPaddleY - beforeCpu) > WALK_EPS
       advance(step)
       left -= step
@@ -171,6 +180,8 @@ class World {
     this.vy = vy
     phase = Phase.PLAYING
   }
+
+  internal fun ballSpeed(): Float = kotlin.math.sqrt(vx * vx + vy * vy)
 
   internal fun setTimeLeft(seconds: Float) {
     timeLeft = seconds.coerceAtLeast(0f)
@@ -271,8 +282,12 @@ class World {
     pendingSfx += GameSfx.SHIELD
     ballX = if (incomingLeft) frontX + BALL_R_X else frontX - BALL_R_X
     val hit = ((ballY - paddleY) / (PADDLE_LEN / 2f)).coerceIn(-1f, 1f)
-    val speed = BALL_SPEED * 1.03f
-    vy = hit * speed * 0.9f
+    val paddleVy = if (youSide) youPaddleVy else cpuPaddleVy
+    val swipe = (kotlin.math.abs(paddleVy) / SLICE_SWIPE_REF).coerceIn(0f, 1f)
+    val speed =
+      (BALL_SPEED * (SLICE_CENTER + kotlin.math.abs(hit) * SLICE_EDGE + swipe * SLICE_SWIPE))
+        .coerceAtMost(BALL_SPEED * SLICE_CAP)
+    vy = hit * speed * 0.9f + paddleVy.coerceIn(-SLICE_SWIPE_REF, SLICE_SWIPE_REF) * 0.12f
     vx = if (incomingLeft) speed else -speed
     normalize(speed)
   }
@@ -399,6 +414,11 @@ class World {
   companion object {
     const val BALL_R = 0.036f
     const val BALL_SPEED = 0.72f
+    const val SLICE_CENTER = 0.98f
+    const val SLICE_EDGE = 0.32f
+    const val SLICE_SWIPE = 0.20f
+    const val SLICE_CAP = 1.5f
+    const val SLICE_SWIPE_REF = 1.2f
     const val PADDLE_LEN = 0.20f
     const val PADDLE_THICK = 0.018f
     const val CHIP_COUNT = 6
