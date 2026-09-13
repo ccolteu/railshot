@@ -296,7 +296,7 @@ Match **court + cabinet + chips** load from the **2P / rival**. Files: `art/{nam
 | --- | --- | --- | --- |
 | Rivet | Circuit stadium | `rivet/rivet_court_circuit.png` | `rivet/rivet_ui_cabinet.png` |
 | Ash | Parking garage | `ash/ash_court_circuit.png` | `ash/ash_ui_cabinet.png` |
-| Kite | Soccer pitch | `kite/kite_court_circuit.png` | `kite/kite_ui_cabinet.png` |
+| Kite | Airfield tarmac | `kite/kite_court_circuit.png` | `kite/kite_ui_cabinet.png` |
 | Maru | Highland moor | `maru/maru_court_circuit.png` | `maru/maru_ui_cabinet.png` |
 | Quill | Forest aerie | `quill/quill_court_circuit.png` | `quill/quill_ui_cabinet.png` |
 | Hex | Night city grid (deep blue PCB) | `hex/hex_court_circuit.png` | `hex/hex_ui_cabinet.png` |
@@ -316,19 +316,19 @@ Top-down 4:3 empty parking garage lane as a sports court, grey concrete with oil
 **Highland moor**
 
 ```
-Top-down 4:3 empty Scottish highland moor as a volley court, light mottled sage peat and heather (NOT mowed soccer stripes), gold broken circle with X, empty plain stone chip gutters, no people, no HUD, pixel art, 1440x1080
+Top-down 4:3 empty Scottish highland moor as a volley court, mostly OPEN light mottled sage peat, only a handful of heather tufts near the gutters (NOT a busy meadow, NOT dense grass, NOT mowed soccer stripes), gold broken circle with X, empty plain stone chip gutters, no people, no HUD, pixel art, 1440x1080
 ```
 
-**Soccer pitch**
+**Airfield tarmac** (Kite)
 
 ```
-Top-down 4:3 empty soccer pitch court, green checkerboard grass, white penalty arcs and center circle, yard numbers 5 and 10, empty side gutters for chips, no people, no HUD, pixel art, 1440x1080
+Top-down 4:3 empty airfield runway tarmac as a volley court, grey concrete asphalt landing strip (NOT grass, NOT soccer, NOT lime turf), white dashed runway centerline, threshold chevrons, gold broken circle with X, empty dark asphalt chip gutters, no planes, no people, no HUD, pixel art, 1440x1080
 ```
 
 **Forest aerie** (Quill)
 
 ```
-Top-down 4:3 empty woodland clearing as a volley court, warm packed earth and sparse rust leaves (NOT neon, NOT PCB traces), gold broken circle with X, empty plain bark chip gutters, no people, no HUD, pixel art, 1440x1080
+Top-down 4:3 empty woodland clearing as a volley court, CLEAN even packed earth, sparse rust leaves at the edges only (NOT muddy, NOT stained, NOT dirty scuffs, NOT neon, NOT PCB traces), gold broken circle with X, empty plain bark chip gutters, no people, no HUD, pixel art, 1440x1080
 ```
 
 **Night city grid** (Hex)
