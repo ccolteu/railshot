@@ -397,7 +397,7 @@ class World {
   }
 
   companion object {
-    const val BALL_R = 0.018f
+    const val BALL_R = 0.036f
     const val BALL_SPEED = 0.72f
     const val PADDLE_LEN = 0.20f
     const val PADDLE_THICK = 0.018f

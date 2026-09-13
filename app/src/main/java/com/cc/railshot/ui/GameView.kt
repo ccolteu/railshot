@@ -432,15 +432,26 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     when (world.phase) {
       Phase.ROUND -> {
         val banner = keyed(UiArt.ROUND)
-        val bannerW = courtW * 0.88f
-        val bannerH = bannerW * (banner.height / banner.width.toFloat())
-        val bx = courtL + (courtW - bannerW) / 2f
-        val by = courtT + courtH * 0.28f
-        blitFit(canvas, banner, bx, by, bannerW, bannerH)
         val num = keyed(UiArt.roundNum(world.roundNumber()))
-        val nw = courtW * 0.28f
-        val nh = nw * (num.height / num.width.toFloat())
-        blitFit(canvas, num, courtL + (courtW - nw) / 2f, by + bannerH + 4f * (vh / 360f), nw, nh)
+        val gap = 8f * (vh / 360f)
+        val maxW = courtW * 0.88f
+        val maxH = courtH * 0.86f
+        val numToBanner = 0.28f / 0.88f
+        var bannerW = maxW
+        var bannerH = bannerW * (banner.height / banner.width.toFloat())
+        var numW = bannerW * numToBanner
+        var numH = numW * (num.height / num.width.toFloat())
+        val rawH = bannerH + gap + numH
+        if (rawH > maxH) {
+          val s = maxH / rawH
+          bannerW *= s
+          bannerH *= s
+          numW *= s
+          numH *= s
+        }
+        val top = courtT + (courtH - bannerH - gap - numH) / 2f
+        blitFit(canvas, banner, courtL + (courtW - bannerW) / 2f, top, bannerW, bannerH)
+        blitFit(canvas, num, courtL + (courtW - numW) / 2f, top + bannerH + gap, numW, numH)
       }
       Phase.SERVE -> {
         val banner = keyed(UiArt.FIGHT)
