@@ -15,8 +15,8 @@ import android.view.SurfaceView
 import com.cc.railshot.SoundManager
 import com.cc.railshot.game.CabinetInset
 import com.cc.railshot.game.CpuLevel
-import com.cc.railshot.game.CpuStyle
 import com.cc.railshot.game.Fighter
+import com.cc.railshot.game.FighterKit
 import com.cc.railshot.game.GameSfx
 import com.cc.railshot.game.PaddlePose
 import com.cc.railshot.game.Phase
@@ -182,7 +182,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private fun goMatch() {
     youFrames = loadCourtFrames(you.art(), left = true)
     rivalFrames = loadCourtFrames(rival.art(), left = false)
-    world = World(CpuStyle.forFighter(rival), cpuLevel)
+    world = World(you = you, rival = rival, cpuLevel = cpuLevel)
     announced = null
     dragging = false
     tailTravel = 0f
@@ -313,15 +313,24 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       canvas.restore()
     }
     val colL = 16f * dp
-    val colT = 18f * dp
+    val colT = 14f * dp
     val colW = sw * 0.50f - colL - 12f * dp
-    val colH = sh * 0.72f - colT - 8f * dp
+    val padH = 8f * dp
+    val padV = 8f * dp
+    val gapT = 6f * dp
+    val rowWTiles = sw - padH * 2f
+    val tile = (rowWTiles - gapT * (Fighter.roster.size - 1)) / Fighter.roster.size
+    val rowTop = sh - padV - tile
+    val colH = (rowTop - colT - 10f * dp).coerceAtLeast(1f)
     val selectBmp = keyed(UiArt.PLAYER_SELECT)
-    val bannerH = colW * (selectBmp.height / selectBmp.width.toFloat())
     val nameH = 28f * dp
+    val flavorH = 15f * dp
     val ctrlH = 56f * dp
-    val used = bannerH + nameH + ctrlH
-    val gap = ((colH - used) / 4f).coerceAtLeast(0f)
+    val minGap = 10f * dp
+    val slots = 5f
+    val bannerCap = (colH - nameH - flavorH - ctrlH - minGap * slots).coerceAtLeast(24f * dp)
+    val bannerH = min(colW * (selectBmp.height / selectBmp.width.toFloat()), bannerCap)
+    val gap = ((colH - bannerH - nameH - flavorH - ctrlH) / slots).coerceAtLeast(0f)
     var y = colT + gap
     blitFit(canvas, selectBmp, colL, y, colW, bannerH)
     y += bannerH + gap
@@ -330,6 +339,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       blitFit(canvas, keyed(path), colL + (colW - nw) / 2f, y, nw, nameH)
     }
     y += nameH + gap
+    drawFlavorLine(canvas, FighterKit.of(highlighted).flavor, colL, y, colW, flavorH)
+    y += flavorH + gap + 6f * dp
     val arrow = 56f * dp
     val btnH = 56f * dp
     val btnW = btnH * (264f / 150f)
@@ -346,12 +357,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     rightArrow.set(x, y, x + arrow, y + arrow)
     blitFitFlipped(canvas, keyed(UiArt.ARROW_LEFT), x, y, arrow, arrow, alpha)
 
-    val padH = 8f * dp
-    val padV = 8f * dp
-    val gapT = 6f * dp
-    val rowWTiles = sw - padH * 2f
-    val tile = (rowWTiles - gapT * (Fighter.roster.size - 1)) / Fighter.roster.size
-    val rowTop = sh - padV - tile
     Fighter.roster.forEachIndexed { i, fighter ->
       val l = padH + i * (tile + gapT)
       faceTiles[i].set(l, rowTop, l + tile, rowTop + tile)
@@ -452,8 +457,34 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         flip = chip.side == Side.CPU,
       )
     }
-    drawFighter(canvas, youFrames, world.youPose(), World.YOU_PADDLE_X, world.youPaddleTop(), true, YOU, courtL, courtT, courtW, courtH)
-    drawFighter(canvas, rivalFrames, world.cpuPose(), World.CPU_PADDLE_X, world.cpuPaddleTop(), false, CPU, courtL, courtT, courtW, courtH)
+    drawFighter(
+      canvas,
+      youFrames,
+      world.youPose(),
+      World.YOU_PADDLE_X,
+      world.youPaddleTop(),
+      world.youKit.paddleLen,
+      true,
+      YOU,
+      courtL,
+      courtT,
+      courtW,
+      courtH,
+    )
+    drawFighter(
+      canvas,
+      rivalFrames,
+      world.cpuPose(),
+      World.CPU_PADDLE_X,
+      world.cpuPaddleTop(),
+      world.cpuKit.paddleLen,
+      false,
+      CPU,
+      courtL,
+      courtT,
+      courtW,
+      courtH,
+    )
     drawBall(canvas, courtL, courtT, courtW, courtH)
     when (world.phase) {
       Phase.ROUND -> {
@@ -543,6 +574,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     pose: PaddlePose,
     paddleX: Float,
     paddleTop: Float,
+    paddleLen: Float,
     leftCourt: Boolean,
     fallback: Int,
     courtL: Float,
@@ -551,7 +583,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     courtH: Float,
   ) {
     val bmp = frames[pose] ?: frames[PaddlePose.IDLE]
-    val spriteH = World.PADDLE_LEN * courtH
+    val spriteH = paddleLen * courtH
     val spriteW = spriteH * (World.SPRITE_W / World.SPRITE_H.toFloat())
     val top = courtT + paddleTop * courtH
     val left =
@@ -646,6 +678,13 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     blitFit(canvas, keyed(UiArt.BALL), cx - side / 2f, cy - side / 2f, side, side)
   }
 
+  private fun drawFlavorLine(canvas: Canvas, text: String, l: Float, t: Float, w: Float, h: Float) {
+    textPaint.color = CREAM
+    textPaint.textSize = min(h * 0.68f, w / (text.length.coerceAtLeast(1) * 0.56f))
+    val fm = textPaint.fontMetrics
+    canvas.drawText(text, l + w / 2f, t + h / 2f - (fm.ascent + fm.descent) / 2f, textPaint)
+  }
+
   private fun drawWellText(
     canvas: Canvas,
     inset: CabinetInset,
@@ -685,15 +724,25 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private fun layoutSelectHits(sw: Float, sh: Float) {
     val dp = sh / 360f
     val colL = 16f * dp
-    val colT = 18f * dp
+    val colT = 14f * dp
     val colW = sw * 0.50f - colL - 12f * dp
-    val colH = sh * 0.72f - colT - 8f * dp
+    val padH = 8f * dp
+    val padV = 8f * dp
+    val gapT = 6f * dp
+    val rowWTiles = sw - padH * 2f
+    val tile = (rowWTiles - gapT * (Fighter.roster.size - 1)) / Fighter.roster.size
+    val rowTop = sh - padV - tile
+    val colH = (rowTop - colT - 10f * dp).coerceAtLeast(1f)
     val selectBmp = keyed(UiArt.PLAYER_SELECT)
-    val bannerH = colW * (selectBmp.height / selectBmp.width.toFloat())
     val nameH = 28f * dp
+    val flavorH = 15f * dp
     val ctrlH = 56f * dp
-    val gap = ((colH - bannerH - nameH - ctrlH) / 4f).coerceAtLeast(0f)
-    val y = colT + gap + bannerH + gap + nameH + gap
+    val minGap = 10f * dp
+    val slots = 5f
+    val bannerCap = (colH - nameH - flavorH - ctrlH - minGap * slots).coerceAtLeast(24f * dp)
+    val bannerH = min(colW * (selectBmp.height / selectBmp.width.toFloat()), bannerCap)
+    val gap = ((colH - bannerH - nameH - flavorH - ctrlH) / slots).coerceAtLeast(0f)
+    val y = colT + gap + bannerH + gap + nameH + gap + flavorH + gap + 6f * dp
     val arrow = 56f * dp
     val btnH = 56f * dp
     val btnW = btnH * (264f / 150f)
@@ -704,12 +753,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     selectBtn.set(x, y, x + btnW, y + btnH)
     x += btnW + 4f * dp
     rightArrow.set(x, y, x + arrow, y + arrow)
-    val padH = 8f * dp
-    val padV = 8f * dp
-    val gapT = 6f * dp
-    val rowWTiles = sw - padH * 2f
-    val tile = (rowWTiles - gapT * (Fighter.roster.size - 1)) / Fighter.roster.size
-    val rowTop = sh - padV - tile
     Fighter.roster.forEachIndexed { i, _ ->
       val l = padH + i * (tile + gapT)
       faceTiles[i].set(l, rowTop, l + tile, rowTop + tile)

@@ -57,9 +57,20 @@ data class CabinetInset(val left: Int, val top: Int, val right: Int, val bottom:
 }
 
 class World(
-  val cpuStyle: CpuStyle = CpuStyle.WALL,
+  val you: Fighter = Fighter.RIVET,
+  val rival: Fighter = Fighter.MARU,
   val cpuLevel: CpuLevel = CpuLevel.HARD,
+  val cpuStyle: CpuStyle = CpuStyle.forFighter(rival),
 ) {
+  constructor(cpuStyle: CpuStyle, cpuLevel: CpuLevel) : this(
+    you = Fighter.RIVET,
+    rival = Fighter.MARU,
+    cpuLevel = cpuLevel,
+    cpuStyle = cpuStyle,
+  )
+
+  val youKit: FighterKit = FighterKit.of(you)
+  val cpuKit: FighterKit = FighterKit.of(rival)
   var phase: Phase = Phase.ROUND
     private set
   var youScore: Int = 0
@@ -107,6 +118,10 @@ class World(
     parkBall()
   }
 
+  fun youFrontX(): Float = Companion.youFrontX(youKit.paddleLen)
+
+  fun cpuFrontX(): Float = Companion.cpuFrontX(cpuKit.paddleLen)
+
   fun roundNumber(): Int = (youSets + cpuSets + 1).coerceIn(1, 3)
 
   fun drainSfx(): List<GameSfx> {
@@ -123,7 +138,8 @@ class World(
   fun cpuChipsLeft(): Int = chips.count { it.side == Side.CPU && it.alive }
 
   fun moveYouPaddle(normalizedY: Float) {
-    val next = normalizedY.coerceIn(PADDLE_LEN / 2f, 1f - PADDLE_LEN / 2f)
+    val half = youKit.paddleLen / 2f
+    val next = normalizedY.coerceIn(half, 1f - half)
     if (kotlin.math.abs(next - youPaddleY) > WALK_EPS) youWalkT = WALK_HOLD
     youPaddleY = next
     if (phase == Phase.SERVE || phase == Phase.ROUND) parkBall()
@@ -149,7 +165,7 @@ class World(
     if (phase == Phase.SET_WIN) return
     if (phase != Phase.SERVE) return
     val speed = BALL_SPEED
-    val offset = ((ballY - youPaddleY) / (PADDLE_LEN / 2f)).coerceIn(-1f, 1f)
+    val offset = ((ballY - youPaddleY) / (youKit.paddleLen / 2f)).coerceIn(-1f, 1f)
     vy = offset * speed * 0.7f
     vx = speed
     if (kotlin.math.abs(vy) < speed * 0.18f) vy = speed * 0.18f * if (offset >= 0) 1f else -1f
@@ -208,9 +224,9 @@ class World(
     }
   }
 
-  fun youPaddleTop(): Float = youPaddleY - PADDLE_LEN / 2f
+  fun youPaddleTop(): Float = youPaddleY - youKit.paddleLen / 2f
 
-  fun cpuPaddleTop(): Float = cpuPaddleY - PADDLE_LEN / 2f
+  fun cpuPaddleTop(): Float = cpuPaddleY - cpuKit.paddleLen / 2f
 
   internal fun placeBall(x: Float, y: Float, vx: Float, vy: Float) {
     ballX = x
@@ -282,12 +298,13 @@ class World(
 
   private fun steerCpu(dt: Float) {
     if (vx <= 0f || ballX < cpuReactX()) return
-    val chase = if (cpuLevel == CpuLevel.HARD) interceptY(CPU_FRONT_X) else ballY
+    val chase = if (cpuLevel == CpuLevel.HARD) interceptY(cpuFrontX()) else ballY
     if (cpuLevel == CpuLevel.EASY && (chase < 0.17f || chase > 0.83f)) {
       // Leave the rails open — retreat toward mid instead of covering a high/low shot.
       val mid = 0.5f - cpuPaddleY
       val max = cpuSpeed() * 0.55f * dt
-      cpuPaddleY = (cpuPaddleY + mid.coerceIn(-max, max)).coerceIn(PADDLE_LEN / 2f, 1f - PADDLE_LEN / 2f)
+      val half = cpuKit.paddleLen / 2f
+      cpuPaddleY = (cpuPaddleY + mid.coerceIn(-max, max)).coerceIn(half, 1f - half)
       return
     }
     val camp = threatenedGateY() ?: chase
@@ -304,16 +321,20 @@ class World(
       } else {
         (target - cpuPaddleY).coerceIn(-max, max)
       }
-    cpuPaddleY = (cpuPaddleY + step).coerceIn(PADDLE_LEN / 2f, 1f - PADDLE_LEN / 2f)
+    val half = cpuKit.paddleLen / 2f
+    cpuPaddleY = (cpuPaddleY + step).coerceIn(half, 1f - half)
   }
 
-  private fun cpuSpeed(): Float =
-    when {
-      cpuLevel == CpuLevel.HARD && cpuStyle == CpuStyle.SLUGGER -> 0.46f
-      cpuLevel == CpuLevel.HARD -> 0.34f
-      cpuStyle == CpuStyle.SLUGGER -> 0.22f
-      else -> 0.16f
-    }
+  private fun cpuSpeed(): Float {
+    val base =
+      when {
+        cpuLevel == CpuLevel.HARD && cpuStyle == CpuStyle.SLUGGER -> 0.46f
+        cpuLevel == CpuLevel.HARD -> 0.34f
+        cpuStyle == CpuStyle.SLUGGER -> 0.22f
+        else -> 0.16f
+      }
+    return base * cpuKit.moveMul
+  }
 
   private fun cpuReactX(): Float = if (cpuLevel == CpuLevel.HARD) 0.36f else 0.68f
 
@@ -382,8 +403,8 @@ class World(
       ballY = 1f - BALL_R
       vy = -kotlin.math.abs(vy)
     }
-    bounceSprite(youPaddleY, YOU_FRONT_X, incomingLeft = true, youSide = true)
-    bounceSprite(cpuPaddleY, CPU_FRONT_X, incomingLeft = false, youSide = false)
+    bounceSprite(youPaddleY, youFrontX(), incomingLeft = true, youSide = true)
+    bounceSprite(cpuPaddleY, cpuFrontX(), incomingLeft = false, youSide = false)
     bounceChips()
     if (phase != Phase.PLAYING) return
     if (ballX - BALL_R_X <= 0f) {
@@ -410,8 +431,10 @@ class World(
     // Past the sprite toward the chip rail — do not collide from behind.
     if (incomingLeft && ballX < frontX) return
     if (!incomingLeft && ballX > frontX) return
-    val top = paddleY - PADDLE_LEN / 2f
-    val bottom = top + PADDLE_LEN
+    val kit = if (youSide) youKit else cpuKit
+    val half = kit.paddleLen / 2f
+    val top = paddleY - half
+    val bottom = top + kit.paddleLen
     if (incomingLeft) {
       if (ballX - BALL_R_X > frontX) return
     } else {
@@ -422,13 +445,15 @@ class World(
     pendingSfx += GameSfx.SHIELD
     sting(SHIELD_FREEZE, 0f, 0f, FLASH_HOLD)
     ballX = if (incomingLeft) frontX + BALL_R_X else frontX - BALL_R_X
-    val hit = ((ballY - paddleY) / (PADDLE_LEN / 2f)).coerceIn(-1f, 1f)
+    val hit = ((ballY - paddleY) / half).coerceIn(-1f, 1f)
     val paddleVy = if (youSide) youPaddleVy else cpuPaddleVy
     val swipe = (kotlin.math.abs(paddleVy) / SLICE_SWIPE_REF).coerceIn(0f, 1f)
     val speed =
-      (BALL_SPEED * (SLICE_CENTER + kotlin.math.abs(hit) * SLICE_EDGE + swipe * SLICE_SWIPE) * SHIELD_POP)
+      (BALL_SPEED *
+          (SLICE_CENTER + kotlin.math.abs(hit) * kit.sliceEdge + swipe * SLICE_SWIPE * kit.swipeMul) *
+          kit.shieldPop)
         .coerceAtMost(BALL_SPEED * SLICE_CAP)
-    vy = hit * speed * 0.9f + paddleVy.coerceIn(-SLICE_SWIPE_REF, SLICE_SWIPE_REF) * 0.12f
+    vy = hit * speed * kit.sliceAngle + paddleVy.coerceIn(-SLICE_SWIPE_REF, SLICE_SWIPE_REF) * 0.12f
     vx = if (incomingLeft) speed else -speed
     normalize(speed)
   }
@@ -502,7 +527,7 @@ class World(
   private fun parkBall() {
     vx = 0f
     vy = 0f
-    ballX = YOU_FRONT_X + BALL_R_X + 0.004f
+    ballX = youFrontX() + BALL_R_X + 0.004f
     ballY = youPaddleY
   }
 
@@ -642,16 +667,24 @@ class World(
      */
     const val SPRITE_FRONT_PAD = 26
     /** Dest width in X, matching GameScreen on the cabinet hole. */
-    val SPRITE_SPAN: Float = PADDLE_LEN * SPRITE_W / SPRITE_H / COURT_ASPECT
+    val SPRITE_SPAN: Float = spriteSpan(PADDLE_LEN)
     val BALL_R_X: Float = BALL_R / COURT_ASPECT
-    /** Opaque court-facing edge of the left fighter. */
-    val YOU_FRONT_X: Float = YOU_PADDLE_X + SPRITE_SPAN * (SPRITE_W - SPRITE_FRONT_PAD) / SPRITE_W
-    /** Opaque court-facing edge of the right fighter. */
-    val CPU_FRONT_X: Float = CPU_PADDLE_X + PADDLE_THICK - SPRITE_SPAN * (SPRITE_W - SPRITE_FRONT_PAD) / SPRITE_W
+    /** Opaque court-facing edge of the left fighter (baseline length). */
+    val YOU_FRONT_X: Float = youFrontX(PADDLE_LEN)
+    /** Opaque court-facing edge of the right fighter (baseline length). */
+    val CPU_FRONT_X: Float = cpuFrontX(PADDLE_LEN)
     val YOU_HIT_X: Float = YOU_FRONT_X - PADDLE_THICK
     val CPU_HIT_X: Float = CPU_FRONT_X
     val TAIL_SPEED_MIN: Float = BALL_SPEED * SLICE_CENTER
     val TAIL_SPEED_MAX: Float = BALL_SPEED * SLICE_CAP
+
+    fun spriteSpan(len: Float): Float = len * SPRITE_W / SPRITE_H / COURT_ASPECT
+
+    fun youFrontX(len: Float): Float =
+      YOU_PADDLE_X + spriteSpan(len) * (SPRITE_W - SPRITE_FRONT_PAD) / SPRITE_W
+
+    fun cpuFrontX(len: Float): Float =
+      CPU_PADDLE_X + PADDLE_THICK - spriteSpan(len) * (SPRITE_W - SPRITE_FRONT_PAD) / SPRITE_W
 
     fun tailBandForSpeed(speed: Float): BallTailBand {
       val u = ((speed - TAIL_SPEED_MIN) / (TAIL_SPEED_MAX - TAIL_SPEED_MIN)).coerceIn(0f, 1f)

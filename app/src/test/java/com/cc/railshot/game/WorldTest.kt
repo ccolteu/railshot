@@ -172,7 +172,7 @@ class WorldTest {
     val world = World()
     world.moveYouPaddle(0.5f)
     world.placeBall(
-      World.YOU_FRONT_X + World.BALL_R_X + 0.001f,
+      world.youFrontX() + World.BALL_R_X + 0.001f,
       world.youPaddleY,
       -0.8f,
       0f,
@@ -190,7 +190,7 @@ class WorldTest {
   fun centerHitStaysNearBaseSpeed() {
     val world = World()
     val speed = youReturnSpeed(world, paddleY = 0.5f, ballY = 0.5f)
-    assertEquals(World.BALL_SPEED * World.SLICE_CENTER * World.SHIELD_POP, speed, 0.04f)
+    assertEquals(World.BALL_SPEED * World.SLICE_CENTER * world.youKit.shieldPop, speed, 0.04f)
   }
 
   @Test
@@ -209,7 +209,7 @@ class WorldTest {
     world.step(1f / 60f)
     world.moveYouPaddle(0.64f)
     world.placeBall(
-      World.YOU_FRONT_X + World.BALL_R_X + 0.001f,
+      world.youFrontX() + World.BALL_R_X + 0.001f,
       world.youPaddleY,
       -0.8f,
       0f,
@@ -222,7 +222,7 @@ class WorldTest {
   private fun youReturnSpeed(world: World, paddleY: Float, ballY: Float): Float {
     world.moveYouPaddle(paddleY)
     world.step(1f / 60f)
-    world.placeBall(World.YOU_FRONT_X + World.BALL_R_X + 0.001f, ballY, -0.8f, 0f)
+    world.placeBall(world.youFrontX() + World.BALL_R_X + 0.001f, ballY, -0.8f, 0f)
     waitForYouHit(world)
     return world.ballSpeed()
   }
@@ -309,5 +309,52 @@ class WorldTest {
     world.placeBall(0.38f, 0.50f, 0.55f, 0.42f)
     repeat(12) { world.step(1f / 60f) }
     assertTrue(world.cpuPaddleY > 0.52f)
+  }
+
+  @Test
+  fun rivetReturnsHotterThanAsh() {
+    val rivet = youReturnSpeed(World(you = Fighter.RIVET), paddleY = 0.5f, ballY = 0.5f)
+    val ash = youReturnSpeed(World(you = Fighter.ASH), paddleY = 0.5f, ballY = 0.5f)
+    assertTrue(rivet > ash * 1.06f)
+  }
+
+  @Test
+  fun kiteReachesABallHexMisses() {
+    val y = 0.370f
+    val kite = World(you = Fighter.KITE)
+    kite.moveYouPaddle(0.5f)
+    kite.placeBall(kite.youFrontX() + World.BALL_R_X + 0.001f, y, -0.8f, 0f)
+    waitForYouHit(kite)
+    val hex = World(you = Fighter.HEX)
+    hex.moveYouPaddle(0.5f)
+    hex.placeBall(hex.youFrontX() + World.BALL_R_X + 0.001f, y, -0.8f, 0f)
+    var guard = 0
+    while (hex.youPose() != PaddlePose.HIT && hex.phase == Phase.PLAYING && guard++ < 40) {
+      hex.step(1f / 60f)
+    }
+    assertTrue(hex.youPose() != PaddlePose.HIT)
+  }
+
+  @Test
+  fun kiteCpuClosesFasterThanMaru() {
+    fun closed(rival: Fighter): Float {
+      val world = World(you = Fighter.ASH, rival = rival, cpuLevel = CpuLevel.HARD)
+      world.placeBall(0.70f, 0.22f, 0.7f, 0f)
+      repeat(18) { world.step(1f / 60f) }
+      return kotlin.math.abs(world.cpuPaddleY - 0.22f)
+    }
+    assertTrue(closed(Fighter.KITE) < closed(Fighter.MARU))
+  }
+
+  @Test
+  fun quillSteepRimIsSteeperThanRivet() {
+    val rivet = World(you = Fighter.RIVET)
+    val quill = World(you = Fighter.QUILL)
+    val ballY = 0.58f
+    youReturnSpeed(rivet, 0.5f, ballY)
+    val rivetVy = kotlin.math.abs(rivet.ballVy())
+    youReturnSpeed(quill, 0.5f, ballY)
+    val quillVy = kotlin.math.abs(quill.ballVy())
+    assertTrue(quillVy > rivetVy)
   }
 }

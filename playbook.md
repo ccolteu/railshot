@@ -383,6 +383,8 @@ Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1
 
 **CPU** loads from the **2P fighter**. **Wall** (Maru, Hex): camps a living gate, smaller motion. **Slugger** (Rivet, Ash, Kite, Quill): chases, overcommits. VS opens on **EASY**; arrows cycle **EASY / HARD** buttons (`ui_btn_easy.png` / `ui_btn_hard.png`). Easy abandons high/low rails and reacts late. Hard predicts the bounce and cuts the line.
 
+**Fighter kits** (P1 and 2P, code): same sport, tiny knobs. Rivet hotter bounce. Ash more swipe. Kite longer/faster. Maru slower, fatter slice. Quill steeper rims. Hex shorter/softer (star shot later). Select typesets one flavor line under the name sprite. Do not bake flavor into portraits.
+
 ## In-game extras
 
 Use section **D** for player sprites. Optional later: Hex projectile (`small blue star shot`).
@@ -517,7 +519,7 @@ Same flow as a 90s arcade vs-select (Flip Shot layout language, original roster)
 3. **Confirm with SELECT.** The SELECT button (between the arrows, left stack) locks the highlighted fighter. First press = **first fighter** (left court, `vs_left`, P1 clothes). Second press = **second fighter** (right court, `vs_right`, 2P clothes). Same fighter twice is a legal mirror match.
 4. **Full-body on the right.** Piece **A** for the **currently highlighted** tile is drawn on the **right**, **almost the full 4:3 height** (`FillHeight`, no crop-zoom of the face), with a **small margin** top and bottom so it does not clip the screen edge. A must be the **left-facing** select pose so they look toward the left stack. Missing **A** is an empty placeholder. Switching left/right updates this portrait immediately. Do not keep showing the already-locked first fighter while browsing for the second.
 5. **Cursor badges.** While picking the first fighter, show **1P** on the highlighted tile. After the first lock, **1P** stays on that tile; **2P** rides the cursor until the second lock. Tile frames: `ui_face_frame_on.png` when highlighted, `ui_face_frame_off.png` otherwise — not Compose borders.
-6. **Left stack.** Top to bottom: large `ui_player_select.png` (**SELECT FIGHTER** title), then `{name}_name_select.png`, then `ui_btn_select.png`. All on the **left**. Do not typeset SELECT FIGHTER, SELECT, or the fighter name.
+6. **Left stack.** Top to bottom: large `ui_player_select.png` (**SELECT FIGHTER** title), then `{name}_name_select.png`, then one **typeset flavor line** (`FighterKit.flavor`) for the highlighted fighter, then `ui_btn_select.png`. All on the **left**. Do not typeset SELECT FIGHTER, SELECT, or the fighter name. Do not bake the flavor into piece A.
 7. **Chrome sprites.** `ui_btn_select.png` and `ui_arrow_left.png` are **beveled arcade push buttons**, not floating letters. Right arrow = horizontal flip of the left button in code. Cursor badges are `ui_1p.png` / `ui_2p.png`. Do not typeset 1P, 2P, SELECT, or ◀▶.
 7. **After both are selected:** freeze input, linger **1.5 seconds**, then go to the **VS screen**. Do not skip the linger.
 
@@ -570,6 +572,7 @@ Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to
 - `ROUND` / `FIGHT` / `WIN` banners
 - Select cursor (`ui_1p.png` / `ui_2p.png`), arrows (`ui_arrow_left.png` + flip), SELECT (`ui_btn_select.png`)
 - VS arrows cycle EASY/HARD; the EASY/HARD button starts the match
+- Select flavor line under the name sprite (`FighterKit`)
 - Linger-then-VS transition
 - Tally numbers
 
