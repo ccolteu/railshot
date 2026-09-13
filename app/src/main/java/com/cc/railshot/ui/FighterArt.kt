@@ -95,7 +95,21 @@ fun Fighter.art(): FighterArt =
         ending = "kite/kite_ending.png",
       )
     Fighter.MARU ->
-      FighterArt(nameSelect = "maru/maru_name_select.png", nameVs = "maru/maru_name_vs.png")
+      FighterArt(
+        selectFullBody = "maru/maru_select_fullbody.png",
+        face = "maru/maru_face.png",
+        vsLeft = "maru/maru_vs_left.png",
+        vsRight = "maru/maru_vs_right.png",
+        nameSelect = "maru/maru_name_select.png",
+        nameVs = "maru/maru_name_vs.png",
+        idleLeft = "maru/maru_game_idle_left.png",
+        walkLeft = "maru/maru_game_walk_left.png",
+        hitLeft = "maru/maru_game_hit_left.png",
+        idleRight = "maru/maru_game_idle_right.png",
+        walkRight = "maru/maru_game_walk_right.png",
+        hitRight = "maru/maru_game_hit_right.png",
+        ending = "maru/maru_ending.png",
+      )
     Fighter.QUILL ->
       FighterArt(nameSelect = "quill/quill_name_select.png", nameVs = "quill/quill_name_vs.png")
     Fighter.HEX ->

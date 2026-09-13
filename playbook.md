@@ -82,13 +82,18 @@ The generator will ignore size, exact magenta, and “mirror.” Do not trust it
 5. **Stop for approval** on **A**, then **idle_left**, then **vs_left**. Do not generate walk/hit or vs_right until those are approved.
 6. **Wire** new files in `Fighter.art()` asset paths. Placeholders stay until the file exists.
 
-**`idle_left` generate input:** that fighter’s packed A (`art/{name}/{name}_select_fullbody.png`) for clothes, face, hair, and shield.
+**`idle_left` generate inputs (two images, named in the prompt):**
 
-**Court idle anatomy lock.** Super-deformed paddle sprites. Head is about a third of the sprite. Torso is short and thick. Legs are stubby. Boots are oversized. Same bulky chibi silhouette. Clothes from A can match and the sprite still fails if the body is not this.
+1. **Proportion + cartoon face.** Men: `art/ash/ash_game_idle_left.png`. Women: `art/rivet/rivet_game_idle_left.png`. Copy body math and face language only — big **anime fighter eyes with a colored iris** (like Ash/Rivet idle, not googly white discs), head about a third of the sprite, short thick muscular torso, stubby legs, oversized boots. Do not copy that fighter’s hair, clothes, or weapon. If adding packed A as a second image makes the **file on disk** a scaled-down A, drop A from the generate and describe clothes in text.
+2. **Clothes / hair / beard / shield only:** that fighter’s packed A (`art/{name}/{name}_select_fullbody.png`). Do not copy A’s adult anatomy or A’s portrait face (small eyes, realistic scowl).
 
-**Wrong (do not ship):** a scaled-down A. Small head on a tall body, long torso, long fighter legs. If the generate looks like A shrunk into 192×233, discard it and generate again.
+**Court idle anatomy lock.** Super-deformed paddle sprite. Head is about a third of the sprite. Torso is short and thick **muscle** (a waist, not a round gut). Legs are stubby. Boots are oversized. Same bulky chibi silhouette as the Ash/Rivet idle. Big cartoon eyes. Clothes from A can match and the sprite still fails if the body or face is not this.
 
-A faces **left**. `idle_left` must face **right** (nose right, shield on the right side of the PNG). If it faces left, **horizontal-flip the bitmap**. Do not GenerateImage a second pose. **No drop shadow.** Pack **192×233**, `#FF00FF`.
+**Prompt words.** Use: bulky chibi, thick muscle, short torso, stubby legs, big head, big cartoon eyes. **Do not use:** chubby, fat, obese, beer belly, gut, round stomach.
+
+**Wrong (discard, do not pack):** scaled-down A; small head; long fighter legs; obese belly; tiny realistic eyes. Unique filename per attempt. **Read the PNG on disk** before packing (the generate preview can lie).
+
+A faces **left**. `idle_left` must face **right** (nose right, shield on the right side of the PNG). If it faces left, **horizontal-flip the bitmap**. Do not GenerateImage a second pose. **No drop shadow.** Pack **192×233**, `#FF00FF`. Walk and hit only after idle is approved, from that idle (pose only).
 
 ## Roster
 
@@ -114,7 +119,7 @@ Tall, thick muscle, broad shoulders, fighter stance. Military or combat-athlete 
 | --- | --- | --- | --- |
 | 2 | **Ash** | Short black, undercut | Huge street-fighter build, scarred, red combat jacket open on a muscled chest, dog tags, round buckler, cargo pants, boots. |
 | 3 | **Kite** | **Blond**, short, high-and-tight | Very tall military striker, V-torso, aviator sunglasses, olive flight suit unzipped at the collar, harness, kite-shaped riot shield, jump boots. Top Gun pilot energy, not Ash. |
-| 4 | **Maru** | Shaved sides, dark crew cut | Tall heavyweight bruiser, biggest of the three, khaki tank top, ammo belt, disc riot shield, dog tags, wrapped fists. |
+| 4 | **Maru** | **Red**, viking braids | Tall heavyweight bruiser, biggest of the three, Scottish highland kit: tartan kilt, sporran, khaki sleeveless shirt, disc riot shield, wrapped fists, highland boots. |
 
 Always include in male prompts: `adult man, tall, extremely muscular, military fighter, Street Fighter 2 body type, broad shoulders, thick arms, not skinny`.
 
@@ -135,7 +140,7 @@ Every fighter needs pieces **A–F**. A–E share the same face and costume. The
 
 ### Consistency rules (all characters)
 
-1. **Face lock.** Piece **B** (and C, D, E) must match piece **A**: same face, same hair, same visor/hat if A has one. Crop the head from A; do not invent a new face. Men keep the male cut from A — do not add long hair.
+1. **Face lock.** Piece **B** (and C, D, E) must match piece **A**: same face, same hair, same visor/hat if A has one. Crop the head from A; do not invent a new face. Hair matches A (Maru: red viking braids). Do not swap a man’s hair for a woman’s cut from another fighter.
 2. **VS left is P1.** `{name}_vs_left.png` uses the **same clothing as full-body (A)** and the left court sprites. **Build vs_right only after vs_left exists** — bitmap flip + 2P clothes. Do not generate vs_right.
 3. **In-game sprites are animation frames, not portraits.** Idle / walk / hit are bulky, cartoony 1994 court sprites (Battle Flip Shot: big head, thick body, short legs, shield = paddle). They replace the paddle and are **swapped on top of the same world position** to animate move and hit. **Costume must match piece A** (see overlay rules). Not a pinup.
 4. **Hit has no ball.** The ball is a separate sprite composited in playback. Hit is only the character pose (shield swing / strike). No ball, no projectile, no extra orb.
@@ -150,7 +155,7 @@ Hair and skin never change. Only clothes, visor, metal trim, and shield tint.
 | Rivet | Teal jacket, teal boots, gold buckles, teal visor | Magenta-violet jacket and boots, silver buckles, purple visor |
 | Ash | Red open jacket, gold trim, brown boots, steel buckler | Blue open jacket, silver trim, dark boots, steel buckler |
 | Kite | Olive flight suit, tan harness, jump boots, gold aviators | Desert-tan flight suit, olive harness, same boots, silver aviators |
-| Maru | Khaki tank, ammo belt, wrapped fists | Steel-blue tank, dark belt, wrapped fists |
+| Maru | Green/khaki tartan kilt, khaki shirt, leather sporran, wrapped fists | Steel-blue tartan kilt, steel-blue shirt, dark sporran, wrapped fists |
 | Quill | Earth/feather costume, warm browns and reds (hair stays red) | Cool purple/blue feather costume (hair stays red) |
 | Hex | Dark violet robe, moon-hat silver | Teal-black robe, moon-hat gold |
 
@@ -173,7 +178,7 @@ Kite, adult man, high-and-tight blond hair, aviator sunglasses, very tall, thick
 
 **Maru**
 ```
-Maru, adult man, dark crew cut, tallest heavyweight, massive chest and arms, khaki tank top, ammo belt, dog tags, wrapped fists, disc riot shield, military bruiser, original Railshot character
+Maru, adult man, bright red viking hair with braids, tallest heavyweight, massive chest and arms, Scottish highland fighter, tartan kilt, sporran, khaki sleeveless shirt, wrapped fists, disc riot shield, highland boots, original Railshot character
 ```
 
 **Quill**
@@ -232,7 +237,7 @@ These replace the paddle. The game **does not pan inside the PNG**. It draws whi
 
 #### Overlay animation rules
 
-1. **`idle_left` = A clothes on court-chibi body.** One image ref: **A**. Anatomy lock: super-deformed paddle sprite, head about a third of the sprite, short thick torso, stubby legs, oversized boots. Same bulky chibi silhouette. Copy A’s face, hair, outfit, and paddle-shaped shield. **Reject** a miniature of A. Face **right**. **No drop shadow.** Pack **192×233**. Walk and hit are **that idle with a new pose**.
+1. **`idle_left` = Ash/Rivet court body + A clothes.** Two image refs, named in the prompt: **(1)** Ash idle (men) or Rivet idle (women) for proportion and cartoon face (big eyes); **(2)** packed **A** for hair, outfit, beard, and paddle-shaped shield only. Anatomy lock: super-deformed paddle sprite, head about a third of the sprite, short thick muscular torso, stubby legs, oversized boots. **Reject** a miniature of A, an obese belly, or A’s portrait eyes. Face **right**. **No drop shadow.** Pack **192×233**. Walk and hit are **that idle with a new pose**.
 2. **Idle first, then pivots.** Generate and approve **idle_left** against A. Only then generate **`walk_left`** and **`hit_left`** using that idle as the reference (`same character, identical clothes, only the pose changes`). Three left-court files: `{name}_game_idle_left.png`, `{name}_game_walk_left.png`, `{name}_game_hit_left.png`. These pair with `{name}_vs_left.png` and play on the **left side of the court**.
 3. **No shadows.** No drop shadow, ground blob, contact shadow, or floor ellipse. Magenta `#FF00FF` goes right up to the boots.
 4. **Same character height as idle.** After cropping magenta, scale every frame **uniformly** so its bounding-box **height equals idle’s height**. Walk and hit often come out larger — shrink them to idle. Width scales with height (no squash).
@@ -243,10 +248,10 @@ These replace the paddle. The game **does not pan inside the PNG**. It draws whi
 9. **Shield is the paddle.** Same shield as idle, swung on hit. **P1 / vs_left / left court** uses `*_left` frames (facing right, toward the opponent).
 10. **Right-court frames from left + vs_right.** Once **all three left sprites** and **`vs_right`** exist, build `{name}_game_idle_right.png`, `{name}_game_walk_right.png`, `{name}_game_hit_right.png` **in bitmap code**. Do **not** generate them. Pipeline: each packed `*_left` → **horizontal flip** → **recolor clothes to vs_right** (hair and skin unchanged). Same **192×233** box. Right side of the court.
 
-Idle prompt (image ref: **A** only):
+Idle prompt (two image refs: **Ash idle or Rivet idle**, then **A**):
 
 ```
-Court paddle sprite: super-deformed bulky chibi, head about a third of the sprite, short thick torso, stubby legs, oversized boots, same bulky chibi silhouette. FACING RIGHT (nose right, shield on the right side of the image). Clothes and identity from the full-body only: [CHARACTER LOCK], EXACT same clothing and shield as that full-body. NOT a scaled-down full-body, NOT adult fighter legs, NOT a small head. IDLE. NO drop shadow. Solid magenta #FF00FF. Pixel art. Pack 192x233.
+TWO REFERENCES. (1) Court idle: COPY ONLY body math and cartoon face — bulky chibi, head about a third of the sprite, big cartoon eyes, short thick muscular torso, stubby legs, oversized boots. Do NOT copy that idle’s hair, clothes, or weapon. (2) Full-body A: COPY ONLY clothes, hair, beard, shield. Do NOT copy A’s adult anatomy or A’s small realistic eyes. FACING RIGHT (nose right, shield on the right side of the image). [CHARACTER LOCK], EXACT same clothing and shield as the full-body. NOT a scaled-down full-body, NOT adult fighter legs, NOT a small head, NOT obese, NOT a round gut. IDLE. NO drop shadow. Solid magenta #FF00FF. Pixel art. Pack 192x233.
 ```
 
 Walk / hit prompt (reference **idle**, not a new design):
@@ -271,7 +276,7 @@ Do not skip ahead: later files are derived from earlier ones.
 2. **B face** from A. Pack **192×192**, no drawn border, flush left/right/bottom, chroma `#FF00FF`. **Approve A** before B.
 3. **Name sprites** `{name}_name_select.png` and `{name}_name_vs.png`. Pack 480×90. No portrait input.
 4. **`vs_left`.** P1 clothes matching A. Pack 480×600. **Approve vs_left** before vs_right.
-5. **Left court:** `idle_left` from **A**, with the **court idle anatomy lock** (super-deformed paddle sprite; not scaled A). Face **right**, no shadow, pack **192×233**. Then `walk_left` and `hit_left` from idle_left. Required before right court.
+5. **Left court:** `idle_left` from **Ash idle (men) or Rivet idle (women)** for body/face, plus **A** for clothes. Court idle anatomy lock. Face **right**, no shadow, pack **192×233**. Then `walk_left` and `hit_left` from idle_left. Required before right court.
 6. **`vs_right` AFTER vs_left.** Bitmap flip + 2P recolor. Do not generate.
 7. **Right court AFTER left sprites AND vs_right.** Bitmap flip + 2P recolor of each packed left frame. **192×233**.
 8. **E ending** from that face.
