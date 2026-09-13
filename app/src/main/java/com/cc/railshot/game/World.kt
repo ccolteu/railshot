@@ -56,7 +56,10 @@ data class CabinetInset(val left: Int, val top: Int, val right: Int, val bottom:
   }
 }
 
-class World {
+class World(
+  val cpuStyle: CpuStyle = CpuStyle.WALL,
+  val cpuLevel: CpuLevel = CpuLevel.HARD,
+) {
   var phase: Phase = Phase.ROUND
     private set
   var youScore: Int = 0
@@ -92,6 +95,11 @@ class World {
   private var cpuPaddleVy = 0f
   private var roundHold = ROUND_HOLD
   private var setWinT = 0f
+  private var freezeT = 0f
+  private var shakeT = 0f
+  private var shakeDur = 0f
+  private var shakeAmp = 0f
+  private var flashT = 0f
   private val pendingSfx = ArrayDeque<GameSfx>()
 
   init {
@@ -125,6 +133,14 @@ class World {
 
   fun cpuPose(): PaddlePose = pose(cpuHitT, cpuMoved)
 
+  fun impactFrozen(): Boolean = freezeT > 0f && phase == Phase.PLAYING
+
+  fun bounceFlash(): Float = if (flashT <= 0f) 0f else (flashT / FLASH_HOLD).coerceIn(0f, 1f)
+
+  fun cabinetShakeX(vw: Float): Float = shakeAxis(vw, 73f)
+
+  fun cabinetShakeY(vh: Float): Float = shakeAxis(vh, 51f)
+
   fun launch() {
     if (phase == Phase.YOU_WIN || phase == Phase.CPU_WIN) {
       resetMatch()
@@ -144,8 +160,14 @@ class World {
   fun step(dt: Float) {
     val clamped = dt.coerceAtMost(0.05f)
     tickHits(clamped)
+    tickJuice(clamped)
     youPaddleVy = (youPaddleY - youPaddleYPrev) / clamped.coerceAtLeast(0.0001f)
     youPaddleYPrev = youPaddleY
+    if (freezeT > 0f && phase == Phase.PLAYING) {
+      cpuMoved = false
+      cpuPaddleVy = 0f
+      return
+    }
     if (phase == Phase.ROUND) {
       cpuMoved = false
       cpuPaddleVy = 0f
@@ -182,6 +204,7 @@ class World {
       cpuMoved = cpuMoved || kotlin.math.abs(cpuPaddleY - beforeCpu) > WALK_EPS
       advance(step)
       left -= step
+      if (freezeT > 0f) break
     }
   }
 
@@ -231,6 +254,11 @@ class World {
     youWalkT = 0f
     cpuMoved = false
     suddenDeath = false
+    freezeT = 0f
+    shakeT = 0f
+    shakeDur = 0f
+    shakeAmp = 0f
+    flashT = 0f
     timeLeft = SET_TIME
     dealChips()
     callRound()
@@ -253,11 +281,95 @@ class World {
   }
 
   private fun steerCpu(dt: Float) {
-    if (vx <= 0f || ballX < CPU_REACT_X) return
-    val max = CPU_SPEED * dt
-    val target = ballY + CPU_AIM_BIAS
-    val delta = (target - cpuPaddleY).coerceIn(-max, max)
-    cpuPaddleY = (cpuPaddleY + delta).coerceIn(PADDLE_LEN / 2f, 1f - PADDLE_LEN / 2f)
+    if (vx <= 0f || ballX < cpuReactX()) return
+    val chase = if (cpuLevel == CpuLevel.HARD) interceptY(CPU_FRONT_X) else ballY
+    if (cpuLevel == CpuLevel.EASY && (chase < 0.17f || chase > 0.83f)) {
+      // Leave the rails open — retreat toward mid instead of covering a high/low shot.
+      val mid = 0.5f - cpuPaddleY
+      val max = cpuSpeed() * 0.55f * dt
+      cpuPaddleY = (cpuPaddleY + mid.coerceIn(-max, max)).coerceIn(PADDLE_LEN / 2f, 1f - PADDLE_LEN / 2f)
+      return
+    }
+    val camp = threatenedGateY() ?: chase
+    val mix = campMix()
+    var target = chase * (1f - mix) + camp * mix
+    val error = target - cpuPaddleY
+    if (cpuStyle == CpuStyle.SLUGGER && kotlin.math.abs(error) > 0.012f) {
+      target += kotlin.math.sign(error) * overshoot()
+    }
+    val max = cpuSpeed() * dt
+    val step =
+      if (cpuStyle == CpuStyle.SLUGGER && kotlin.math.abs(error) > 0.008f) {
+        kotlin.math.sign(error) * max
+      } else {
+        (target - cpuPaddleY).coerceIn(-max, max)
+      }
+    cpuPaddleY = (cpuPaddleY + step).coerceIn(PADDLE_LEN / 2f, 1f - PADDLE_LEN / 2f)
+  }
+
+  private fun cpuSpeed(): Float =
+    when {
+      cpuLevel == CpuLevel.HARD && cpuStyle == CpuStyle.SLUGGER -> 0.46f
+      cpuLevel == CpuLevel.HARD -> 0.34f
+      cpuStyle == CpuStyle.SLUGGER -> 0.22f
+      else -> 0.16f
+    }
+
+  private fun cpuReactX(): Float = if (cpuLevel == CpuLevel.HARD) 0.36f else 0.68f
+
+  private fun campMix(): Float =
+    when {
+      cpuStyle == CpuStyle.WALL && cpuLevel == CpuLevel.HARD -> 0.62f
+      cpuStyle == CpuStyle.WALL -> 0.48f
+      cpuLevel == CpuLevel.HARD -> 0.12f
+      else -> 0.05f
+    }
+
+  private fun overshoot(): Float = if (cpuLevel == CpuLevel.EASY) 0.09f else 0.045f
+
+  private fun threatenedGateY(): Float? {
+    var bestY: Float? = null
+    var bestD = Float.MAX_VALUE
+    for (chip in chips) {
+      if (chip.side != Side.CPU || !chip.alive) continue
+      val cy = chip.y + chip.h / 2f
+      val d = kotlin.math.abs(cy - ballY)
+      if (d < bestD) {
+        bestD = d
+        bestY = cy
+      }
+    }
+    return bestY
+  }
+
+  private fun interceptY(frontX: Float): Float {
+    var x = ballX
+    var y = ballY
+    var svx = vx
+    var svy = vy
+    if (svx <= 0.01f) return y
+    var guard = 0
+    val lo = BALL_R
+    val hi = 1f - BALL_R
+    while (x < frontX && guard++ < 24) {
+      val dt = (frontX - x) / svx
+      val nextY = y + svy * dt
+      if (nextY in lo..hi) return nextY
+      if (svy > 0.001f) {
+        val tWall = (hi - y) / svy
+        x += svx * tWall
+        y = hi
+        svy = -svy
+      } else if (svy < -0.001f) {
+        val tWall = (lo - y) / svy
+        x += svx * tWall
+        y = lo
+        svy = -svy
+      } else {
+        return y.coerceIn(lo, hi)
+      }
+    }
+    return y.coerceIn(lo, hi)
   }
 
   private fun advance(dt: Float) {
@@ -308,12 +420,13 @@ class World {
     if (ballY < top - BALL_R || ballY > bottom + BALL_R) return
     if (youSide) youHitT = HIT_HOLD else cpuHitT = HIT_HOLD
     pendingSfx += GameSfx.SHIELD
+    sting(SHIELD_FREEZE, 0f, 0f, FLASH_HOLD)
     ballX = if (incomingLeft) frontX + BALL_R_X else frontX - BALL_R_X
     val hit = ((ballY - paddleY) / (PADDLE_LEN / 2f)).coerceIn(-1f, 1f)
     val paddleVy = if (youSide) youPaddleVy else cpuPaddleVy
     val swipe = (kotlin.math.abs(paddleVy) / SLICE_SWIPE_REF).coerceIn(0f, 1f)
     val speed =
-      (BALL_SPEED * (SLICE_CENTER + kotlin.math.abs(hit) * SLICE_EDGE + swipe * SLICE_SWIPE))
+      (BALL_SPEED * (SLICE_CENTER + kotlin.math.abs(hit) * SLICE_EDGE + swipe * SLICE_SWIPE) * SHIELD_POP)
         .coerceAtMost(BALL_SPEED * SLICE_CAP)
     vy = hit * speed * 0.9f + paddleVy.coerceIn(-SLICE_SWIPE_REF, SLICE_SWIPE_REF) * 0.12f
     vx = if (incomingLeft) speed else -speed
@@ -327,6 +440,7 @@ class World {
       } ?: return
     hit.alive = false
     pendingSfx += GameSfx.CHIP
+    sting(CHIP_FREEZE, SHAKE_CHIP, SHAKE_CHIP_T, FLASH_CHIP)
     if (hit.side == Side.CPU) youScore += 1 else cpuScore += 1
     if (suddenDeath) {
       finishSet(if (hit.side == Side.CPU) Side.YOU else Side.CPU)
@@ -425,6 +539,28 @@ class World {
     resetSet()
   }
 
+  private fun sting(freeze: Float, shake: Float, shakeTime: Float, flash: Float) {
+    freezeT = kotlin.math.max(freezeT, freeze)
+    if (shakeT <= 0f || shake >= shakeAmp) {
+      shakeAmp = shake
+      shakeDur = shakeTime
+    }
+    shakeT = kotlin.math.max(shakeT, shakeTime)
+    flashT = kotlin.math.max(flashT, flash)
+  }
+
+  private fun tickJuice(dt: Float) {
+    if (freezeT > 0f) freezeT = (freezeT - dt).coerceAtLeast(0f)
+    if (shakeT > 0f) shakeT = (shakeT - dt).coerceAtLeast(0f)
+    if (flashT > 0f) flashT = (flashT - dt).coerceAtLeast(0f)
+  }
+
+  private fun shakeAxis(span: Float, freq: Float): Float {
+    if (shakeT <= 0f || shakeDur <= 0f) return 0f
+    val u = (shakeT / shakeDur).coerceIn(0f, 1f)
+    return kotlin.math.cos(shakeT * freq) * shakeAmp * u * u * span
+  }
+
   private fun tickHits(dt: Float) {
     if (youHitT > 0f) youHitT = (youHitT - dt).coerceAtLeast(0f)
     if (cpuHitT > 0f) cpuHitT = (cpuHitT - dt).coerceAtLeast(0f)
@@ -462,10 +598,14 @@ class World {
     const val PADDLE_LANE = 0.028f
     const val YOU_PADDLE_X = YOU_CHIP_X + CHIP_W + PADDLE_LANE
     const val CPU_PADDLE_X = CPU_CHIP_X - PADDLE_LANE - PADDLE_THICK
-    const val CPU_SPEED = 0.28f
-    const val CPU_REACT_X = 0.52f
-    const val CPU_AIM_BIAS = 0.06f
-    const val HIT_HOLD = 0.18f
+    const val HIT_HOLD = 0.22f
+    const val SHIELD_POP = 1.06f
+    const val SHIELD_FREEZE = 0.045f
+    const val CHIP_FREEZE = 0.10f
+    const val SHAKE_CHIP = 0.0075f
+    const val SHAKE_CHIP_T = 0.16f
+    const val FLASH_HOLD = 0.12f
+    const val FLASH_CHIP = 0.07f
     const val WALK_HOLD = 0.12f
     const val WALK_EPS = 0.0008f
     const val SPRITE_W = 192

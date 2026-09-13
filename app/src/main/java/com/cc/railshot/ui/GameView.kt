@@ -14,6 +14,8 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import com.cc.railshot.SoundManager
 import com.cc.railshot.game.CabinetInset
+import com.cc.railshot.game.CpuLevel
+import com.cc.railshot.game.CpuStyle
 import com.cc.railshot.game.Fighter
 import com.cc.railshot.game.GameSfx
 import com.cc.railshot.game.PaddlePose
@@ -48,6 +50,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private val select = SelectSession()
   private var you: Fighter = Fighter.RIVET
   private var rival: Fighter = Fighter.RIVET
+  private var cpuLevel: CpuLevel = CpuLevel.EASY
   private var world = World()
   private var announced: Phase? = null
   private var dragging = false
@@ -172,13 +175,14 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     you = first
     rival = second
     lingerT = 0f
+    cpuLevel = CpuLevel.EASY
     screen = Screen.VS
   }
 
   private fun goMatch() {
     youFrames = loadCourtFrames(you.art(), left = true)
     rivalFrames = loadCourtFrames(rival.art(), left = false)
-    world = World()
+    world = World(CpuStyle.forFighter(rival), cpuLevel)
     announced = null
     dragging = false
     tailTravel = 0f
@@ -187,13 +191,13 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
 
   private fun stepMatch(dt: Float) {
     world.step(dt)
-    if (world.phase == Phase.PLAYING) {
+    if (world.phase == Phase.PLAYING && !world.impactFrozen()) {
       tailTravel += world.ballSpeed() * dt
     }
     for (sfx in world.drainSfx()) {
       when (sfx) {
-        GameSfx.SHIELD -> SoundManager.instance.playSFX(SoundManager.SFX_SHIELD)
-        GameSfx.CHIP -> SoundManager.instance.playSFX(SoundManager.SFX_CHIP)
+        GameSfx.SHIELD -> SoundManager.instance.playSFX(SoundManager.SFX_SHIELD, 1.05f, 1.22f)
+        GameSfx.CHIP -> SoundManager.instance.playSFX(SoundManager.SFX_CHIP, 1.12f, 0.82f)
       }
     }
     val phase = world.phase
@@ -240,6 +244,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
 
   private fun touchVs(x: Float, y: Float, sw: Float, sh: Float) {
     layoutVsHits(sw, sh)
+    if (leftArrow.contains(x, y) || rightArrow.contains(x, y)) {
+      cpuLevel = if (cpuLevel == CpuLevel.HARD) CpuLevel.EASY else CpuLevel.HARD
+      SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
+      return
+    }
     if (startBtn.contains(x, y)) {
       SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
       goMatch()
@@ -377,13 +386,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private fun drawVs(canvas: Canvas, sw: Float, sh: Float) {
     val dp = sh / 360f
     blitFill(canvas, opaque(UiArt.VS_BG), 0f, 0f, sw, sh)
-    val barPadB = 20f * dp
-    val barPadH = 8f * dp
+    val barPadB = 16f * dp
     val barPadT = 8f * dp
     val btnH = 56f * dp
-    val btnW = btnH * (264f / 150f)
-    val nameH = 36f * dp
-    val barH = barPadT + barPadB + maxOf(btnH, nameH)
+    val nameH = 40f * dp
+    val nameBtnGap = 14f * dp
+    val barH = barPadT + nameH + nameBtnGap + btnH + barPadB
     val bustH = sh - barH
     val totalW = 1f + 0.42f + 1f
     val leftW = sw * (1f / totalW)
@@ -398,21 +406,26 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     rival.art().vsRight?.let { path ->
       blitFit(canvas, keyed(path), leftW + vsW + 8f * dp, 12f * dp, leftW - 16f * dp, bustH - 24f * dp)
     }
-    val nameY = bustH + barPadT + (barH - barPadT - barPadB - nameH) / 2f
+    val nameY = bustH + barPadT
+    val namePad = 10f * dp
+    val nw = leftW - namePad * 2f
     you.art().nameVs?.let { path ->
-      val nw = leftW * 0.85f
-      blitFit(canvas, keyed(path), (leftW - nw) / 2f, nameY, nw, nameH)
+      blitFit(canvas, keyed(path), namePad, nameY, nw, nameH)
     }
     rival.art().nameVs?.let { path ->
-      val nw = leftW * 0.85f
-      blitFit(canvas, keyed(path), leftW + vsW + (leftW - nw) / 2f, nameY, nw, nameH)
+      blitFit(canvas, keyed(path), leftW + vsW + namePad, nameY, nw, nameH)
     }
-    startBtn.set((sw - btnW) / 2f, bustH + barPadT, (sw + btnW) / 2f, bustH + barPadT + btnH)
-    blitFit(canvas, keyed(UiArt.BTN_START), startBtn.left, startBtn.top, btnW, btnH)
+    layoutVsHits(sw, sh)
+    blitFit(canvas, keyed(UiArt.ARROW_LEFT), leftArrow.left, leftArrow.top, leftArrow.width(), leftArrow.height())
+    val diffBtn = if (cpuLevel == CpuLevel.HARD) UiArt.BTN_HARD else UiArt.BTN_EASY
+    blitFit(canvas, keyed(diffBtn), startBtn.left, startBtn.top, startBtn.width(), startBtn.height())
+    blitFitFlipped(canvas, keyed(UiArt.ARROW_LEFT), rightArrow.left, rightArrow.top, rightArrow.width(), rightArrow.height())
   }
 
   private fun drawMatch(canvas: Canvas, vw: Float, vh: Float) {
     canvas.drawColor(INK)
+    canvas.save()
+    canvas.translate(world.cabinetShakeX(vw), world.cabinetShakeY(vh))
     val courtL = World.FRAME_LEFT * vw
     val courtT = World.FRAME_TOP * vh
     val courtR = vw - World.FRAME_RIGHT * vw
@@ -497,6 +510,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         else -> null
       }
     if (winner != null) drawEnding(canvas, winner, vw, vh)
+    canvas.restore()
   }
 
   private fun drawEnding(canvas: Canvas, winner: Fighter, vw: Float, vh: Float) {
@@ -608,6 +622,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val side = (radius * 2f).coerceAtLeast(2f)
     val cx = courtL + world.ballX * courtW
     val cy = courtT + world.ballY * courtH
+    val flash = world.bounceFlash()
+    if (flash > 0f) {
+      fillPaint.color = ((200 * flash).toInt().coerceIn(0, 255) shl 24) or 0x00FFF8DC
+      canvas.drawCircle(cx, cy, radius * (1.12f + 0.28f * flash), fillPaint)
+    }
     val speed = world.ballSpeed()
     if (speed > World.BALL_SPEED * 0.08f) {
       val left = ((tailTravel / TAIL_FLICKER_DIST).toInt() and 1) == 0
@@ -699,14 +718,23 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
 
   private fun layoutVsHits(sw: Float, sh: Float) {
     val dp = sh / 360f
-    val barPadB = 20f * dp
+    val barPadB = 16f * dp
     val barPadT = 8f * dp
     val btnH = 56f * dp
     val btnW = btnH * (264f / 150f)
-    val nameH = 36f * dp
-    val barH = barPadT + barPadB + maxOf(btnH, nameH)
+    val nameH = 40f * dp
+    val nameBtnGap = 14f * dp
+    val barH = barPadT + nameH + nameBtnGap + btnH + barPadB
     val bustH = sh - barH
-    startBtn.set((sw - btnW) / 2f, bustH + barPadT, (sw + btnW) / 2f, bustH + barPadT + btnH)
+    val arrow = 56f * dp
+    val rowW = arrow * 2f + btnW + 8f * dp
+    val y = bustH + barPadT + nameH + nameBtnGap
+    var x = (sw - rowW) / 2f
+    leftArrow.set(x, y, x + arrow, y + arrow)
+    x += arrow + 4f * dp
+    startBtn.set(x, y, x + btnW, y + btnH)
+    x += btnW + 4f * dp
+    rightArrow.set(x, y, x + arrow, y + arrow)
   }
 
   private fun layoutStage() {
@@ -742,7 +770,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     pixel.alpha = prev
   }
 
-  private fun blitFitFlipped(canvas: Canvas, bmp: Bitmap, l: Float, t: Float, w: Float, h: Float, alpha: Int) {
+  private fun blitFitFlipped(canvas: Canvas, bmp: Bitmap, l: Float, t: Float, w: Float, h: Float, alpha: Int = 255) {
     val cx = l + w / 2f
     canvas.save()
     canvas.scale(-1f, 1f, cx, t + h / 2f)

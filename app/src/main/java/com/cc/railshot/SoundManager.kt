@@ -96,6 +96,10 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
   }
 
   fun playSFX(id: Int) {
+    playSFX(id, 1f, 1f)
+  }
+
+  fun playSFX(id: Int, gain: Float, rate: Float) {
     synchronized(lock) {
       if (!initialized || paused) return
       if (id < 0 || id >= SFX_COUNT) return
@@ -107,7 +111,9 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
         if (callout) CALLOUT_VOLUME
         else if (ducking) DUCK_VOLUME * SFX_VOLUME
         else SFX_VOLUME
-      val priority = if (callout) 3 else 1
+      val out = (vol * gain).coerceIn(0f, 1f)
+      val playback = rate.coerceIn(0.5f, 2f)
+      val priority = if (callout) 3 else if (id == SFX_CHIP) 2 else 1
       if (callout) {
         calloutDuck = true
         applyBgmVolumeLocked()
@@ -115,7 +121,7 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
         val holdMs = if (id == SFX_FIGHT) 550L else 1200L
         bgmHandler.postDelayed(unduckCalloutRunnable, holdMs)
       }
-      pool.play(sid, vol, vol, priority, 0, 1f)
+      pool.play(sid, out, out, priority, 0, playback)
     }
   }
 

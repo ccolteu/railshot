@@ -381,6 +381,8 @@ Round `WIN` overlay on a set (`Phase.SET_WIN`); match win then results / piece *
 
 Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1.8s, then `SERVE` with `ui_fight.png`. Tap serves. Do not typeset FIGHT or TAP TO SERVE.
 
+**CPU** loads from the **2P fighter**. **Wall** (Maru, Hex): camps a living gate, smaller motion. **Slugger** (Rivet, Ash, Kite, Quill): chases, overcommits. VS opens on **EASY**; arrows cycle **EASY / HARD** buttons (`ui_btn_easy.png` / `ui_btn_hard.png`). Easy abandons high/low rails and reacts late. Hard predicts the bounce and cuts the line.
+
 ## In-game extras
 
 Use section **D** for player sprites. Optional later: Hex projectile (`small blue star shot`).
@@ -535,8 +537,8 @@ Wallpaper (`art/ui_vs_bg.png`): quiet dark navy with a faint center glow for the
 2. **Right slot** = second selected fighter’s `{name}_vs_right.png` (2P clothes, facing the center).
 3. Missing **C** art is an empty bust placeholder in that slot (same box).
 4. Draw `ui_vs.png` in the center. Under each bust draw `{name}_name_vs.png` (first pick left, second pick right). Missing name sprite: placeholder.
-5. Between the names, on the same horizontal row, draw `ui_btn_start.png` (same gold-bezel ivory arcade button as SELECT, word **START**). Vertically center it with the nameplates. Do not typeset START. Pressing START continues to the match (select confirm SFX).
-6. Stay on VS until START. Left court then uses the first fighter’s `*_left` anims; right court uses the second’s `*_right` anims.
+5. Bottom bar is two rows: fighter `{name}_name_vs.png` plates on the first row (large, under each bust), then a gap, then left arrow / **EASY or HARD** / right arrow centered on the second row. Same gold-bezel ivory arcade button as SELECT/START (`ui_btn_easy.png` / `ui_btn_hard.png`, 264×150). VS opens on **EASY**. Arrows cycle EASY/HARD (arrow SFX). Pressing the EASY or HARD button starts the match (select confirm SFX). Do not typeset EASY/HARD.
+6. Stay on VS until the difficulty button is pressed. Left court then uses the first fighter’s `*_left` anims; right court uses the second’s `*_right` anims.
 
 ## Win / bonus / congratulations layout
 
@@ -567,6 +569,7 @@ Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to
 - Ball plus speed-banded tail (`ui_ball_tail_{short,medium,long}_{left,right}.png`)
 - `ROUND` / `FIGHT` / `WIN` banners
 - Select cursor (`ui_1p.png` / `ui_2p.png`), arrows (`ui_arrow_left.png` + flip), SELECT (`ui_btn_select.png`)
+- VS arrows cycle EASY/HARD; the EASY/HARD button starts the match
 - Linger-then-VS transition
 - Tally numbers
 

@@ -30,6 +30,10 @@ class WorldTest {
     assertEquals(1, world.youScore)
     assertEquals(World.CHIP_COUNT - 1, world.cpuChipsLeft())
     assertTrue(world.drainSfx().contains(GameSfx.CHIP))
+    assertTrue(world.impactFrozen())
+    val frozenX = world.ballX
+    world.step(1f / 60f)
+    assertEquals(frozenX, world.ballX, 0.0001f)
   }
 
   @Test
@@ -179,13 +183,14 @@ class WorldTest {
     }
     assertEquals(PaddlePose.HIT, world.youPose())
     assertTrue(world.drainSfx().contains(GameSfx.SHIELD))
+    assertTrue(world.impactFrozen())
   }
 
   @Test
   fun centerHitStaysNearBaseSpeed() {
     val world = World()
     val speed = youReturnSpeed(world, paddleY = 0.5f, ballY = 0.5f)
-    assertEquals(World.BALL_SPEED * World.SLICE_CENTER, speed, 0.04f)
+    assertEquals(World.BALL_SPEED * World.SLICE_CENTER * World.SHIELD_POP, speed, 0.04f)
   }
 
   @Test
@@ -268,5 +273,41 @@ class WorldTest {
       World.COURT_ASPECT,
       0.0001f,
     )
+  }
+
+  @Test
+  fun maruAndHexAreWallsKiteIsASlugger() {
+    assertEquals(CpuStyle.WALL, CpuStyle.forFighter(Fighter.MARU))
+    assertEquals(CpuStyle.WALL, CpuStyle.forFighter(Fighter.HEX))
+    assertEquals(CpuStyle.SLUGGER, CpuStyle.forFighter(Fighter.KITE))
+  }
+
+  @Test
+  fun easyCpuLeavesAHighBallUncovered() {
+    val world = World(CpuStyle.SLUGGER, CpuLevel.EASY)
+    world.placeBall(0.70f, 0.08f, 0.55f, 0f)
+    val start = world.cpuPaddleY
+    repeat(18) { world.step(1f / 60f) }
+    assertTrue(kotlin.math.abs(world.cpuPaddleY - 0.5f) < 0.12f)
+    assertTrue(kotlin.math.abs(world.cpuPaddleY - 0.08f) > kotlin.math.abs(start - 0.08f) - 0.02f)
+  }
+
+  @Test
+  fun hardWallMovesTowardAThreatenedGate() {
+    val world = World(CpuStyle.WALL, CpuLevel.HARD)
+    val gate = world.chips.first { it.side == Side.CPU && it.slot == 0 && it.alive }
+    val gateY = gate.y + gate.h / 2f
+    world.placeBall(0.40f, gateY, 0.55f, 0f)
+    repeat(24) { world.step(1f / 60f) }
+    assertTrue(world.cpuPaddleY < 0.42f)
+    assertTrue(kotlin.math.abs(world.cpuPaddleY - gateY) < kotlin.math.abs(0.5f - gateY))
+  }
+
+  @Test
+  fun hardCpuCutsADownwardAngleBeforeTheBallArrives() {
+    val world = World(CpuStyle.SLUGGER, CpuLevel.HARD)
+    world.placeBall(0.38f, 0.50f, 0.55f, 0.42f)
+    repeat(12) { world.step(1f / 60f) }
+    assertTrue(world.cpuPaddleY > 0.52f)
   }
 }

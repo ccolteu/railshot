@@ -47,6 +47,8 @@ object UiArt {
   const val BADGE_2P = "ui_2p.png"
   const val BTN_SELECT = "ui_btn_select.png"
   const val BTN_START = "ui_btn_start.png"
+  const val BTN_EASY = "ui_btn_easy.png"
+  const val BTN_HARD = "ui_btn_hard.png"
   const val ARROW_LEFT = "ui_arrow_left.png"
   const val FACE_FRAME_ON = "ui_face_frame_on.png"
   const val FACE_FRAME_OFF = "ui_face_frame_off.png"
