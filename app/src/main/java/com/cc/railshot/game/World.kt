@@ -424,7 +424,7 @@ class World {
   }
 
   companion object {
-    const val BALL_R = 0.036f
+    const val BALL_R = 0.027f
     const val BALL_SPEED = 0.72f
     const val SLICE_CENTER = 0.98f
     const val SLICE_EDGE = 0.32f
