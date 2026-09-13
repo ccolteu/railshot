@@ -206,6 +206,18 @@ class WorldTest {
   }
 
   @Test
+  fun tailBandsSplitTheLiveSpeedRangeInThirds() {
+    val min = World.TAIL_SPEED_MIN
+    val max = World.TAIL_SPEED_MAX
+    val span = max - min
+    assertEquals(BallTailBand.SHORT, World.tailBandForSpeed(min))
+    assertEquals(BallTailBand.SHORT, World.tailBandForSpeed(min + span * 0.32f))
+    assertEquals(BallTailBand.MEDIUM, World.tailBandForSpeed(min + span * 0.50f))
+    assertEquals(BallTailBand.LONG, World.tailBandForSpeed(min + span * 0.80f))
+    assertEquals(BallTailBand.LONG, World.tailBandForSpeed(max))
+  }
+
+  @Test
   fun serveParksTheBallInFrontOfTheYouSprite() {
     val world = World()
     assertEquals(World.YOU_FRONT_X + World.BALL_R_X + 0.004f, world.ballX, 0.0001f)

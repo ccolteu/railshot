@@ -370,11 +370,30 @@ Use section **D** for player sprites. Optional later: Hex projectile (`small blu
 
 **Ball** (`art/ui_ball.png`)
 
-Flaming gold **metal orb**. Fire is a **symmetric ring** (same on all sides). Do not draw a comet tail or rotate the sprite — the ball’s heading changes every rally.
+Bright **steel sphere** with gold bounce from the fire — 1994 arcade hard bands and dither, **no dark hemisphere**, **no baked outline** (the tail pocket is the rim). No flame on this file. Do not bake a comet or halo. Do not rotate the orb.
 
 ```
-60x60 gold steel sphere, circular fire halo equal on all sides, no tail, no volleyball, magenta background #FF00FF
+60x60 bright steel sphere, 1994 Neo Geo pixel art, hard bands and dithering not smooth gradients, white highlight, light steel and gold bounce, NO dark shadows, NO outline (the tail sprites hug the orb), no fire halo, no tail, magenta background #FF00FF
 ```
+
+**Ball tail** (six files, keyed `#FF00FF`)
+
+A straight **tight** fire cone that wraps the orb then tapers behind it. Tongues hug the axis — not a thin sperm-streak, not a bushy mane/beard of radial spikes, not a left/right wag.
+
+| Length | Flicker A | Flicker B |
+| --- | --- | --- |
+| Short (slow) | `ui_ball_tail_short_left.png` | `ui_ball_tail_short_right.png` |
+| Medium | `ui_ball_tail_medium_left.png` | `ui_ball_tail_medium_right.png` |
+| Long (fast) | `ui_ball_tail_long_left.png` | `ui_ball_tail_long_right.png` |
+
+Rules:
+
+1. **Complete tongues, no box crop.** The metal orb sits in a circular KEY pocket. Fire wraps that pocket, then the cone trails left. **Never crop** a flame to a rectangle, a circle, or a shorter length — chopped edges (horizontal *or* top/bottom) are wrong. Pack the full bbox of every tongue.
+2. **Two flicker poses, same tight cone.** `_left` / `_right` are **two different tongue layouts** (chips, wrap, embers) of the same axis-hugging cone — not a mirror, not a lean, and not a thin streak vs a burst.
+3. **Three lengths, complete flames.** Short / medium / long are separate PNGs. Each sprite contains the **full flame** from the wrap to a **natural tapering tip** (embers, dying tongues). Do not scale one sprite to fake speed. Draw scales the pocket to the ball; extra wrap is allowed to show.
+4. **Velocity bands.** Split the live speed range `[BALL_SPEED × SLICE_CENTER, BALL_SPEED × SLICE_CAP]` into three equal segments. Slow → short pair, medium → medium pair, high → long pair. Draw **no tail** when the ball is parked / serving (speed ≈ 0).
+5. **Flicker.** While that band is active, alternate its left/right file as the ball travels (distance-based, not wall-clock). When speed crosses a band, **switch in** that band’s left/right pair.
+6. **Heading.** Canvas-rotate the current tail around the ball center so the cone points opposite velocity. Pocket / attach is the same on every file: KEY hole on the **right**, cone to the **left**. Magenta `#FF00FF`. Draw maps that hole to the ball; do not squash the sprite to a 128px box.
 
 **Life chips** (`art/ui_chip_you.png`, `art/ui_chip_cpu.png`)
 
@@ -510,7 +529,7 @@ Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to
 - Time countdown **99 → 00** in the TIME well
 - Six chips per rail (holes when a chip dies)
 - Paddles / fighters in the lane
-- Ball
+- Ball plus speed-banded tail (`ui_ball_tail_{short,medium,long}_{left,right}.png`)
 - `ROUND` / `FIGHT` / `WIN` banners
 - Select cursor (`ui_1p.png` / `ui_2p.png`), arrows (`ui_arrow_left.png` + flip), SELECT (`ui_btn_select.png`)
 - Linger-then-VS transition

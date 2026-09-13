@@ -1,5 +1,6 @@
 package com.cc.railshot.ui
 
+import com.cc.railshot.game.BallTailBand
 import com.cc.railshot.game.Fighter
 import com.cc.railshot.game.PaddlePose
 
@@ -35,6 +36,36 @@ object UiArt {
   const val ARROW_LEFT = "ui_arrow_left.png"
   const val FACE_FRAME_ON = "ui_face_frame_on.png"
   const val FACE_FRAME_OFF = "ui_face_frame_off.png"
+  const val BALL = "ui_ball.png"
+
+  /** Packed KEY hole radius in every `ui_ball_tail_*.png`. */
+  const val TAIL_HOLE_R = 56f
+
+  fun ballTail(band: BallTailBand, left: Boolean): String {
+    val length =
+      when (band) {
+        BallTailBand.SHORT -> "short"
+        BallTailBand.MEDIUM -> "medium"
+        BallTailBand.LONG -> "long"
+      }
+    val side = if (left) "left" else "right"
+    return "ui_ball_tail_${length}_$side.png"
+  }
+
+  /** Pocket center in PNG pixels (KEY hole, radius [TAIL_HOLE_R]). */
+  fun ballTailPocket(path: String, width: Int, height: Int): Pair<Float, Float> {
+    val fromRight =
+      when {
+        path.contains("short_left") -> 66f
+        path.contains("short_right") -> 81f
+        path.contains("medium_left") -> 69f
+        path.contains("medium_right") -> 76f
+        path.contains("long_left") -> 68f
+        path.contains("long_right") -> 67f
+        else -> 68f
+      }
+    return (width - fromRight) to (height / 2f)
+  }
 
   fun roundNum(n: Int): String = "ui_num_${n.coerceIn(1, 3)}.png"
 }

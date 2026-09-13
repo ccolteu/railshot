@@ -24,6 +24,12 @@ enum class GameSfx {
   CHIP,
 }
 
+enum class BallTailBand {
+  SHORT,
+  MEDIUM,
+  LONG,
+}
+
 data class Chip(
   val x: Float,
   val y: Float,
@@ -182,6 +188,12 @@ class World {
   }
 
   internal fun ballSpeed(): Float = kotlin.math.sqrt(vx * vx + vy * vy)
+
+  internal fun ballVx(): Float = vx
+
+  internal fun ballVy(): Float = vy
+
+  fun ballTailBand(): BallTailBand = tailBandForSpeed(ballSpeed())
 
   internal fun setTimeLeft(seconds: Float) {
     timeLeft = seconds.coerceAtLeast(0f)
@@ -475,5 +487,16 @@ class World {
     val CPU_FRONT_X: Float = CPU_PADDLE_X + PADDLE_THICK - SPRITE_SPAN * (SPRITE_W - SPRITE_FRONT_PAD) / SPRITE_W
     val YOU_HIT_X: Float = YOU_FRONT_X - PADDLE_THICK
     val CPU_HIT_X: Float = CPU_FRONT_X
+    val TAIL_SPEED_MIN: Float = BALL_SPEED * SLICE_CENTER
+    val TAIL_SPEED_MAX: Float = BALL_SPEED * SLICE_CAP
+
+    fun tailBandForSpeed(speed: Float): BallTailBand {
+      val u = ((speed - TAIL_SPEED_MIN) / (TAIL_SPEED_MAX - TAIL_SPEED_MIN)).coerceIn(0f, 1f)
+      return when {
+        u < 1f / 3f -> BallTailBand.SHORT
+        u < 2f / 3f -> BallTailBand.MEDIUM
+        else -> BallTailBand.LONG
+      }
+    }
   }
 }

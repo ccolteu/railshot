@@ -23,6 +23,7 @@ import com.cc.railshot.game.SelectSession
 import com.cc.railshot.game.SelectStep
 import com.cc.railshot.game.Side
 import com.cc.railshot.game.World
+import kotlin.math.atan2
 import kotlin.math.min
 
 /**
@@ -52,6 +53,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private var dragging = false
   private var youFrames: Map<PaddlePose, Bitmap> = emptyMap()
   private var rivalFrames: Map<PaddlePose, Bitmap> = emptyMap()
+  private var tailTravel = 0f
 
   private val stage = RectF()
   private val src = Rect()
@@ -179,11 +181,15 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     world = World()
     announced = null
     dragging = false
+    tailTravel = 0f
     screen = Screen.MATCH
   }
 
   private fun stepMatch(dt: Float) {
     world.step(dt)
+    if (world.phase == Phase.PLAYING) {
+      tailTravel += world.ballSpeed() * dt
+    }
     for (sfx in world.drainSfx()) {
       when (sfx) {
         GameSfx.SHIELD -> SoundManager.instance.playSFX(SoundManager.SFX_SHIELD)
@@ -574,14 +580,25 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private fun drawBall(canvas: Canvas, courtL: Float, courtT: Float, courtW: Float, courtH: Float) {
     val radius = World.BALL_R * courtH
     val side = (radius * 2f).coerceAtLeast(2f)
-    blitFit(
-      canvas,
-      keyed("ui_ball.png"),
-      courtL + world.ballX * courtW - side / 2f,
-      courtT + world.ballY * courtH - side / 2f,
-      side,
-      side,
-    )
+    val cx = courtL + world.ballX * courtW
+    val cy = courtT + world.ballY * courtH
+    val speed = world.ballSpeed()
+    if (speed > World.BALL_SPEED * 0.08f) {
+      val left = ((tailTravel / TAIL_FLICKER_DIST).toInt() and 1) == 0
+      val path = UiArt.ballTail(world.ballTailBand(), left)
+      val bmp = keyed(path)
+      val (px, py) = UiArt.ballTailPocket(path, bmp.width, bmp.height)
+      val scale = radius / UiArt.TAIL_HOLE_R
+      val tailW = bmp.width * scale
+      val tailH = bmp.height * scale
+      val deg = Math.toDegrees(atan2(world.ballVy().toDouble(), world.ballVx().toDouble())).toFloat()
+      canvas.save()
+      canvas.clipRect(courtL, courtT, courtL + courtW, courtT + courtH)
+      canvas.rotate(deg, cx, cy)
+      blit(canvas, bmp, cx - px * scale, cy - py * scale, tailW, tailH)
+      canvas.restore()
+    }
+    blitFit(canvas, keyed(UiArt.BALL), cx - side / 2f, cy - side / 2f, side, side)
   }
 
   private fun drawWellText(
@@ -767,5 +784,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     const val YOU = 0xFF5EE0C8.toInt()
     const val CPU = 0xFFFF6B6B.toInt()
     const val MUTE_DIM = 0x598FA3B0
+    const val TAIL_FLICKER_DIST = 0.04f
   }
 }
