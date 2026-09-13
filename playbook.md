@@ -290,7 +290,7 @@ Do not skip ahead: later files are derived from earlier ones.
 
 No fighters, no HUD, no chips. Leave **empty vertical gutters** on left and right so in-game chips sit there. No purple IC squares. No top or bottom metal rails — the cabinet supplies those.
 
-Match **court + cabinet** load from the **2P / rival**. Files: `art/{name}/{name}_court_circuit.png` (opaque 1440×1080) and `art/{name}/{name}_ui_cabinet.png` (keyed 1440×1080, exact wells). **Approve each fighter’s pair** before generating the next. Missing files fall back to Rivet.
+Match **court + cabinet + chips** load from the **2P / rival**. Files: `art/{name}/{name}_court_circuit.png` (opaque 1440×1080), `art/{name}/{name}_ui_cabinet.png` (keyed 1440×1080, exact wells), and four gates `art/{name}/{name}_ui_chip_{you,cpu}.png` plus `..._down.png`. **Approve each fighter’s pair** (then that fighter’s chips) before generating the next. Missing files fall back to Rivet.
 
 | Fighter | Floor (playbook prompt) | Court file | Cabinet file |
 | --- | --- | --- | --- |
@@ -414,18 +414,24 @@ Rules:
 
 **Life chips** (gutter **gates**, two states)
 
-Behind each fighter. Same industrial steel as the cabinet (rivets, hard 1px ink). **Upright:** a thick vertical steel bar on the court-facing edge of the gutter (the gate edge-on, blocking the ball). **Flattened:** the gate has fallen onto its back — a **plain steel plate** filling the gutter slot, gold bolts, thin team accent, no stripes, no lamp cluster. P1 teal accent, P2 crimson. P2 is flipped in code. No numerals. Dead gates still draw (flattened); they do not collide.
+Behind each fighter. Theme matches the **2P court**, not a global steel set. **Upright:** a thick vertical bar on the court-facing edge of the gutter (the gate edge-on, blocking the ball) — **no bolts** (they read as noise on a phone). **Flattened:** the gate has fallen onto its back — a **plain plate** filling the gutter slot, **four medium gold bolts** (one per corner), thin team accent, no stripes, no lamp cluster, no bolt grid. P1 teal (or that court’s P1 accent), P2 crimson. P2 is flipped in code. No numerals. Dead gates still draw (flattened); they do not collide.
+
+Files: `{name}/{name}_ui_chip_you.png`, `{name}/{name}_ui_chip_cpu.png`, `{name}/{name}_ui_chip_you_down.png`, `{name}/{name}_ui_chip_cpu_down.png`. Standing **22×120**, down **48×120**. Magenta `#FF00FF` if the bar does not fill the canvas.
 
 | State | P1 | P2 |
 | --- | --- | --- |
-| Standing | `ui_chip_you.png` | `ui_chip_cpu.png` |
-| Flattened | `ui_chip_you_down.png` | `ui_chip_cpu_down.png` |
+| Standing | `{name}_ui_chip_you.png` | `{name}_ui_chip_cpu.png` |
+| Flattened | `{name}_ui_chip_you_down.png` | `{name}_ui_chip_cpu_down.png` |
+
+**Approve each fighter’s four chips** before the next fighter. Missing files fall back to Rivet. Gates must **read on that court’s empty side bands**: lighter or darker than the gutter, hard 1px ink, team seam. Do not paint them the same color as the gutter.
+
+Rivet (circuit steel):
 
 ```
-1994 Neo Geo sprite matching the cabinet metal, flat 2D, chunky pixels, hard 1px black outline, gold rivets, steel plate, dither, no 3D, no isometric. Standing: one thick vertical steel bar, gold rivets, TEAL seam, magenta #FF00FF sides. Flattened: plain steel rectangle filling the canvas, gold bolt grid, thin TEAL accent lines at top AND bottom, NO hazard stripes, NO lamps, NO extra chrome. No text.
+1994 Neo Geo sprite matching the cabinet metal, flat 2D, chunky pixels, hard 1px black outline, steel plate, dither, no 3D, no isometric. Standing: one thick vertical steel bar, NO bolts, TEAL seam, magenta #FF00FF sides. Flattened: plain steel rectangle filling the canvas, FOUR MEDIUM gold bolts (one in each corner), thin TEAL accent lines at top AND bottom, NO bolt grid, NO hazard stripes, NO lamps, NO extra chrome. No text.
 ```
 
-P2: same drawing, crimson lamp instead of teal.
+P2: same drawing, crimson seam instead of teal.
 
 ## Word and banner sprites
 

@@ -423,7 +423,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     for (chip in world.chips) {
       drawChip(
         canvas,
-        keyed(UiArt.chip(chip.side, standing = chip.alive)),
+        keyedOrFallback(
+          rival.art().stageChip(chip.side, standing = chip.alive),
+          Fighter.RIVET.art().stageChip(chip.side, standing = chip.alive),
+        ),
         chip.x,
         chip.y,
         chip.w,

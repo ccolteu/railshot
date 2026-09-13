@@ -24,6 +24,14 @@ data class FighterArt(
   val court: String? = null,
   /** Cabinet overlay. Loaded from the 2P / rival fighter. */
   val cabinet: String? = null,
+  /** Standing P1 gutter gate. Loaded from the 2P / rival. */
+  val chipYou: String? = null,
+  /** Standing P2 gutter gate. Loaded from the 2P / rival. */
+  val chipCpu: String? = null,
+  /** Flattened P1 gutter gate. Loaded from the 2P / rival. */
+  val chipYouDown: String? = null,
+  /** Flattened P2 gutter gate. Loaded from the 2P / rival. */
+  val chipCpuDown: String? = null,
 )
 
 object UiArt {
@@ -74,17 +82,28 @@ object UiArt {
   }
 
   fun roundNum(n: Int): String = "ui_num_${n.coerceIn(1, 3)}.png"
-
-  /** Standing gutter gate, or flattened after the ball scores that slot. */
-  fun chip(side: Side, standing: Boolean): String {
-    val who = if (side == Side.YOU) "you" else "cpu"
-    return if (standing) "ui_chip_$who.png" else "ui_chip_${who}_down.png"
-  }
 }
 
 fun FighterArt.stageCourt(): String = court ?: "rivet/rivet_court_circuit.png"
 
 fun FighterArt.stageCabinet(): String = cabinet ?: "rivet/rivet_ui_cabinet.png"
+
+fun FighterArt.stageChip(side: Side, standing: Boolean): String {
+  val path =
+    when {
+      standing && side == Side.YOU -> chipYou
+      standing -> chipCpu
+      side == Side.YOU -> chipYouDown
+      else -> chipCpuDown
+    }
+  return path
+    ?: when {
+      standing && side == Side.YOU -> "rivet/rivet_ui_chip_you.png"
+      standing -> "rivet/rivet_ui_chip_cpu.png"
+      side == Side.YOU -> "rivet/rivet_ui_chip_you_down.png"
+      else -> "rivet/rivet_ui_chip_cpu_down.png"
+    }
+}
 
 fun FighterArt.courtFrame(left: Boolean, pose: PaddlePose): String? =
   when (pose) {
@@ -131,6 +150,10 @@ fun Fighter.art(): FighterArt =
         wins = "rivet/rivet_wins.png",
         court = "rivet/rivet_court_circuit.png",
         cabinet = "rivet/rivet_ui_cabinet.png",
+        chipYou = "rivet/rivet_ui_chip_you.png",
+        chipCpu = "rivet/rivet_ui_chip_cpu.png",
+        chipYouDown = "rivet/rivet_ui_chip_you_down.png",
+        chipCpuDown = "rivet/rivet_ui_chip_cpu_down.png",
       )
     Fighter.ASH ->
       FighterArt(
@@ -150,6 +173,10 @@ fun Fighter.art(): FighterArt =
         wins = "ash/ash_wins.png",
         court = "ash/ash_court_circuit.png",
         cabinet = "ash/ash_ui_cabinet.png",
+        chipYou = "ash/ash_ui_chip_you.png",
+        chipCpu = "ash/ash_ui_chip_cpu.png",
+        chipYouDown = "ash/ash_ui_chip_you_down.png",
+        chipCpuDown = "ash/ash_ui_chip_cpu_down.png",
       )
     Fighter.KITE ->
       FighterArt(
@@ -169,6 +196,10 @@ fun Fighter.art(): FighterArt =
         wins = "kite/kite_wins.png",
         court = "kite/kite_court_circuit.png",
         cabinet = "kite/kite_ui_cabinet.png",
+        chipYou = "kite/kite_ui_chip_you.png",
+        chipCpu = "kite/kite_ui_chip_cpu.png",
+        chipYouDown = "kite/kite_ui_chip_you_down.png",
+        chipCpuDown = "kite/kite_ui_chip_cpu_down.png",
       )
     Fighter.MARU ->
       FighterArt(
@@ -188,6 +219,10 @@ fun Fighter.art(): FighterArt =
         wins = "maru/maru_wins.png",
         court = "maru/maru_court_circuit.png",
         cabinet = "maru/maru_ui_cabinet.png",
+        chipYou = "maru/maru_ui_chip_you.png",
+        chipCpu = "maru/maru_ui_chip_cpu.png",
+        chipYouDown = "maru/maru_ui_chip_you_down.png",
+        chipCpuDown = "maru/maru_ui_chip_cpu_down.png",
       )
     Fighter.QUILL ->
       FighterArt(
@@ -207,6 +242,10 @@ fun Fighter.art(): FighterArt =
         wins = "quill/quill_wins.png",
         court = "quill/quill_court_circuit.png",
         cabinet = "quill/quill_ui_cabinet.png",
+        chipYou = "quill/quill_ui_chip_you.png",
+        chipCpu = "quill/quill_ui_chip_cpu.png",
+        chipYouDown = "quill/quill_ui_chip_you_down.png",
+        chipCpuDown = "quill/quill_ui_chip_cpu_down.png",
       )
     Fighter.HEX ->
       FighterArt(
@@ -226,5 +265,9 @@ fun Fighter.art(): FighterArt =
         wins = "hex/hex_wins.png",
         court = "hex/hex_court_circuit.png",
         cabinet = "hex/hex_ui_cabinet.png",
+        chipYou = "hex/hex_ui_chip_you.png",
+        chipCpu = "hex/hex_ui_chip_cpu.png",
+        chipYouDown = "hex/hex_ui_chip_you_down.png",
+        chipCpuDown = "hex/hex_ui_chip_cpu_down.png",
       )
   }
