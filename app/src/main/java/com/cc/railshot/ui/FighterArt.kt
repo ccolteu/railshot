@@ -20,6 +20,10 @@ data class FighterArt(
   val hitRight: String? = null,
   val ending: String? = null,
   val wins: String? = null,
+  /** Match floor. Loaded from the 2P / rival fighter. */
+  val court: String? = null,
+  /** Cabinet overlay. Loaded from the 2P / rival fighter. */
+  val cabinet: String? = null,
 )
 
 object UiArt {
@@ -78,6 +82,10 @@ object UiArt {
   }
 }
 
+fun FighterArt.stageCourt(): String = court ?: "rivet/rivet_court_circuit.png"
+
+fun FighterArt.stageCabinet(): String = cabinet ?: "rivet/rivet_ui_cabinet.png"
+
 fun FighterArt.courtFrame(left: Boolean, pose: PaddlePose): String? =
   when (pose) {
     PaddlePose.IDLE -> if (left) idleLeft else idleRight
@@ -121,6 +129,8 @@ fun Fighter.art(): FighterArt =
         hitRight = "rivet/rivet_game_hit_right.png",
         ending = "rivet/rivet_ending.png",
         wins = "rivet/rivet_wins.png",
+        court = "rivet/rivet_court_circuit.png",
+        cabinet = "rivet/rivet_ui_cabinet.png",
       )
     Fighter.ASH ->
       FighterArt(
@@ -138,6 +148,8 @@ fun Fighter.art(): FighterArt =
         hitRight = "ash/ash_game_hit_right.png",
         ending = "ash/ash_ending.png",
         wins = "ash/ash_wins.png",
+        court = "ash/ash_court_circuit.png",
+        cabinet = "ash/ash_ui_cabinet.png",
       )
     Fighter.KITE ->
       FighterArt(
@@ -155,6 +167,8 @@ fun Fighter.art(): FighterArt =
         hitRight = "kite/kite_game_hit_right.png",
         ending = "kite/kite_ending.png",
         wins = "kite/kite_wins.png",
+        court = "kite/kite_court_circuit.png",
+        cabinet = "kite/kite_ui_cabinet.png",
       )
     Fighter.MARU ->
       FighterArt(
@@ -172,6 +186,8 @@ fun Fighter.art(): FighterArt =
         hitRight = "maru/maru_game_hit_right.png",
         ending = "maru/maru_ending.png",
         wins = "maru/maru_wins.png",
+        court = "maru/maru_court_circuit.png",
+        cabinet = "maru/maru_ui_cabinet.png",
       )
     Fighter.QUILL ->
       FighterArt(
@@ -189,6 +205,8 @@ fun Fighter.art(): FighterArt =
         hitRight = "quill/quill_game_hit_right.png",
         ending = "quill/quill_ending.png",
         wins = "quill/quill_wins.png",
+        court = "quill/quill_court_circuit.png",
+        cabinet = "quill/quill_ui_cabinet.png",
       )
     Fighter.HEX ->
       FighterArt(
@@ -206,5 +224,7 @@ fun Fighter.art(): FighterArt =
         hitRight = "hex/hex_game_hit_right.png",
         ending = "hex/hex_ending.png",
         wins = "hex/hex_wins.png",
+        court = "hex/hex_court_circuit.png",
+        cabinet = "hex/hex_ui_cabinet.png",
       )
   }

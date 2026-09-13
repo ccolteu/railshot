@@ -419,7 +419,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val courtB = vh - World.FRAME_BOTTOM * vh
     val courtW = courtR - courtL
     val courtH = courtB - courtT
-    blitFill(canvas, opaque("court_circuit.png"), courtL, courtT, courtW, courtH)
+    blitFill(canvas, opaqueOrFallback(rival.art().stageCourt(), Fighter.RIVET.art().stageCourt()), courtL, courtT, courtW, courtH)
     for (chip in world.chips) {
       drawChip(
         canvas,
@@ -479,7 +479,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       }
       else -> {}
     }
-    blitFill(canvas, keyed("ui_cabinet.png", hole = true), 0f, 0f, vw, vh)
+    blitFill(canvas, keyedOrFallback(rival.art().stageCabinet(), Fighter.RIVET.art().stageCabinet(), hole = true), 0f, 0f, vw, vh)
     drawWellText(canvas, World.P1_SCORE_INSET, world.youScore.toString().padStart(2, '0'), YOU, 0.72f, vw, vh)
     drawWellText(canvas, World.P1_NAME_INSET, you.displayName.uppercase(), CREAM, 0.42f, vw, vh)
     drawSetDots(canvas, World.P1_SETS_INSET, world.youSets, YOU, vw, vh)
@@ -776,7 +776,23 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     return bitmaps.getOrPut(key) { loadKeyedBitmap(context, path, hole) }
   }
 
+  private fun keyedOrFallback(path: String, fallback: String, hole: Boolean = false): Bitmap {
+    return try {
+      keyed(path, hole)
+    } catch (_: Exception) {
+      keyed(fallback, hole)
+    }
+  }
+
   private fun opaque(path: String): Bitmap = bitmaps.getOrPut("o:$path") { loadOpaqueBitmap(context, path) }
+
+  private fun opaqueOrFallback(path: String, fallback: String): Bitmap {
+    return try {
+      opaque(path)
+    } catch (_: Exception) {
+      opaque(fallback)
+    }
+  }
 
   private fun loadCourtFrames(art: FighterArt, left: Boolean): Map<PaddlePose, Bitmap> {
     val out = LinkedHashMap<PaddlePose, Bitmap>()

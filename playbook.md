@@ -55,7 +55,7 @@ Canonical sprites live in **`art/`** (`art/{name}/…png`, `art/ui_*.png`). Do *
 
 **Launcher icon** is the exception: source `art/ui_launcher.png` (flaming steel play-ball, arcade teal plate, **no magenta**, not a fighter). Pack into `res/mipmap-*` and adaptive `ic_launcher_foreground`. Do not use a roster portrait.
 
-The Android stage is a centered **4:3 cabinet** (`ui_cabinet.png`, 1440×1080). **Define inset pixels first** (`World` cabinet constants). Draw / generate the cabinet **around those rects** so chrome and wells are the same layout. Never measure wells after the fact and nudge HUD to match a mismatched PNG. The **playfield** is a **4:3 magenta inset** (1152×864). Court floors `FIT_XY` in that inset. HUD text is **typeset in code** and **scaled to the well** so it stays inside. Do not use name sprites in cabinet wells.
+The Android stage is a centered **4:3 cabinet** (`{name}/{name}_ui_cabinet.png`, 1440×1080), chosen from the **2P / rival** fighter. **Define inset pixels first** (`World` cabinet constants). Draw / generate the cabinet **around those rects** so chrome and wells are the same layout. Never measure wells after the fact and nudge HUD to match a mismatched PNG. The **playfield** is a **4:3 magenta inset** (1152×864). Court floors `FIT_XY` in that inset. HUD text is **typeset in code** and **scaled to the well** so it stays inside. Do not use name sprites in cabinet wells.
 
 ## Audio
 
@@ -290,6 +290,17 @@ Do not skip ahead: later files are derived from earlier ones.
 
 No fighters, no HUD, no chips. Leave **empty vertical gutters** on left and right so in-game chips sit there. No purple IC squares. No top or bottom metal rails — the cabinet supplies those.
 
+Match **court + cabinet** load from the **2P / rival**. Files: `art/{name}/{name}_court_circuit.png` (opaque 1440×1080) and `art/{name}/{name}_ui_cabinet.png` (keyed 1440×1080, exact wells). **Approve each fighter’s pair** before generating the next. Missing files fall back to Rivet.
+
+| Fighter | Floor (playbook prompt) | Court file | Cabinet file |
+| --- | --- | --- | --- |
+| Rivet | Circuit stadium | `rivet/rivet_court_circuit.png` | `rivet/rivet_ui_cabinet.png` |
+| Ash | Parking garage | `ash/ash_court_circuit.png` | `ash/ash_ui_cabinet.png` |
+| Kite | Soccer pitch | `kite/kite_court_circuit.png` | `kite/kite_ui_cabinet.png` |
+| Maru | Highland moor | `maru/maru_court_circuit.png` | `maru/maru_ui_cabinet.png` |
+| Quill | Forest aerie | `quill/quill_court_circuit.png` | `quill/quill_ui_cabinet.png` |
+| Hex | Night city grid (deep blue PCB) | `hex/hex_court_circuit.png` | `hex/hex_ui_cabinet.png` |
+
 **Circuit stadium**
 
 ```
@@ -302,10 +313,10 @@ Top-down 4:3 empty sports court floor, teal circuit-board traces only, gold brok
 Top-down 4:3 empty parking garage lane as a sports court, grey concrete with oil specks, yellow-black hazard stripes on floor rails, cars barely visible at the far top, pink neon edge lights, empty left and right margins for life chips, no people, no HUD, pixel art, 1440x1080
 ```
 
-**Cave temple**
+**Highland moor**
 
 ```
-Top-down 4:3 empty stone court, cracked brown rock tiles, bright white center line, icy blue side columns, dark cave doors at left and right edges, no people, no HUD, pixel art, 1440x1080
+Top-down 4:3 empty Scottish highland moor as a volley court, light mottled sage peat and heather (NOT mowed soccer stripes), gold broken circle with X, empty plain stone chip gutters, no people, no HUD, pixel art, 1440x1080
 ```
 
 **Soccer pitch**
@@ -314,13 +325,19 @@ Top-down 4:3 empty stone court, cracked brown rock tiles, bright white center li
 Top-down 4:3 empty soccer pitch court, green checkerboard grass, white penalty arcs and center circle, yard numbers 5 and 10, empty side gutters for chips, no people, no HUD, pixel art, 1440x1080
 ```
 
-**Night city grid**
+**Forest aerie** (Quill)
+
+```
+Top-down 4:3 empty woodland clearing as a volley court, warm packed earth and sparse rust leaves (NOT neon, NOT PCB traces), gold broken circle with X, empty plain bark chip gutters, no people, no HUD, pixel art, 1440x1080
+```
+
+**Night city grid** (Hex)
 
 ```
 Top-down 4:3 empty neon grid court, deep blue PCB city map, green center beam, pink and gold vertical rails, empty chip gutters, no people, no HUD, pixel art, 1440x1080
 ```
 
-**Cabinet** (`art/ui_cabinet.png`) — overlay on every court
+**Cabinet** (`art/{name}/{name}_ui_cabinet.png`) — overlay on that fighter’s court when they are 2P
 
 The cabinet **is 4:3** (canonical **1440×1080**). It is the machine, not the court.
 
