@@ -29,12 +29,13 @@ import kotlin.math.atan2
 import kotlin.math.min
 
 /**
- * One Choreographer SurfaceView for title, select, VS, and match (WW2 Blitz shape).
+ * One Choreographer SurfaceView for title, demo, select, VS, and match (WW2 Blitz shape).
  */
 class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback, Choreographer.FrameCallback {
 
   private enum class Screen {
     TITLE,
+    DEMO,
     SELECT,
     VS,
     MATCH,
@@ -46,7 +47,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private var lastNanos = 0L
   private var screen = Screen.TITLE
   private var titleT = 0f
+  private var demoT = 0f
   private var lingerT = 0f
+  private var selectIdleT = 0f
   private val select = SelectSession()
   private var you: Fighter = Fighter.RIVET
   private var rival: Fighter = Fighter.RIVET
@@ -118,12 +121,16 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     when (screen) {
       Screen.TITLE -> {
         titleT += dt
-        if (titleT >= TITLE_HOLD_S) goSelect()
+        if (titleT >= TITLE_HOLD_S) goDemo()
       }
+      Screen.DEMO -> stepDemo(dt)
       Screen.SELECT -> {
         if (select.step == SelectStep.LOCKED) {
           lingerT += dt
           if (lingerT >= SELECT_LINGER_MS / 1000f) goVs()
+        } else {
+          selectIdleT += dt
+          if (selectIdleT >= SELECT_IDLE_S) goTitle()
         }
       }
       Screen.VS -> {}
@@ -154,12 +161,37 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       return true
     }
     when (screen) {
-      Screen.TITLE -> if (event.actionMasked == MotionEvent.ACTION_DOWN) goSelect()
-      Screen.SELECT -> if (event.actionMasked == MotionEvent.ACTION_DOWN) touchSelect(x, y, sw, sh)
+      Screen.TITLE, Screen.DEMO -> if (event.actionMasked == MotionEvent.ACTION_DOWN) goSelect()
+      Screen.SELECT ->
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+          if (select.step != SelectStep.LOCKED) selectIdleT = 0f
+          touchSelect(x, y, sw, sh)
+        }
       Screen.VS -> if (event.actionMasked == MotionEvent.ACTION_DOWN) touchVs(x, y, sw, sh)
       Screen.MATCH -> touchMatch(event, x, y, sw, sh)
     }
     return true
+  }
+
+  private fun goTitle() {
+    screen = Screen.TITLE
+    titleT = 0f
+    demoT = 0f
+    lingerT = 0f
+    selectIdleT = 0f
+  }
+
+  private fun goDemo() {
+    you = Fighter.roster.random()
+    rival = Fighter.roster.random()
+    youFrames = loadCourtFrames(you.art(), left = true)
+    rivalFrames = loadCourtFrames(rival.art(), left = false)
+    world = World(you = you, rival = rival, cpuLevel = CpuLevel.HARD, attract = true)
+    announced = null
+    dragging = false
+    tailTravel = 0f
+    demoT = 0f
+    screen = Screen.DEMO
   }
 
   private fun goSelect() {
@@ -167,6 +199,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     screen = Screen.SELECT
     select.reset()
     lingerT = 0f
+    selectIdleT = 0f
   }
 
   private fun goVs() {
@@ -187,6 +220,16 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     dragging = false
     tailTravel = 0f
     screen = Screen.MATCH
+  }
+
+  private fun stepDemo(dt: Float) {
+    demoT += dt
+    world.step(dt)
+    if (world.phase == Phase.PLAYING && !world.impactFrozen()) {
+      tailTravel += world.ballSpeed() * dt
+    }
+    world.drainSfx()
+    if (demoT >= DEMO_HOLD_S) goTitle()
   }
 
   private fun stepMatch(dt: Float) {
@@ -290,11 +333,29 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val sh = stage.height()
     when (screen) {
       Screen.TITLE -> blitFill(canvas, opaque(UiArt.TITLE), 0f, 0f, sw, sh)
+      Screen.DEMO -> drawDemo(canvas, sw, sh)
       Screen.SELECT -> drawSelect(canvas, sw, sh)
       Screen.VS -> drawVs(canvas, sw, sh)
       Screen.MATCH -> drawMatch(canvas, sw, sh)
     }
     canvas.restore()
+  }
+
+  private fun drawDemo(canvas: Canvas, sw: Float, sh: Float) {
+    drawMatch(canvas, sw, sh)
+    if ((demoT / DEMO_FLASH_S).toInt() % 2 == 1) return
+    val courtL = World.FRAME_LEFT * sw
+    val courtT = World.FRAME_TOP * sh
+    val courtW = sw - World.FRAME_LEFT * sw - World.FRAME_RIGHT * sw
+    val courtH = sh - World.FRAME_TOP * sh - World.FRAME_BOTTOM * sh
+    val cx = courtL + courtW / 2f
+    val cy = courtT + courtH / 2f
+    val label = "DEMO"
+    textPaint.textSize = courtH * 0.09f
+    val fm = textPaint.fontMetrics
+    val ty = cy - (fm.ascent + fm.descent) / 2f
+    textPaint.color = DEMO_RED
+    canvas.drawText(label, cx, ty, textPaint)
   }
 
   private fun drawSelect(canvas: Canvas, sw: Float, sh: Float) {
@@ -462,8 +523,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       youFrames,
       world.youPose(),
       World.YOU_PADDLE_X,
-      world.youPaddleTop(),
-      world.youKit.paddleLen,
+      world.youPaddleY,
       true,
       YOU,
       courtL,
@@ -476,8 +536,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       rivalFrames,
       world.cpuPose(),
       World.CPU_PADDLE_X,
-      world.cpuPaddleTop(),
-      world.cpuKit.paddleLen,
+      world.cpuPaddleY,
       false,
       CPU,
       courtL,
@@ -573,8 +632,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     frames: Map<PaddlePose, Bitmap>,
     pose: PaddlePose,
     paddleX: Float,
-    paddleTop: Float,
-    paddleLen: Float,
+    paddleY: Float,
     leftCourt: Boolean,
     fallback: Int,
     courtL: Float,
@@ -583,9 +641,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     courtH: Float,
   ) {
     val bmp = frames[pose] ?: frames[PaddlePose.IDLE]
-    val spriteH = paddleLen * courtH
+    val spriteH = World.PADDLE_LEN * courtH
     val spriteW = spriteH * (World.SPRITE_W / World.SPRITE_H.toFloat())
-    val top = courtT + paddleTop * courtH
+    val top = courtT + (paddleY - World.PADDLE_LEN / 2f) * courtH
     val left =
       if (leftCourt) courtL + paddleX * courtW
       else courtL + paddleX * courtW + World.PADDLE_THICK * courtW - spriteW
@@ -891,6 +949,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private companion object {
     const val MAX_FRAME_NS = 50_000_000L
     const val TITLE_HOLD_S = 5f
+    const val DEMO_HOLD_S = 10f
+    const val SELECT_IDLE_S = 45f
+    const val DEMO_FLASH_S = 0.45f
+    const val DEMO_RED = 0xFFE01414.toInt()
     const val CABINET = 0xFF0C1822.toInt()
     const val INK = 0xFF071018.toInt()
     const val CREAM = 0xFFF3EFE4.toInt()

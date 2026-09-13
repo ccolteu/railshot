@@ -233,7 +233,7 @@ File names must include `vs_left` / `vs_right` (example: `rivet_vs_left.png`).
 
 ### D — In-game paddle sprites
 
-These replace the paddle. The game **does not pan inside the PNG**. It draws whichever frame is active (idle, walk, hit) at the **same court position**. Frames must read as a short movie: only the pose changes.
+These replace the paddle. The game **does not pan inside the PNG**. It draws whichever frame is active (idle, walk, hit) at the **same court position** and the **same on-screen size** for every fighter (packed **192×233**, baseline paddle height). Kit `paddleLen` is the **hitbox only**. Do not scale the sprite to the hitbox.
 
 #### Overlay animation rules
 
@@ -383,7 +383,7 @@ Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1
 
 **CPU** loads from the **2P fighter**. **Wall** (Maru, Hex): camps a living gate, smaller motion. **Slugger** (Rivet, Ash, Kite, Quill): chases, overcommits. VS opens on **EASY**; arrows cycle **EASY / HARD** buttons (`ui_btn_easy.png` / `ui_btn_hard.png`). Easy abandons high/low rails and reacts late. Hard predicts the bounce and cuts the line.
 
-**Fighter kits** (P1 and 2P, code): same sport, tiny knobs. Rivet hotter bounce. Ash more swipe. Kite longer/faster. Maru slower, fatter slice. Quill steeper rims. Hex shorter/softer (star shot later). Select typesets one flavor line under the name sprite. Do not bake flavor into portraits.
+**Fighter kits** (P1 and 2P, code): same sport, tiny knobs. Rivet hotter bounce. Ash more swipe. Kite longer/faster. Maru slower, fatter slice. Quill steeper rims. Hex shorter/softer (star shot later). Court sprites **do not** scale with those knobs. Select typesets one flavor line under the name sprite. Do not bake flavor into portraits.
 
 ## In-game extras
 
@@ -479,6 +479,15 @@ Bonus tally labels:
 ```
 Pixel words TARGET, PERFECT, STRAIGHT, TOTAL, blue-to-yellow gradient, outlined, one row, magenta background
 ```
+
+## Cabinet loop
+
+Two separate screens. Do **not** composite the CPU match under or over `ui_title.png`.
+
+1. **Title.** Full start image only. Hold **5 seconds**, then go to demo. Tap anywhere → character select.
+2. **Demo.** A **CPU vs CPU** match for **10 seconds** (random roster pair each time, mirrors allowed, **HARD** on both rails, no SFX / announcer). Typeset **DEMO** in smaller red letters in the **center of the court**, flashing, no black outline. Then return to title (next demo rolls a new pair). Tap anywhere → character select.
+
+**Select idle.** If nobody touches the screen for **45 seconds** while picking, return to **title** (cabinet that never got a confirm). Any tap on select resets the timer. After both fighters are locked (linger into VS), do **not** idle-kick.
 
 ## Character select layout
 

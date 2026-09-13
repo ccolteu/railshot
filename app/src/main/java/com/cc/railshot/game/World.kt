@@ -61,6 +61,7 @@ class World(
   val rival: Fighter = Fighter.MARU,
   val cpuLevel: CpuLevel = CpuLevel.HARD,
   val cpuStyle: CpuStyle = CpuStyle.forFighter(rival),
+  val attract: Boolean = false,
 ) {
   constructor(cpuStyle: CpuStyle, cpuLevel: CpuLevel) : this(
     you = Fighter.RIVET,
@@ -71,6 +72,7 @@ class World(
 
   val youKit: FighterKit = FighterKit.of(you)
   val cpuKit: FighterKit = FighterKit.of(rival)
+  private val youStyle: CpuStyle = CpuStyle.forFighter(you)
   var phase: Phase = Phase.ROUND
     private set
   var youScore: Int = 0
@@ -116,11 +118,15 @@ class World(
   init {
     dealChips()
     parkBall()
+    if (attract) {
+      phase = Phase.SERVE
+      launch()
+    }
   }
 
-  fun youFrontX(): Float = Companion.youFrontX(youKit.paddleLen)
+  fun youFrontX(): Float = Companion.youFrontX(PADDLE_LEN)
 
-  fun cpuFrontX(): Float = Companion.cpuFrontX(cpuKit.paddleLen)
+  fun cpuFrontX(): Float = Companion.cpuFrontX(PADDLE_LEN)
 
   fun roundNumber(): Int = (youSets + cpuSets + 1).coerceIn(1, 3)
 
@@ -177,8 +183,10 @@ class World(
     val clamped = dt.coerceAtMost(0.05f)
     tickHits(clamped)
     tickJuice(clamped)
-    youPaddleVy = (youPaddleY - youPaddleYPrev) / clamped.coerceAtLeast(0.0001f)
-    youPaddleYPrev = youPaddleY
+    if (!attract) {
+      youPaddleVy = (youPaddleY - youPaddleYPrev) / clamped.coerceAtLeast(0.0001f)
+      youPaddleYPrev = youPaddleY
+    }
     if (freezeT > 0f && phase == Phase.PLAYING) {
       cpuMoved = false
       cpuPaddleVy = 0f
@@ -214,8 +222,14 @@ class World(
     cpuMoved = false
     while (left > 0f && phase == Phase.PLAYING) {
       val step = if (left < slice) left else slice
+      if (attract) {
+        val beforeYou = youPaddleY
+        steerPaddle(step, towardCpu = false)
+        youPaddleVy = (youPaddleY - beforeYou) / step
+        if (kotlin.math.abs(youPaddleY - beforeYou) > WALK_EPS) youWalkT = WALK_HOLD
+      }
       val beforeCpu = cpuPaddleY
-      steerCpu(step)
+      steerPaddle(step, towardCpu = true)
       cpuPaddleVy = (cpuPaddleY - beforeCpu) / step
       cpuMoved = cpuMoved || kotlin.math.abs(cpuPaddleY - beforeCpu) > WALK_EPS
       advance(step)
@@ -296,63 +310,74 @@ class World(
     if (phase == Phase.ROUND) phase = Phase.SERVE
   }
 
-  private fun steerCpu(dt: Float) {
-    if (vx <= 0f || ballX < cpuReactX()) return
-    val chase = if (cpuLevel == CpuLevel.HARD) interceptY(cpuFrontX()) else ballY
+  private fun steerPaddle(dt: Float, towardCpu: Boolean) {
+    val style = if (towardCpu) cpuStyle else youStyle
+    val kit = if (towardCpu) cpuKit else youKit
+    val y = if (towardCpu) cpuPaddleY else youPaddleY
+    val incoming = if (towardCpu) vx > 0f else vx < 0f
+    if (!incoming) return
+    if (towardCpu && ballX < cpuReactX()) return
+    if (!towardCpu && ballX > 1f - cpuReactX()) return
+    val front = if (towardCpu) cpuFrontX() else youFrontX()
+    val chase = if (cpuLevel == CpuLevel.HARD) interceptY(front, towardCpu) else ballY
     if (cpuLevel == CpuLevel.EASY && (chase < 0.17f || chase > 0.83f)) {
       // Leave the rails open — retreat toward mid instead of covering a high/low shot.
-      val mid = 0.5f - cpuPaddleY
-      val max = cpuSpeed() * 0.55f * dt
-      val half = cpuKit.paddleLen / 2f
-      cpuPaddleY = (cpuPaddleY + mid.coerceIn(-max, max)).coerceIn(half, 1f - half)
+      val mid = 0.5f - y
+      val max = cpuSpeed(style, kit) * 0.55f * dt
+      val half = kit.paddleLen / 2f
+      writePaddleY(towardCpu, (y + mid.coerceIn(-max, max)).coerceIn(half, 1f - half))
       return
     }
-    val camp = threatenedGateY() ?: chase
-    val mix = campMix()
+    val camp = threatenedGateY(if (towardCpu) Side.CPU else Side.YOU) ?: chase
+    val mix = campMix(style)
     var target = chase * (1f - mix) + camp * mix
-    val error = target - cpuPaddleY
-    if (cpuStyle == CpuStyle.SLUGGER && kotlin.math.abs(error) > 0.012f) {
+    val error = target - y
+    if (style == CpuStyle.SLUGGER && kotlin.math.abs(error) > 0.012f) {
       target += kotlin.math.sign(error) * overshoot()
     }
-    val max = cpuSpeed() * dt
+    val max = cpuSpeed(style, kit) * dt
     val step =
-      if (cpuStyle == CpuStyle.SLUGGER && kotlin.math.abs(error) > 0.008f) {
+      if (style == CpuStyle.SLUGGER && kotlin.math.abs(error) > 0.008f) {
         kotlin.math.sign(error) * max
       } else {
-        (target - cpuPaddleY).coerceIn(-max, max)
+        (target - y).coerceIn(-max, max)
       }
-    val half = cpuKit.paddleLen / 2f
-    cpuPaddleY = (cpuPaddleY + step).coerceIn(half, 1f - half)
+    val half = kit.paddleLen / 2f
+    writePaddleY(towardCpu, (y + step).coerceIn(half, 1f - half))
   }
 
-  private fun cpuSpeed(): Float {
+  private fun writePaddleY(towardCpu: Boolean, y: Float) {
+    if (towardCpu) cpuPaddleY = y else youPaddleY = y
+  }
+
+  private fun cpuSpeed(style: CpuStyle, kit: FighterKit): Float {
     val base =
       when {
-        cpuLevel == CpuLevel.HARD && cpuStyle == CpuStyle.SLUGGER -> 0.46f
+        cpuLevel == CpuLevel.HARD && style == CpuStyle.SLUGGER -> 0.46f
         cpuLevel == CpuLevel.HARD -> 0.34f
-        cpuStyle == CpuStyle.SLUGGER -> 0.22f
+        style == CpuStyle.SLUGGER -> 0.22f
         else -> 0.16f
       }
-    return base * cpuKit.moveMul
+    return base * kit.moveMul
   }
 
   private fun cpuReactX(): Float = if (cpuLevel == CpuLevel.HARD) 0.36f else 0.68f
 
-  private fun campMix(): Float =
+  private fun campMix(style: CpuStyle): Float =
     when {
-      cpuStyle == CpuStyle.WALL && cpuLevel == CpuLevel.HARD -> 0.62f
-      cpuStyle == CpuStyle.WALL -> 0.48f
+      style == CpuStyle.WALL && cpuLevel == CpuLevel.HARD -> 0.62f
+      style == CpuStyle.WALL -> 0.48f
       cpuLevel == CpuLevel.HARD -> 0.12f
       else -> 0.05f
     }
 
   private fun overshoot(): Float = if (cpuLevel == CpuLevel.EASY) 0.09f else 0.045f
 
-  private fun threatenedGateY(): Float? {
+  private fun threatenedGateY(side: Side): Float? {
     var bestY: Float? = null
     var bestD = Float.MAX_VALUE
     for (chip in chips) {
-      if (chip.side != Side.CPU || !chip.alive) continue
+      if (chip.side != side || !chip.alive) continue
       val cy = chip.y + chip.h / 2f
       val d = kotlin.math.abs(cy - ballY)
       if (d < bestD) {
@@ -363,17 +388,21 @@ class World(
     return bestY
   }
 
-  private fun interceptY(frontX: Float): Float {
+  private fun interceptY(frontX: Float, towardCpu: Boolean): Float {
     var x = ballX
     var y = ballY
     var svx = vx
     var svy = vy
-    if (svx <= 0.01f) return y
+    if (towardCpu && svx <= 0.01f) return y
+    if (!towardCpu && svx >= -0.01f) return y
     var guard = 0
     val lo = BALL_R
     val hi = 1f - BALL_R
-    while (x < frontX && guard++ < 24) {
+    while (guard++ < 24) {
+      val approaching = if (towardCpu) x < frontX else x > frontX
+      if (!approaching) break
       val dt = (frontX - x) / svx
+      if (dt <= 0f) break
       val nextY = y + svy * dt
       if (nextY in lo..hi) return nextY
       if (svy > 0.001f) {

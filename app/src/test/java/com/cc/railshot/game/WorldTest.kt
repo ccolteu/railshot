@@ -347,6 +347,17 @@ class WorldTest {
   }
 
   @Test
+  fun attractSteersTheLeftPaddle() {
+    val world =
+      World(you = Fighter.ASH, rival = Fighter.MARU, cpuLevel = CpuLevel.HARD, attract = true)
+    world.placeBall(0.30f, 0.22f, -0.7f, 0f)
+    val start = world.youPaddleY
+    repeat(18) { world.step(1f / 60f) }
+    assertTrue(world.youPaddleY < start)
+    assertTrue(kotlin.math.abs(world.youPaddleY - 0.22f) < kotlin.math.abs(start - 0.22f))
+  }
+
+  @Test
   fun quillSteepRimIsSteeperThanRivet() {
     val rivet = World(you = Fighter.RIVET)
     val quill = World(you = Fighter.QUILL)
