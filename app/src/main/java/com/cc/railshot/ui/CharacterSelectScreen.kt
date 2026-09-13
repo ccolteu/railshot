@@ -243,6 +243,7 @@ private fun FaceTile(
       contentDescription = null,
       modifier = Modifier.fillMaxSize(),
       contentScale = ContentScale.Fit,
+      keyHoleBleed = true,
     )
     val badge =
       when {

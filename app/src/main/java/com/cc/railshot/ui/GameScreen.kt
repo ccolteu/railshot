@@ -28,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -63,7 +64,11 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 @Composable
-fun GameScreen(you: Fighter = Fighter.RIVET, rival: Fighter = Fighter.RIVET) {
+fun GameScreen(
+  you: Fighter = Fighter.RIVET,
+  rival: Fighter = Fighter.RIVET,
+  onBackToSelect: () -> Unit = {},
+) {
   val world = remember { World() }
   var frame by remember { mutableIntStateOf(0) }
   val context = LocalContext.current
@@ -73,6 +78,7 @@ fun GameScreen(you: Fighter = Fighter.RIVET, rival: Fighter = Fighter.RIVET) {
   val ballSprite = remember { loadKeyedAsset(context, "ui_ball.png") }
   val youChipSprite = remember { loadKeyedAsset(context, "ui_chip_you.png") }
   val cpuChipSprite = remember { loadKeyedAsset(context, "ui_chip_cpu.png") }
+  val backToSelect = rememberUpdatedState(onBackToSelect)
 
   LaunchedEffect(Unit) {
     var last = 0L
@@ -110,7 +116,6 @@ fun GameScreen(you: Fighter = Fighter.RIVET, rival: Fighter = Fighter.RIVET) {
         .statusBarsPadding()
         .navigationBarsPadding(),
   ) {
-    val tick = frame
     BoxWithConstraints(
       modifier = Modifier.fillMaxSize(),
       contentAlignment = Alignment.Center,
@@ -122,6 +127,7 @@ fun GameScreen(you: Fighter = Fighter.RIVET, rival: Fighter = Fighter.RIVET) {
           Modifier.fillMaxWidth().aspectRatio(4f / 3f)
         }
       Box(modifier = courtMod.background(Ink)) {
+        val tick = frame
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
           val padL = maxWidth * World.FRAME_LEFT
           val padT = maxHeight * World.FRAME_TOP
@@ -133,7 +139,15 @@ fun GameScreen(you: Fighter = Fighter.RIVET, rival: Fighter = Fighter.RIVET) {
                 .fillMaxSize()
                 .padding(start = padL, top = padT, end = padR, bottom = padB)
                 .pointerInput(Unit) {
-                  detectTapGestures(onTap = { world.launch() })
+                  detectTapGestures(
+                    onTap = {
+                      if (world.phase == Phase.YOU_WIN || world.phase == Phase.CPU_WIN) {
+                        backToSelect.value()
+                      } else {
+                        world.launch()
+                      }
+                    },
+                  )
                 }
                 .pointerInput(Unit) {
                   detectDragGestures { change, _ ->
@@ -218,29 +232,7 @@ fun GameScreen(you: Fighter = Fighter.RIVET, rival: Fighter = Fighter.RIVET) {
                   contentScale = ContentScale.Fit,
                 )
               }
-              Phase.YOU_WIN -> {
-                Text(
-                  text = "WIN\nTAP TO RESTART",
-                  color = Cream,
-                  fontFamily = FontFamily.Monospace,
-                  fontWeight = FontWeight.Bold,
-                  fontSize = 28.sp,
-                  textAlign = TextAlign.Center,
-                  modifier = Modifier.align(Alignment.Center),
-                )
-              }
-              Phase.CPU_WIN -> {
-                Text(
-                  text = "CPU WINS\nTAP TO RESTART",
-                  color = Cream,
-                  fontFamily = FontFamily.Monospace,
-                  fontWeight = FontWeight.Bold,
-                  fontSize = 28.sp,
-                  textAlign = TextAlign.Center,
-                  modifier = Modifier.align(Alignment.Center),
-                )
-              }
-              Phase.PLAYING -> Unit
+              Phase.YOU_WIN, Phase.CPU_WIN, Phase.PLAYING -> Unit
             }
           }
         }
@@ -268,6 +260,60 @@ fun GameScreen(you: Fighter = Fighter.RIVET, rival: Fighter = Fighter.RIVET) {
           }
           CabinetWell(World.P2_SCORE_INSET) {
             WellText(world.cpuScore.toString().padStart(2, '0'), CpuPaddle, 0.72f)
+          }
+        }
+        val winner =
+          when (world.phase) {
+            Phase.YOU_WIN -> you
+            Phase.CPU_WIN -> rival
+            else -> null
+          }
+        if (winner != null) {
+          val endingPath = winner.art().ending
+          val winsPath = winner.art().wins
+          Box(
+            modifier =
+              Modifier
+                .fillMaxSize()
+                .pointerInput(endingPath, winsPath) {
+                  detectTapGestures(onTap = { backToSelect.value() })
+                },
+          ) {
+            ArcadeWallpaper(UiArt.SELECT_BG)
+            if (endingPath != null) {
+              MagentaKeyedImage(
+                assetPath = endingPath,
+                contentDescription = "Congratulations",
+                modifier =
+                  Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.58f)
+                    .padding(vertical = 12.dp),
+                contentScale = ContentScale.FillHeight,
+                alignment = Alignment.BottomEnd,
+              )
+            }
+            if (winsPath != null) {
+              Box(
+                modifier =
+                  Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.5f),
+                contentAlignment = Alignment.Center,
+              ) {
+                MagentaKeyedImage(
+                  assetPath = winsPath,
+                  contentDescription = "${winner.displayName} WINS",
+                  modifier =
+                    Modifier
+                      .fillMaxWidth(0.92f)
+                      .aspectRatio(960f / 547f),
+                  contentScale = ContentScale.Fit,
+                )
+              }
+            }
           }
         }
       }

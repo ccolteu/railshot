@@ -17,6 +17,7 @@ data class FighterArt(
   val walkRight: String? = null,
   val hitRight: String? = null,
   val ending: String? = null,
+  val wins: String? = null,
 )
 
 object UiArt {
@@ -26,6 +27,7 @@ object UiArt {
   const val VS_BG = "ui_vs_bg.png"
   const val FIGHT = "ui_fight.png"
   const val ROUND = "ui_round.png"
+  const val TITLE = "ui_title.png"
   const val BADGE_1P = "ui_1p.png"
   const val BADGE_2P = "ui_2p.png"
   const val BTN_SELECT = "ui_btn_select.png"
@@ -44,6 +46,24 @@ fun FighterArt.courtFrame(left: Boolean, pose: PaddlePose): String? =
     PaddlePose.HIT -> if (left) hitLeft else hitRight
   }
 
+fun FighterArt.assetPaths(): List<String> =
+  listOfNotNull(
+    selectFullBody,
+    face,
+    vsLeft,
+    vsRight,
+    nameSelect,
+    nameVs,
+    idleLeft,
+    walkLeft,
+    hitLeft,
+    idleRight,
+    walkRight,
+    hitRight,
+    ending,
+    wins,
+  )
+
 fun Fighter.art(): FighterArt =
   when (this) {
     Fighter.RIVET ->
@@ -61,6 +81,7 @@ fun Fighter.art(): FighterArt =
         walkRight = "rivet/rivet_game_walk_right.png",
         hitRight = "rivet/rivet_game_hit_right.png",
         ending = "rivet/rivet_ending.png",
+        wins = "rivet/rivet_wins.png",
       )
     Fighter.ASH ->
       FighterArt(
@@ -77,6 +98,7 @@ fun Fighter.art(): FighterArt =
         walkRight = "ash/ash_game_walk_right.png",
         hitRight = "ash/ash_game_hit_right.png",
         ending = "ash/ash_ending.png",
+        wins = "ash/ash_wins.png",
       )
     Fighter.KITE ->
       FighterArt(
@@ -93,6 +115,7 @@ fun Fighter.art(): FighterArt =
         walkRight = "kite/kite_game_walk_right.png",
         hitRight = "kite/kite_game_hit_right.png",
         ending = "kite/kite_ending.png",
+        wins = "kite/kite_wins.png",
       )
     Fighter.MARU ->
       FighterArt(
@@ -109,6 +132,7 @@ fun Fighter.art(): FighterArt =
         walkRight = "maru/maru_game_walk_right.png",
         hitRight = "maru/maru_game_hit_right.png",
         ending = "maru/maru_ending.png",
+        wins = "maru/maru_wins.png",
       )
     Fighter.QUILL ->
       FighterArt(
@@ -125,7 +149,23 @@ fun Fighter.art(): FighterArt =
         walkRight = "quill/quill_game_walk_right.png",
         hitRight = "quill/quill_game_hit_right.png",
         ending = "quill/quill_ending.png",
+        wins = "quill/quill_wins.png",
       )
     Fighter.HEX ->
-      FighterArt(nameSelect = "hex/hex_name_select.png", nameVs = "hex/hex_name_vs.png")
+      FighterArt(
+        selectFullBody = "hex/hex_select_fullbody.png",
+        face = "hex/hex_face.png",
+        vsLeft = "hex/hex_vs_left.png",
+        vsRight = "hex/hex_vs_right.png",
+        nameSelect = "hex/hex_name_select.png",
+        nameVs = "hex/hex_name_vs.png",
+        idleLeft = "hex/hex_game_idle_left.png",
+        walkLeft = "hex/hex_game_walk_left.png",
+        hitLeft = "hex/hex_game_hit_left.png",
+        idleRight = "hex/hex_game_idle_right.png",
+        walkRight = "hex/hex_game_walk_right.png",
+        hitRight = "hex/hex_game_hit_right.png",
+        ending = "hex/hex_ending.png",
+        wins = "hex/hex_wins.png",
+      )
   }

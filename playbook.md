@@ -107,7 +107,7 @@ Long legs, slim waist, large bust, adult cheesecake proportions like 1994 fighti
 | --- | --- | --- | --- |
 | 1 | **Rivet** | **Blonde**, long, wind-swept | Tall, long-legged, large bust. Teal mechanic: visor pushed up, cropped jacket, short shorts, thigh boots, wrench-shaped shield. Confident, sexy idle. |
 | 5 | **Quill** | **Red**, long, with a bird-crest | Tall, long-legged, large bust. Feathered cape, cropped top, high-cut bottoms, talon boots, kite shield. Predatory smile. |
-| 6 | **Hex** | **Brunette**, long, under a moon hat | Tall, long-legged, large bust. Dark mage: moon hat, high slit robe over a fitted bodice, staff that doubles as a paddle. Cool, seductive stare. |
+| 6 | **Hex** | **Brunette**, long, messy, dark | Tall, long-legged, large bust. Half-Asian punk brunette: no hat, cropped dark-violet leather jacket, choker, short shorts, combat boots, strapped punk buckler. Cool, seductive stare. |
 
 Always include in female prompts: `adult woman, sexy 1990s arcade fighter, long legs, large breasts, slim waist, cheesecake posing, not a child, not realistic`.
 
@@ -157,7 +157,7 @@ Hair and skin never change. Only clothes, visor, metal trim, and shield tint.
 | Kite | Olive flight suit, tan harness, jump boots, gold aviators | Desert-tan flight suit, olive harness, same boots, silver aviators |
 | Maru | Green/khaki tartan kilt, khaki shirt, leather sporran, wrapped fists | Steel-blue tartan kilt, steel-blue shirt, dark sporran, wrapped fists |
 | Quill | Earth/feather costume, warm browns and reds (hair stays red) | Cool purple/blue feather costume (hair stays red) |
-| Hex | Dark violet robe, moon-hat silver | Teal-black robe, moon-hat gold |
+| Hex | Dark violet leather, silver studs, strapped punk buckler | Teal-black leather, gold studs, strapped punk buckler |
 
 ### Character locks (paste after the style lock)
 
@@ -188,7 +188,7 @@ Quill, adult red-haired woman, long red hair, bird-crest, feathered cape, croppe
 
 **Hex**
 ```
-Hex, adult brunette woman, long dark brown hair, moon hat, high-slit mage robe over fitted bodice, large breasts, very long legs, sexy 1990s arcade fighter, staff paddle, original Railshot character
+Hex, adult half-Asian brunette woman, East Asian mixed features, long messy dark espresso-brown hair, no hat, punk, cropped dark-violet leather jacket, black choker, short shorts, combat boots, large breasts, very long legs, sexy 1990s arcade fighter, strapped round punk buckler, original Railshot character
 ```
 
 ### A — Select full-body
