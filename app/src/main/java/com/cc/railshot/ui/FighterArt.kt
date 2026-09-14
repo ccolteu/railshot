@@ -54,6 +54,7 @@ object UiArt {
   const val FACE_FRAME_ON = "ui_face_frame_on.png"
   const val FACE_FRAME_OFF = "ui_face_frame_off.png"
   const val BALL = "ui_ball.png"
+  const val HEX_ORB = "ui_hex_orb.png"
 
   /** Packed KEY hole radius in every `ui_ball_tail_*.png`. */
   const val TAIL_HOLE_R = 56f

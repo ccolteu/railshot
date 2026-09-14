@@ -31,6 +31,7 @@ Keep the 90s pixel look; just draw it on a phone-sized canvas. Do not generate 3
 | Word banners | **960** wide (`FIGHT`/`ROUND` height fits letters; `WIN` **768×384**, `VS` **384×384**) | Magenta `#FF00FF` |
 | Digits | **120×150** each | Magenta `#FF00FF` |
 | Ball | **60×60** | Magenta `#FF00FF` |
+| Hex orb | **60×60** | Magenta `#FF00FF` |
 | Life chips | standing **22×120**, down **48×120** | Magenta `#FF00FF` |
 | Nameplates | **480×90** | Magenta `#FF00FF` |
 | Ending still | **1440×840** letterboxed in 4:3 | Opaque |
@@ -383,11 +384,19 @@ Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1
 
 **CPU** loads from the **2P fighter**. **Wall** (Maru, Hex): camps a living gate, smaller motion. **Slugger** (Rivet, Ash, Kite, Quill): chases, overcommits. VS opens on **EASY**; arrows cycle **EASY / HARD** buttons (`ui_btn_easy.png` / `ui_btn_hard.png`). Easy abandons high/low rails and reacts late. Hard predicts the bounce and cuts the line.
 
-**Fighter kits** (P1 and 2P, code): same sport, tiny knobs. Rivet hotter bounce. Ash more swipe. Kite longer/faster. Maru slower, fatter slice. Quill steeper rims. Hex shorter/softer (star shot later). Court sprites **do not** scale with those knobs. Select typesets one flavor line under the name sprite. Do not bake flavor into portraits.
+**Fighter kits** (P1 and 2P, code): same sport, readable knobs. Rally creeps speed each paddle bounce (capped). HARD reacts earlier and closes faster. Signatures fire from the hit you already do — no extra button. Rivet stacks pop on consecutive hits (cools if the return never chips). Ash smash-swipes. Kite afterburns after a long rail dash. Maru dumps speed in the fat of the plate. Quill steals dive rims. Hex fires one electrified orb per set (same size as the fireball, not on the first touch, aimed at a living gate on a split angle). Court sprites **do not** scale with those knobs.
 
 ## In-game extras
 
-Use section **D** for player sprites. Optional later: Hex projectile (`small blue star shot`).
+Use section **D** for player sprites. Hex fires one live orb per set per Hex side (`art/ui_hex_orb.png`), **same drawn size as the fireball**. Not on the first Hex touch of the set. It aims at an upright opponent gate on a **steep split** from the fireball (not the same heading). Flattening a gate uses the same cabinet sting as the fireball (freeze, shake, flash). It only flattens the opponent's chips.
+
+**Hex orb** (`art/ui_hex_orb.png`)
+
+Same 60×60 keyed sphere language as the play-ball, but ice-blue and electrified: hard cyan bands, white highlight, lightning cracks on the surface, tiny spark ticks. No fire tail. Magenta `#FF00FF`. Draw at fireball size.
+
+```
+60x60 bright ice-blue electrified orb, 1994 Neo Geo pixel art, hard cyan bands and dithering not smooth gradients, white highlight, jagged white-cyan lightning on the sphere, tiny spark ticks, NO dark shadows, NO outline, no fire halo, no tail, magenta background #FF00FF
+```
 
 **Ball** (`art/ui_ball.png`)
 

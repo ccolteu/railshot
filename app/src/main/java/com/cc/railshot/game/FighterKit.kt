@@ -1,6 +1,6 @@
 package com.cc.railshot.game
 
-/** Court feel for a roster pick. Tiny numeric knobs, same sport. */
+/** Court feel for a roster pick. Readable knobs, same sport. */
 data class FighterKit(
   val paddleLen: Float,
   val moveMul: Float,
@@ -22,61 +22,61 @@ data class FighterKit(
           FighterKit(
             paddleLen = BASE_LEN,
             moveMul = 1f,
-            shieldPop = 1.18f,
+            shieldPop = 1.28f,
             sliceEdge = BASE_EDGE,
             sliceAngle = BASE_ANGLE,
             swipeMul = 1f,
-            flavor = "Hot bounce. Same reach as the rest.",
+            flavor = "Hot bounce. Stacks on a rally.",
           )
         Fighter.ASH ->
           FighterKit(
             paddleLen = BASE_LEN,
-            moveMul = 1.05f,
+            moveMul = 1.12f,
             shieldPop = BASE_POP,
             sliceEdge = BASE_EDGE,
             sliceAngle = BASE_ANGLE,
-            swipeMul = 1.35f,
-            flavor = "Drag the shield. The ball follows.",
+            swipeMul = 1.85f,
+            flavor = "Smash swipe. Drag through contact.",
           )
         Fighter.KITE ->
           FighterKit(
-            paddleLen = 0.24f,
-            moveMul = 1.22f,
+            paddleLen = 0.27f,
+            moveMul = 1.38f,
             shieldPop = BASE_POP,
             sliceEdge = BASE_EDGE,
             sliceAngle = BASE_ANGLE,
             swipeMul = 1f,
-            flavor = "Long shield. Fast on the rail.",
+            flavor = "Long rail. Dash, then afterburn.",
           )
         Fighter.MARU ->
           FighterKit(
-            paddleLen = 0.25f,
-            moveMul = 0.78f,
+            paddleLen = 0.28f,
+            moveMul = 0.68f,
             shieldPop = BASE_POP,
-            sliceEdge = 0.42f,
+            sliceEdge = 0.50f,
             sliceAngle = 0.78f,
             swipeMul = 0.85f,
-            flavor = "Slow. Fat slice. Holds the gate.",
+            flavor = "Body block. Only the rims slice.",
           )
         Fighter.QUILL ->
           FighterKit(
             paddleLen = BASE_LEN,
-            moveMul = 1.08f,
+            moveMul = 1.10f,
             shieldPop = BASE_POP,
-            sliceEdge = 0.38f,
-            sliceAngle = 1.05f,
+            sliceEdge = 0.48f,
+            sliceAngle = 1.22f,
             swipeMul = 1.10f,
-            flavor = "Steep rims. Hunts the high line.",
+            flavor = "Dive rims. Steals the high line.",
           )
         Fighter.HEX ->
           FighterKit(
-            paddleLen = 0.17f,
-            moveMul = 0.92f,
-            shieldPop = 0.96f,
+            paddleLen = 0.15f,
+            moveMul = 1f,
+            shieldPop = 0.88f,
             sliceEdge = 0.30f,
             sliceAngle = BASE_ANGLE,
             swipeMul = 1f,
-            flavor = "Short shield. Softer pop. Tricky.",
+            flavor = "Short shield. One orb per set.",
           )
       }
   }

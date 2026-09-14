@@ -1,6 +1,7 @@
 package com.cc.railshot.game
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -367,5 +368,76 @@ class WorldTest {
     youReturnSpeed(quill, 0.5f, ballY)
     val quillVy = kotlin.math.abs(quill.ballVy())
     assertTrue(quillVy > rivetVy)
+  }
+
+  @Test
+  fun rivetSecondHitIsHotter() {
+    val world = World(you = Fighter.RIVET)
+    val first = youReturnSpeed(world, paddleY = 0.5f, ballY = 0.5f)
+    thaw(world)
+    youBounceAgain(world, paddleY = 0.5f, ballY = 0.5f)
+    assertTrue(world.ballSpeed() > first * 1.12f)
+  }
+
+  @Test
+  fun maruCenterDumpsSpeed() {
+    val center = youReturnSpeed(World(you = Fighter.MARU), paddleY = 0.5f, ballY = 0.5f)
+    val rim = youReturnSpeed(World(you = Fighter.MARU), paddleY = 0.5f, ballY = 0.62f)
+    assertTrue(center < rim * 0.92f)
+  }
+
+  @Test
+  fun kiteAfterburnAfterALongDash() {
+    val still = youReturnSpeed(World(you = Fighter.KITE), paddleY = 0.5f, ballY = 0.5f)
+    val world = World(you = Fighter.KITE)
+    world.moveYouPaddle(0.5f)
+    world.step(1f / 60f)
+    world.moveYouPaddle(0.72f)
+    world.placeBall(world.youFrontX() + World.BALL_R_X + 0.001f, world.youPaddleY, -0.8f, 0f)
+    waitForYouBounce(world)
+    assertTrue(world.ballSpeed() > still * 1.12f)
+  }
+
+  @Test
+  fun hexStarFiresOncePerSet() {
+    val world = World(you = Fighter.HEX)
+    youReturnSpeed(world, paddleY = 0.5f, ballY = 0.5f)
+    assertFalse(world.starLive())
+    thaw(world)
+    youBounceAgain(world, paddleY = 0.5f, ballY = 0.5f)
+    assertTrue(world.starLive())
+    val ballHeading = kotlin.math.atan2(world.ballVy(), world.ballVx())
+    val orbHeading = kotlin.math.atan2(world.starVy(), world.starVx())
+    assertTrue(kotlin.math.abs(orbHeading - ballHeading) > 0.25f)
+    assertTrue(kotlin.math.abs(world.starVy()) > kotlin.math.abs(world.ballVy()) + 0.05f)
+    thaw(world)
+    var guard = 0
+    while (world.starLive() && world.phase == Phase.PLAYING && guard++ < 500) {
+      world.step(1f / 60f)
+    }
+    assertFalse(world.starLive())
+    youBounceAgain(world, paddleY = 0.5f, ballY = 0.5f)
+    assertFalse(world.starLive())
+  }
+
+  private fun thaw(world: World) {
+    var guard = 0
+    while (world.impactFrozen() && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+  }
+
+  private fun youBounceAgain(world: World, paddleY: Float, ballY: Float) {
+    world.moveYouPaddle(paddleY)
+    world.placeBall(world.youFrontX() + World.BALL_R_X + 0.001f, ballY, -0.8f, 0f)
+    waitForYouBounce(world)
+  }
+
+  private fun waitForYouBounce(world: World) {
+    var guard = 0
+    while (world.ballVx() <= 0f && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.ballVx() > 0f)
   }
 }

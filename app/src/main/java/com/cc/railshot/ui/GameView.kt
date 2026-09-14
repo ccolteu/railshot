@@ -756,6 +756,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       canvas.restore()
     }
     blitFit(canvas, keyed(UiArt.BALL), cx - side / 2f, cy - side / 2f, side, side)
+    if (world.starLive()) {
+      val sx = courtL + world.starX() * courtW
+      val sy = courtT + world.starY() * courtH
+      blitFit(canvas, keyed(UiArt.HEX_ORB), sx - side / 2f, sy - side / 2f, side, side)
+    }
   }
 
   private fun drawFlavorLine(canvas: Canvas, text: String, l: Float, t: Float, w: Float, h: Float) {
