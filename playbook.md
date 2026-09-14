@@ -377,7 +377,7 @@ A **match** is **best of three sets** (first to **2** sets wins). Each set is on
 - **Names:** typeset in the name wells. Never `{name}_name_*.png` on the cabinet.
 - **Sets:** two dots per sets well. Match ends at two filled dots.
 
-Round `WIN` overlay on a set (`Phase.SET_WIN`); match win then results / piece **E**.
+Round `WIN` overlay on a set (`Phase.SET_WIN`); match win then the **result card** (not a game ending). Full-screen `ui_select_bg.png`. Right rail: winner `{name}_ending.png` at **full stage height**. Left rail: `{name}_wins.png` plus a non-flashing `ui_btn_continue.png` (same gold-bezel ivory chrome as SELECT). Ignore taps for **0.8s**, then tap (or **10s** idle) → character select. Do not staff-roll or bonus-tally here.
 
 Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1.8s, then `SERVE` with `ui_fight.png`. Tap serves. Do not typeset FIGHT or TAP TO SERVE.
 

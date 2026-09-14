@@ -46,6 +46,7 @@ object UiArt {
   const val BADGE_1P = "ui_1p.png"
   const val BADGE_2P = "ui_2p.png"
   const val BTN_SELECT = "ui_btn_select.png"
+  const val BTN_CONTINUE = "ui_btn_continue.png"
   const val BTN_START = "ui_btn_start.png"
   const val BTN_EASY = "ui_btn_easy.png"
   const val BTN_HARD = "ui_btn_hard.png"

@@ -50,6 +50,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private var demoT = 0f
   private var lingerT = 0f
   private var selectIdleT = 0f
+  private var resultCardT = 0f
   private val select = SelectSession()
   private var you: Fighter = Fighter.RIVET
   private var rival: Fighter = Fighter.RIVET
@@ -200,6 +201,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     select.reset()
     lingerT = 0f
     selectIdleT = 0f
+    resultCardT = 0f
   }
 
   private fun goVs() {
@@ -219,6 +221,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     announced = null
     dragging = false
     tailTravel = 0f
+    resultCardT = 0f
     screen = Screen.MATCH
   }
 
@@ -251,6 +254,15 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         Phase.SERVE -> SoundManager.instance.playSFX(SoundManager.SFX_FIGHT)
         else -> {}
       }
+    }
+    if (phase == Phase.YOU_WIN || phase == Phase.CPU_WIN) {
+      resultCardT += dt
+      if (resultCardT >= RESULT_IDLE_S) {
+        SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
+        goSelect()
+      }
+    } else {
+      resultCardT = 0f
     }
   }
 
@@ -308,7 +320,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     when (event.actionMasked) {
       MotionEvent.ACTION_DOWN -> {
         if (world.phase == Phase.YOU_WIN || world.phase == Phase.CPU_WIN) {
-          goSelect()
+          if (resultCardT >= RESULT_LOCK_S) {
+            SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
+            goSelect()
+          }
           return
         }
         if (inCourt) {
@@ -489,6 +504,16 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   }
 
   private fun drawMatch(canvas: Canvas, vw: Float, vh: Float) {
+    val winner =
+      when (world.phase) {
+        Phase.YOU_WIN -> you
+        Phase.CPU_WIN -> rival
+        else -> null
+      }
+    if (winner != null) {
+      drawEnding(canvas, winner, vw, vh)
+      return
+    }
     canvas.drawColor(INK)
     canvas.save()
     canvas.translate(world.cabinetShakeX(vw), world.cabinetShakeY(vh))
@@ -593,38 +618,35 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     drawSetDots(canvas, World.P2_SETS_INSET, world.cpuSets, CPU, vw, vh)
     drawWellText(canvas, World.P2_NAME_INSET, rival.displayName.uppercase(), CREAM, 0.42f, vw, vh)
     drawWellText(canvas, World.P2_SCORE_INSET, world.cpuScore.toString().padStart(2, '0'), CPU, 0.72f, vw, vh)
-    val winner =
-      when (world.phase) {
-        Phase.YOU_WIN -> you
-        Phase.CPU_WIN -> rival
-        else -> null
-      }
-    if (winner != null) drawEnding(canvas, winner, vw, vh)
     canvas.restore()
   }
 
   private fun drawEnding(canvas: Canvas, winner: Fighter, vw: Float, vh: Float) {
     blitFill(canvas, opaque(UiArt.SELECT_BG), 0f, 0f, vw, vh)
-    val pad = 12f * (vh / 360f)
+    val dp = vh / 360f
+    val pad = 12f * dp
+    val railW = vw * 0.48f
+    val btnH = 56f * dp
+    val btnW = btnH * (264f / 150f)
+    val btnY = vh - pad - btnH
     winner.art().ending?.let { path ->
-      val boxLeft = vw * 0.42f
-      val boxW = vw * 0.58f
-      val boxH = vh - pad * 2f
-      blitFillHeightEnd(canvas, keyed(path), boxLeft, pad, boxW, boxH)
+      blitFillHeightEnd(canvas, keyed(path), railW, 0f, vw - railW, vh)
     }
     winner.art().wins?.let { path ->
       val bmp = keyed(path)
-      val halfW = vw * 0.5f
-      val maxW = halfW * 0.92f
+      val maxW = railW * 0.92f
+      val maxH = (btnY - pad * 2f).coerceAtLeast(1f)
       val aspect = bmp.width / bmp.height.toFloat()
       var dw = maxW
       var dh = dw / aspect
-      if (dh > vh) {
-        dh = vh
+      if (dh > maxH) {
+        dh = maxH
         dw = dh * aspect
       }
-      blitFit(canvas, bmp, halfW - dw, (vh - dh) / 2f, dw, dh)
+      blitFit(canvas, bmp, (railW - dw) / 2f, pad + (maxH - dh) / 2f, dw, dh)
     }
+    if (resultCardT < RESULT_LOCK_S) return
+    blitFit(canvas, keyed(UiArt.BTN_CONTINUE), (railW - btnW) / 2f, btnY, btnW, btnH)
   }
 
   private fun drawFighter(
@@ -951,6 +973,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     const val TITLE_HOLD_S = 5f
     const val DEMO_HOLD_S = 10f
     const val SELECT_IDLE_S = 45f
+    const val RESULT_LOCK_S = 0.8f
+    const val RESULT_IDLE_S = 10f
     const val DEMO_FLASH_S = 0.45f
     const val DEMO_RED = 0xFFE01414.toInt()
     const val CABINET = 0xFF0C1822.toInt()
