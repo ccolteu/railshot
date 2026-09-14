@@ -437,6 +437,12 @@ Rivet (circuit steel):
 
 P2: same drawing, crimson seam instead of teal.
 
+Kite (olive airfield cabinet):
+
+```
+Same gate layout as Rivet. Standing: thick vertical OLIVE drab steel bar, NO bolts, TEAL seam, not grass. Flattened: olive plate, FOUR MEDIUM gold bolts, thin TEAL top and bottom. No jets, no turf. P2 crimson seam.
+```
+
 ## Word and banner sprites
 
 One word per image, huge, centered, magenta background.
