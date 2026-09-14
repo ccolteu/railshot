@@ -56,6 +56,13 @@ object UiArt {
   const val BALL = "ui_ball.png"
   const val ICE_BALL = "ui_ice_ball.png"
 
+  fun courtWall(frame: Int): String =
+    when (frame.coerceIn(0, 2)) {
+      0 -> "ash/ash_court_wall_a.png"
+      1 -> "ash/ash_court_wall_b.png"
+      else -> "ash/ash_court_wall_c.png"
+    }
+
   /** Packed KEY hole radius in every `ui_ball_tail_*.png`. */
   const val TAIL_HOLE_R = 56f
 

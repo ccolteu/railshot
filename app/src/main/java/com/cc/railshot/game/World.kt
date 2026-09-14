@@ -32,6 +32,17 @@ enum class BallTailBand {
   LONG,
 }
 
+private enum class PostPhase {
+  IDLE,
+  RAISE,
+  UP,
+  SINK,
+}
+
+private data class AabbBounce(val x: Float, val y: Float, val vx: Float, val vy: Float)
+
+private data class RayHit(val t: Float, val vertical: Boolean)
+
 data class Chip(
   val x: Float,
   val y: Float,
@@ -73,6 +84,7 @@ class World(
 
   val youKit: FighterKit = FighterKit.of(you)
   val cpuKit: FighterKit = FighterKit.of(rival)
+  private val courtWells: Boolean = rival == Fighter.ASH
   private val youStyle: CpuStyle = CpuStyle.forFighter(you)
   var phase: Phase = Phase.ROUND
     private set
@@ -135,6 +147,10 @@ class World(
   private var burstT = 0f
   private var burstX = 0f
   private var burstY = 0.5f
+  private var postWait = POST_FIRST
+  private val postGrow = FloatArray(3)
+  private val postPhase = Array(3) { PostPhase.IDLE }
+  private val postClock = FloatArray(3)
   private var tailLock: BallTailBand? = null
   private var shieldGain = 1.05f
   private var shieldRate = 1.22f
@@ -206,6 +222,7 @@ class World(
     lastPaddle = null
     chipSincePaddle = false
     tailLock = null
+    armPost()
   }
 
   fun step(dt: Float) {
@@ -246,6 +263,7 @@ class World(
       cpuPaddleVy = 0f
       return
     }
+    tickPost(clamped)
     var left = clamped
     val slice = 1f / 120f
     cpuMoved = false
@@ -304,6 +322,37 @@ class World(
   fun iceBurstX(): Float = burstX
 
   fun iceBurstY(): Float = burstY
+
+  fun postLive(): Boolean = courtWells && postGrow.any { it > 0.02f }
+
+  fun wellVisible(slot: Int): Boolean = courtWells && postGrow.getOrElse(slot) { 0f } > 0.02f
+
+  fun wellY(slot: Int): Float = POST_SLOTS[slot] - POST_H / 2f
+
+  fun wellX(): Float = POST_X
+
+  fun wellW(): Float = POST_W
+
+  fun wellH(): Float = POST_H
+
+  fun postWallFrame(slot: Int): Int {
+    val grow = postGrow.getOrElse(slot) { 0f }
+    return when {
+      grow < 0.55f -> 0
+      grow < 0.82f -> 1
+      else -> 2
+    }
+  }
+
+  internal fun raisePost(slot: Int = 1) {
+    if (!courtWells) return
+    armPost()
+    postWait = 0f
+    val i = slot.coerceIn(0, 2)
+    postPhase[i] = PostPhase.UP
+    postClock[i] = POST_UP
+    postGrow[i] = 1f
+  }
 
   fun iceBurstFrame(): Int {
     val u = 1f - (burstT / ICE_BURST_S).coerceIn(0f, 1f)
@@ -381,6 +430,7 @@ class World(
     starLive = false
     burstT = 0f
     tailLock = null
+    armPost()
     shieldGain = 1.05f
     shieldRate = 1.22f
     dealChips()
@@ -508,25 +558,60 @@ class World(
     var guard = 0
     val lo = BALL_R
     val hi = 1f - BALL_R
-    while (guard++ < 24) {
+    while (guard++ < 32) {
       val approaching = if (towardCpu) x < frontX else x > frontX
       if (!approaching) break
-      val dt = (frontX - x) / svx
-      if (dt <= 0f) break
-      val nextY = y + svy * dt
-      if (nextY in lo..hi) return nextY
+      val tPaddle = (frontX - x) / svx
+      if (tPaddle <= 0f) break
+      var tHit = tPaddle
+      var kind = 0
       if (svy > 0.001f) {
         val tWall = (hi - y) / svy
-        x += svx * tWall
-        y = hi
-        svy = -svy
+        if (tWall > 0.0001f && tWall < tHit) {
+          tHit = tWall
+          kind = 1
+        }
       } else if (svy < -0.001f) {
         val tWall = (lo - y) / svy
-        x += svx * tWall
-        y = lo
-        svy = -svy
-      } else {
-        return y.coerceIn(lo, hi)
+        if (tWall > 0.0001f && tWall < tHit) {
+          tHit = tWall
+          kind = 2
+        }
+      }
+      var postKind = 3
+      for (slot in 0 until 3) {
+        if (!wellSolid(slot)) continue
+        val hit =
+          rayAabb(
+            x,
+            y,
+            svx,
+            svy,
+            slotLeft(slot) - BALL_R_X,
+            slotTop(slot) - BALL_R,
+            slotLeft(slot) + slotW(slot) + BALL_R_X,
+            slotTop(slot) + slotH(slot) + BALL_R,
+          )
+        if (hit != null && hit.t > 0.0001f && hit.t < tHit) {
+          tHit = hit.t
+          postKind = if (hit.vertical) 3 else 4
+          kind = postKind
+        }
+      }
+      if (kind == 0) return (y + svy * tHit).coerceIn(lo, hi)
+      x += svx * tHit
+      y += svy * tHit
+      when (kind) {
+        1 -> {
+          y = hi
+          svy = -kotlin.math.abs(svy)
+        }
+        2 -> {
+          y = lo
+          svy = kotlin.math.abs(svy)
+        }
+        3 -> svx = -svx
+        else -> svy = -svy
       }
     }
     return y.coerceIn(lo, hi)
@@ -544,6 +629,7 @@ class World(
     }
     bounceSprite(youPaddleY, youFrontX(), incomingLeft = true, youSide = true)
     bounceSprite(cpuPaddleY, cpuFrontX(), incomingLeft = false, youSide = false)
+    bouncePost()
     bounceChips()
     advanceStar(dt)
     if (phase != Phase.PLAYING) return
@@ -766,10 +852,11 @@ class World(
     if (!starLive) return
     smashOrbOnPaddle(cpuPaddleY, cpuFrontX(), incomingLeft = false, youSide = false)
     if (!starLive) return
-    val side = if (starFromYou) Side.CPU else Side.YOU
+    bounceStarPost()
+    if (!starLive) return
     val hit =
       chips.firstOrNull { chip ->
-        chip.alive && chip.side == side && overlapsStar(chip)
+        chip.alive && overlapsStar(chip)
       }
     if (hit != null) {
       hit.alive = false
@@ -820,6 +907,183 @@ class World(
     val nx = (starX - closestX) / STAR_R_X
     val ny = (starY - closestY) / STAR_R
     return nx * nx + ny * ny <= 1f
+  }
+
+  private fun bouncePost() {
+    val hit = bounceAabb(ballX, ballY, vx, vy, BALL_R_X, BALL_R) ?: return
+    ballX = hit.x
+    ballY = hit.y
+    vx = hit.vx
+    vy = hit.vy
+  }
+
+  private fun bounceStarPost() {
+    if (!starLive) return
+    val hit = bounceAabb(starX, starY, starVx, starVy, STAR_R_X, STAR_R) ?: return
+    starX = hit.x
+    starY = hit.y
+    starVx = hit.vx
+    starVy = hit.vy
+  }
+
+  private fun bounceAabb(
+    px: Float,
+    py: Float,
+    pvx: Float,
+    pvy: Float,
+    rx: Float,
+    ry: Float,
+  ): AabbBounce? {
+    if (!courtWells) return null
+    var x = px
+    var y = py
+    var vx = pvx
+    var vy = pvy
+    var hitAny = false
+    for (slot in 0 until 3) {
+      val hit = bounceOneWell(slot, x, y, vx, vy, rx, ry) ?: continue
+      x = hit.x
+      y = hit.y
+      vx = hit.vx
+      vy = hit.vy
+      hitAny = true
+    }
+    return if (hitAny) AabbBounce(x, y, vx, vy) else null
+  }
+
+  private fun bounceOneWell(
+    slot: Int,
+    px: Float,
+    py: Float,
+    pvx: Float,
+    pvy: Float,
+    rx: Float,
+    ry: Float,
+  ): AabbBounce? {
+    if (!wellSolid(slot)) return null
+    val left = slotLeft(slot)
+    val top = slotTop(slot)
+    val w = slotW(slot)
+    val h = slotH(slot)
+    val right = left + w
+    val bot = top + h
+    val closestX = px.coerceIn(left, right)
+    val closestY = py.coerceIn(top, bot)
+    val nx = (px - closestX) / rx
+    val ny = (py - closestY) / ry
+    if (nx * nx + ny * ny > 1f) return null
+    val cx = left + w / 2f
+    val cy = top + h / 2f
+    val dx = px - cx
+    val dy = py - cy
+    val ox = w / 2f + rx - kotlin.math.abs(dx)
+    val oy = h / 2f + ry - kotlin.math.abs(dy)
+    var x = px
+    var y = py
+    var vx = pvx
+    var vy = pvy
+    if (ox < oy) {
+      vx = if (dx < 0) -kotlin.math.abs(pvx) else kotlin.math.abs(pvx)
+      x += if (dx < 0) -ox else ox
+    } else {
+      vy = if (dy < 0) -kotlin.math.abs(pvy) else kotlin.math.abs(pvy)
+      y += if (dy < 0) -oy else oy
+    }
+    return AabbBounce(x, y, vx, vy)
+  }
+
+  private fun wellSolid(slot: Int): Boolean = courtWells && postGrow[slot] >= POST_SOLID
+
+  private fun slotW(slot: Int): Float = POST_W * postGrow[slot]
+
+  private fun slotH(slot: Int): Float = POST_H * postGrow[slot]
+
+  private fun slotLeft(slot: Int): Float = wellCx() - slotW(slot) / 2f
+
+  private fun slotTop(slot: Int): Float = POST_SLOTS[slot] - slotH(slot) / 2f
+
+  private fun wellCx(): Float = POST_X + POST_W / 2f
+
+  private fun armPost() {
+    postWait = POST_FIRST
+    for (i in 0 until 3) {
+      postPhase[i] = PostPhase.IDLE
+      postClock[i] = 0f
+      postGrow[i] = 0f
+    }
+  }
+
+  private fun startRaise(slot: Int) {
+    postPhase[slot] = PostPhase.RAISE
+    postClock[slot] = POST_RAISE
+    postGrow[slot] = 0f
+  }
+
+  private fun tickPost(dt: Float) {
+    if (!courtWells) {
+      for (i in 0 until 3) postGrow[i] = 0f
+      return
+    }
+    if (postWait > 0f) {
+      postWait -= dt
+      if (postWait > 0f) return
+      startRaise(0)
+    }
+    var handoff = -1
+    for (slot in 0 until 3) {
+      if (postPhase[slot] == PostPhase.IDLE) continue
+      postClock[slot] -= dt
+      when (postPhase[slot]) {
+        PostPhase.RAISE -> {
+          val u = (1f - postClock[slot] / POST_RAISE).coerceIn(0f, 1f)
+          postGrow[slot] = u
+          if (postClock[slot] > 0f) continue
+          postGrow[slot] = 1f
+          postPhase[slot] = PostPhase.UP
+          postClock[slot] = POST_UP
+        }
+        PostPhase.UP -> {
+          postGrow[slot] = 1f
+          if (postClock[slot] > 0f) continue
+          postPhase[slot] = PostPhase.SINK
+          postClock[slot] = POST_SINK
+          handoff = (slot + 1) % 3
+        }
+        PostPhase.SINK -> {
+          postGrow[slot] = (postClock[slot] / POST_SINK).coerceIn(0f, 1f)
+          if (postClock[slot] > 0f) continue
+          postGrow[slot] = 0f
+          postPhase[slot] = PostPhase.IDLE
+        }
+        PostPhase.IDLE -> {}
+      }
+    }
+    if (handoff >= 0 && postPhase[handoff] == PostPhase.IDLE) startRaise(handoff)
+  }
+
+  private fun rayAabb(
+    ox: Float,
+    oy: Float,
+    dx: Float,
+    dy: Float,
+    left: Float,
+    top: Float,
+    right: Float,
+    bot: Float,
+  ): RayHit? {
+    val inf = 1e6f
+    val tx1 = if (kotlin.math.abs(dx) < 1e-8f) if (ox in left..right) -inf else inf else (left - ox) / dx
+    val tx2 = if (kotlin.math.abs(dx) < 1e-8f) if (ox in left..right) inf else -inf else (right - ox) / dx
+    val ty1 = if (kotlin.math.abs(dy) < 1e-8f) if (oy in top..bot) -inf else inf else (top - oy) / dy
+    val ty2 = if (kotlin.math.abs(dy) < 1e-8f) if (oy in top..bot) inf else -inf else (bot - oy) / dy
+    val tminX = kotlin.math.min(tx1, tx2)
+    val tmaxX = kotlin.math.max(tx1, tx2)
+    val tminY = kotlin.math.min(ty1, ty2)
+    val tmaxY = kotlin.math.max(ty1, ty2)
+    val tEnter = kotlin.math.max(tminX, tminY)
+    val tExit = kotlin.math.min(tmaxX, tmaxY)
+    if (tExit < 0f || tEnter > tExit || tEnter < 0f) return null
+    return RayHit(tEnter, vertical = tminX >= tminY)
   }
 
   private fun bounceChips() {
@@ -914,6 +1178,7 @@ class World(
     vx = 0f
     vy = 0f
     starLive = false
+    armPost()
     setWinT = SET_WIN_FREEZE + SET_WIN_BANNER
     phase = Phase.SET_WIN
   }
@@ -994,6 +1259,23 @@ class World(
     const val STAR_R = BALL_R
     const val CPU_SPECIAL_HITS = 3
     const val ICE_BURST_S = 0.24f
+    /**
+     * Ash court template on the 1440×1080 floor PNG.
+     * Do not author art off this table.
+     */
+    const val COURT_GUTTER_W_PX = 101
+    const val POST_W_PX = 96
+    const val POST_H_PX = 176
+    const val POST_X_PX = (1440 - POST_W_PX) / 2
+    const val POST_W: Float = POST_W_PX / 1440f
+    const val POST_H: Float = POST_H_PX / 1080f
+    const val POST_X: Float = POST_X_PX / 1440f
+    const val POST_FIRST = 2.2f
+    const val POST_RAISE = 0.45f
+    const val POST_UP = 3.4f
+    const val POST_SINK = 0.40f
+    const val POST_SOLID = 0.58f
+    val POST_SLOTS: FloatArray = floatArrayOf(240f / 1080f, 540f / 1080f, 840f / 1080f)
     const val PADDLE_LEN = 0.20f
     const val PADDLE_THICK = 0.018f
     const val CHIP_COUNT = 6

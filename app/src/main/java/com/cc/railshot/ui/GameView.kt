@@ -654,6 +654,19 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         flip = chip.side == Side.CPU,
       )
     }
+    if (world.postLive()) {
+      for (slot in 0 until 3) {
+        if (!world.wellVisible(slot)) continue
+        drawPost(
+          canvas,
+          slot,
+          courtL,
+          courtT,
+          courtW,
+          courtH,
+        )
+      }
+    }
     drawFighter(
       canvas,
       youFrames,
@@ -793,6 +806,21 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         fillPaint,
       )
     }
+  }
+
+  private fun drawPost(
+    canvas: Canvas,
+    slot: Int,
+    courtL: Float,
+    courtT: Float,
+    courtW: Float,
+    courtH: Float,
+  ) {
+    val left = courtL + world.wellX() * courtW
+    val top = courtT + world.wellY(slot) * courtH
+    val w = (world.wellW() * courtW).coerceAtLeast(1f)
+    val h = (world.wellH() * courtH).coerceAtLeast(1f)
+    blitFill(canvas, keyed(UiArt.courtWall(world.postWallFrame(slot))), left, top, w, h)
   }
 
   private fun drawChip(

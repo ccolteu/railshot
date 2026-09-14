@@ -450,6 +450,81 @@ class WorldTest {
   }
 
   @Test
+  fun raisedPostBouncesTheBallWithoutScoring() {
+    val world = World(rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    world.raisePost(1)
+    val chips = world.cpuChipsLeft()
+    world.placeBall(World.POST_X - World.BALL_R_X - 0.002f, 0.50f, 0.8f, 0f)
+    var guard = 0
+    while (world.ballVx() > 0f && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.ballVx() < 0f)
+    assertEquals(0, world.youScore)
+    assertEquals(chips, world.cpuChipsLeft())
+    assertFalse(world.drainSfx().contains(GameSfx.CHIP))
+  }
+
+  @Test
+  fun raisedPostBouncesTheIceComet() {
+    val world = World(you = Fighter.RIVET, rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    world.raisePost(1)
+    world.placeBall(0.35f, 0.20f, -0.3f, 0f)
+    world.placeStar(World.POST_X - World.STAR_R_X - 0.002f, 0.50f, 0.7f, 0f)
+    var guard = 0
+    while (world.starVx() > 0f && world.starLive() && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.starLive())
+    assertTrue(world.starVx() < 0f)
+    assertEquals(World.CHIP_COUNT, world.cpuChipsLeft())
+  }
+
+  @Test
+  fun iceCometFlattensYourGateAfterAWallBounce() {
+    val world = World(you = Fighter.RIVET, rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    world.raisePost(1)
+    world.moveYouPaddle(0.14f)
+    world.placeBall(0.35f, 0.20f, -0.3f, 0f)
+    world.placeStar(World.POST_X - World.STAR_R_X - 0.002f, 0.50f, 0.7f, 0f)
+    var guard = 0
+    while (world.starLive() && world.youChipsLeft() == World.CHIP_COUNT && guard++ < 200) {
+      world.step(1f / 60f)
+    }
+    assertFalse(world.starLive())
+    assertEquals(World.CHIP_COUNT - 1, world.youChipsLeft())
+    assertEquals(1, world.cpuScore)
+    assertTrue(world.iceBurstLive())
+    val sfx = world.drainSfx()
+    assertTrue(sfx.contains(GameSfx.ICE))
+    assertTrue(sfx.contains(GameSfx.CHIP))
+  }
+
+  @Test
+  fun nextWellRaisesAsTheLastOneSinks() {
+    val world = World(rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    world.raisePost(0)
+    world.placeBall(0.50f, 0.50f, 0f, 0f)
+    val dt = 1f / 60f
+    repeat((World.POST_UP / dt).toInt() + 8) { world.step(dt) }
+    assertTrue(world.wellVisible(0))
+    assertTrue(world.wellVisible(1))
+    assertFalse(world.wellVisible(2))
+  }
+
+  @Test
+  fun postsStayOffWhenTheCourtIsNotAsh() {
+    val world = World(you = Fighter.RIVET, rival = Fighter.MARU, cpuLevel = CpuLevel.EASY)
+    world.raisePost(1)
+    assertFalse(world.postLive())
+    world.placeBall(World.POST_X - World.BALL_R_X - 0.002f, 0.50f, 0.8f, 0f)
+    val vx0 = world.ballVx()
+    repeat(12) { world.step(1f / 60f) }
+    assertTrue(world.ballVx() > 0f)
+    assertEquals(vx0, world.ballVx(), 0.0001f)
+  }
+
+  @Test
   fun calledOrbMissesAShieldOffTheLine() {
     val world = World(you = Fighter.RIVET, cpuLevel = CpuLevel.EASY)
     world.placeBall(0.40f, 0.50f, -0.4f, 0f)

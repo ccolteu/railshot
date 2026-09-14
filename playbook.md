@@ -33,6 +33,7 @@ Keep the 90s pixel look; just draw it on a phone-sized canvas. Do not generate 3
 | Ball | **60×60** | Magenta `#FF00FF` |
 | Ice ball | **60×60** | Magenta `#FF00FF` |
 | Ice burst | **128×128** | Magenta `#FF00FF` |
+| Court wall | **96×176** | Magenta `#FF00FF` |
 | Life chips | standing **22×120**, down **48×120** | Magenta `#FF00FF` |
 | Nameplates | **480×90** | Magenta `#FF00FF` |
 | Ending still | **1440×840** letterboxed in 4:3 | Opaque |
@@ -310,10 +311,26 @@ Match **court + cabinet + chips** load from the **2P / rival**. Files: `art/{nam
 Top-down 4:3 empty sports court floor, teal circuit-board traces only, gold broken circle with X in the center, dashed center line, empty side gutters, NO purple squares, NO IC pads, NO top or bottom rails, no people, no HUD, no text, pixel art arcade background, 1440x1080
 ```
 
-**Parking garage**
+**Parking garage** (Ash) — **layout first, then pixels**
+
+Do **not** freehand the wells or gutters. Author `ash_court_circuit.png` to this 1440×1080 table (`World` `COURT_GUTTER_W_PX`, `POST_W_PX`, `POST_H_PX`, `POST_X_PX`, `POST_SLOTS`):
+
+| Piece | Pixels |
+| --- | --- |
+| Canvas | **1440×1080**, opaque |
+| Left gutter (chip lane) | x **0…101** |
+| Right gutter (chip lane) | x **1339…1440** |
+| Playable floor | x **101…1339** |
+| Vertical center | x **720** |
+| Well size | **96×176** (thin tall rectangle) |
+| High well | **(672, 152)–(768, 328)** |
+| Mid well | **(672, 452)–(768, 628)** |
+| Low well | **(672, 752)–(768, 928)** |
+
+Wells are empty dark pits with a thin steel rim. Walls overlay in code. No pink neon. No gold X / circle / dashed line through the pits. Gold stall paint only in open concrete.
 
 ```
-Top-down 4:3 empty parking garage lane as a sports court, grey concrete with oil specks, yellow-black hazard stripes on floor rails, cars barely visible at the far top, pink neon edge lights, empty left and right margins for life chips, no people, no HUD, pixel art, 1440x1080
+Top-down 4:3 parking garage sports court, 1440x1080, grey concrete oil specks, gutters exactly 101px left and 101px right darker grey chip lanes, playable concrete centered, THREE thin 96x176 empty hydraulic wells at (672,152)-(768,328), (672,452)-(768,628), (672,752)-(768,928), gold stall hatch in open corners only, NO pink neon, NO magenta, NO gold X, NO dashed center line through wells, no people, no HUD, pixel art
 ```
 
 **Highland moor**
@@ -390,11 +407,19 @@ Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1
 
 ## In-game extras
 
-Use section **D** for player sprites. Double-tap empty court calls **one ice comet** per set per side (`art/ui_ice_ball.png` plus ice tails), same size and flicker as the fireball, cyan instead of orange fire. From the fighter toward an upright opponent gate near the tap. Quill still prefers the high or low half. The orb **does not pass shields**: a paddle smash destroys it (shield flash, `sfx_ice.wav`) while the fireball keeps moving. Death overlays `ui_ice_burst_{a,b,c}.png` at the orb for ~0.24s, gate flatten or shield smash. If it gets through, it also plays chip SFX and flattens that side’s chip with the same cabinet sting as the fireball. CPU chases the nearer incoming shot.
+Use section **D** for player sprites. Double-tap empty court calls **one ice comet** per set per side (`art/ui_ice_ball.png` plus ice tails), same size and flicker as the fireball, cyan instead of orange fire. From the fighter toward an upright opponent gate near the tap. Quill still prefers the high or low half. The orb **does not pass shields**: a paddle smash destroys it (shield flash, `sfx_ice.wav`) while the fireball keeps moving. Death overlays `ui_ice_burst_{a,b,c}.png` at the orb for ~0.24s, gate flatten or shield smash. If it gets through, it flattens **whichever living gate it hits** (a wall bounce can send it into your own rail), plays chip SFX, and uses the same cabinet sting as the fireball. CPU chases the nearer incoming shot.
+
+A **court wall** comes out of a **mid-line well** only on **Ash’s floor** (the court loaded from 2P). Other courts stay empty. The camera is top-down: do **not** grow the sprite up the screen. Frames `ash/ash_court_wall_{a,b,c}.png` play inside the well toward the viewer. Three wells on the center line; as one **sinks**, the next **raises** (no empty rest). After serve wait ~2.2s, then high / mid / low in order. Hold ~3.4s at full. Fireball and ice comet **ricochet** like a wall — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it.
 
 **Ice burst** (`art/ui_ice_burst_a.png`, `_b`, `_c`)
 
 Three keyed ice-shatter frames, 128×128. Overlay when the ice comet dies. Magenta `#FF00FF`.
+
+**Court wall** (`art/ash/ash_court_wall_a.png`, `_b`, `_c`)
+
+Keyed top-down steel plate, packed **96×176** (same rect as a well). Exact magenta `#FF00FF` field. **Solid muted garage yellow** matching the court stall hatch. Four corner bolts. **A** peeking, **B** mid-raise, **C** fills the well. Draw dest is the **full well rect**.
+
+**Mid-line wells** — Ash court only. Same table as **Parking garage** above. `World`: `COURT_GUTTER_W_PX` 101, `POST_W_PX` 96, `POST_H_PX` 176, `POST_X_PX` 672, `POST_SLOTS` 240 / 540 / 840. Do not bake wells into the other floors.
 
 **Ice ball** (`art/ui_ice_ball.png`)
 
@@ -607,6 +632,7 @@ Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to
 - Ball plus speed-banded tail (`ui_ball_tail_{short,medium,long}_{left,right}.png`)
 - Called ice comet plus ice tails (`ui_ice_ball.png`, `ui_ice_ball_tail_*.png`)
 - Ice burst overlay (`ui_ice_burst_{a,b,c}.png`) when the comet dies
+- Rising court wall (`ash/ash_court_wall_{a,b,c}.png`) in the live mid-line well on Ash’s court
 - `ROUND` / `FIGHT` / `WIN` banners
 - Select cursor (`ui_1p.png` / `ui_2p.png`), arrows (`ui_arrow_left.png` + flip), SELECT (`ui_btn_select.png`)
 - VS arrows cycle EASY/HARD; the EASY/HARD button starts the match
@@ -614,4 +640,4 @@ Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to
 - Linger-then-VS transition
 - Tally numbers
 
-Courts stay empty. Portraits stay without UI text so we can localize and animate later.
+Courts bake the three mid-line wells. Portraits stay without UI text so we can localize and animate later.
