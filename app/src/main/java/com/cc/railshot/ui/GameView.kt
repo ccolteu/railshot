@@ -260,9 +260,15 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     }
     for (sfx in world.drainSfx()) {
       when (sfx) {
-        GameSfx.SHIELD -> SoundManager.instance.playSFX(SoundManager.SFX_SHIELD, 1.05f, 1.22f)
+        GameSfx.SHIELD ->
+          SoundManager.instance.playSFX(
+            SoundManager.SFX_SHIELD,
+            world.shieldSfxGain(),
+            world.shieldSfxRate(),
+          )
         GameSfx.CHIP -> SoundManager.instance.playSFX(SoundManager.SFX_CHIP, 1.12f, 0.82f)
         GameSfx.ICE -> SoundManager.instance.playSFX(SoundManager.SFX_ICE, 1.08f, 1.0f)
+        GameSfx.ICE_BREAK -> SoundManager.instance.playSFX(SoundManager.SFX_ICE_BREAK, 1.12f, 1.0f)
       }
     }
     val phase = world.phase
@@ -375,7 +381,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         if (idx < 0) return
         val py = event.getY(idx) - stage.top
         val touchY = ((py - courtT) / courtH).coerceIn(0f, 1f)
-        world.moveYouPaddle(touchY + grabOffsetY)
+        world.dragYouPaddle(touchY + grabOffsetY)
       }
       MotionEvent.ACTION_POINTER_UP -> {
         if (event.getPointerId(event.actionIndex) == grabPointerId) clearGrab()
@@ -400,6 +406,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     dragging = false
     grabPointerId = -1
     grabOffsetY = 0f
+    world.releaseYouDrag()
   }
 
   private fun onCourtTap(y: Float, courtT: Float, courtH: Float) {
@@ -662,6 +669,18 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       courtW,
       courtH,
     )
+    drawIceTrap(
+      canvas,
+      world.youIceTrapLive(),
+      world.youIceTrapFrame(),
+      World.YOU_PADDLE_X,
+      world.youPaddleY,
+      leftCourt = true,
+      courtL,
+      courtT,
+      courtW,
+      courtH,
+    )
     drawFighter(
       canvas,
       rivalFrames,
@@ -670,6 +689,18 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       world.cpuPaddleY,
       false,
       CPU,
+      courtL,
+      courtT,
+      courtW,
+      courtH,
+    )
+    drawIceTrap(
+      canvas,
+      world.cpuIceTrapLive(),
+      world.cpuIceTrapFrame(),
+      World.CPU_PADDLE_X,
+      world.cpuPaddleY,
+      leftCourt = false,
       courtL,
       courtT,
       courtW,
@@ -734,14 +765,15 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val railW = vw * 0.48f
     val btnH = 56f * dp
     val btnW = btnH * (264f / 150f)
-    val btnY = vh - pad - btnH
+    val right = railW - pad
     winner.art().ending?.let { path ->
       blitFillHeightEnd(canvas, keyed(path), railW, 0f, vw - railW, vh)
     }
+    var winsBottom = vh * 0.5f
     winner.art().wins?.let { path ->
       val bmp = keyed(path)
-      val maxW = railW * 0.92f
-      val maxH = (btnY - pad * 2f).coerceAtLeast(1f)
+      val maxW = (right - pad).coerceAtLeast(1f)
+      val maxH = (vh * 0.42f).coerceAtLeast(1f)
       val aspect = bmp.width / bmp.height.toFloat()
       var dw = maxW
       var dh = dw / aspect
@@ -749,10 +781,14 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         dh = maxH
         dw = dh * aspect
       }
-      blitFit(canvas, bmp, (railW - dw) / 2f, pad + (maxH - dh) / 2f, dw, dh)
+      val x = right - dw
+      val y = (vh - dh) / 2f
+      winsBottom = y + dh
+      blitFit(canvas, bmp, x, y, dw, dh)
     }
     if (resultCardT < RESULT_LOCK_S) return
-    blitFit(canvas, keyed(UiArt.BTN_CONTINUE), (railW - btnW) / 2f, btnY, btnW, btnH)
+    val btnY = (winsBottom + 18f * dp).coerceAtMost(vh * 0.78f - btnH)
+    blitFit(canvas, keyed(UiArt.BTN_CONTINUE), right - btnW, btnY, btnW, btnH)
   }
 
   private fun drawFighter(
@@ -768,10 +804,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     courtW: Float,
     courtH: Float,
   ) {
-    val bmp = frames[pose] ?: frames[PaddlePose.IDLE]
     layoutFighterDest(dst, paddleX, paddleY, leftCourt, courtL, courtT, courtW, courtH)
+    val bmp = frames[pose] ?: frames[PaddlePose.IDLE]
     if (bmp != null) {
-      blitFit(canvas, bmp, dst.left, dst.top, dst.width(), dst.height())
+      blitFill(canvas, bmp, dst.left, dst.top, dst.width(), dst.height())
     } else {
       val hitX = if (leftCourt) World.YOU_HIT_X else World.CPU_HIT_X
       fillPaint.color = fallback
@@ -783,6 +819,31 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         fillPaint,
       )
     }
+  }
+
+  private fun drawIceTrap(
+    canvas: Canvas,
+    live: Boolean,
+    frame: Int,
+    paddleX: Float,
+    paddleY: Float,
+    leftCourt: Boolean,
+    courtL: Float,
+    courtT: Float,
+    courtW: Float,
+    courtH: Float,
+  ) {
+    if (!live) return
+    layoutFighterDest(dst, paddleX, paddleY, leftCourt, courtL, courtT, courtW, courtH)
+    blitFill(
+      canvas,
+      keyed(UiArt.iceTrap(frame)),
+      dst.left,
+      dst.top,
+      dst.width(),
+      dst.height(),
+      ICE_TRAP_ALPHA,
+    )
   }
 
   private fun drawChip(
@@ -1044,8 +1105,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     }
   }
 
-  private fun blitFill(canvas: Canvas, bmp: Bitmap, l: Float, t: Float, w: Float, h: Float) {
+  private fun blitFill(canvas: Canvas, bmp: Bitmap, l: Float, t: Float, w: Float, h: Float, alpha: Int = 255) {
+    val prev = pixel.alpha
+    pixel.alpha = alpha
     blit(canvas, bmp, l, t, w, h)
+    pixel.alpha = prev
   }
 
   private fun blitFit(canvas: Canvas, bmp: Bitmap, l: Float, t: Float, w: Float, h: Float, alpha: Int = 255) {
@@ -1154,5 +1218,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     const val MUTE_DIM = 0x598FA3B0
     const val TAIL_FLICKER_DIST = 0.04f
     const val DOUBLE_TAP_MS = 280L
+    const val ICE_TRAP_ALPHA = 148
   }
 }
