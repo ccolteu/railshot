@@ -113,7 +113,7 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
         else SFX_VOLUME
       val out = (vol * gain).coerceIn(0f, 1f)
       val playback = rate.coerceIn(0.5f, 2f)
-      val priority = if (callout) 3 else if (id == SFX_CHIP) 2 else 1
+      val priority = if (callout) 3 else if (id == SFX_CHIP || id == SFX_ICE) 2 else 1
       if (callout) {
         calloutDuck = true
         applyBgmVolumeLocked()
@@ -449,12 +449,13 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
     const val SFX_FIGHT = 5
     const val SFX_SHIELD = 6
     const val SFX_CHIP = 7
+    const val SFX_ICE = 8
 
     val BGM_MATCH: Int
       get() = R.raw.bgm_match
 
-    private const val SFX_COUNT = 8
-    private const val MAX_STREAMS = 8
+    private const val SFX_COUNT = 9
+    private const val MAX_STREAMS = 10
     private const val DUCK_VOLUME = 0.45f
     private const val BGM_VOLUME = 0.58f
     private const val SFX_VOLUME = 0.95f
@@ -475,6 +476,7 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
         R.raw.sfx_fight,
         R.raw.sfx_shield,
         R.raw.sfx_chip,
+        R.raw.sfx_ice,
       )
 
     val instance: SoundManager by lazy { SoundManager() }

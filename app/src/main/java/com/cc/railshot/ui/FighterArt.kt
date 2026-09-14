@@ -54,7 +54,7 @@ object UiArt {
   const val FACE_FRAME_ON = "ui_face_frame_on.png"
   const val FACE_FRAME_OFF = "ui_face_frame_off.png"
   const val BALL = "ui_ball.png"
-  const val HEX_ORB = "ui_hex_orb.png"
+  const val ICE_BALL = "ui_ice_ball.png"
 
   /** Packed KEY hole radius in every `ui_ball_tail_*.png`. */
   const val TAIL_HOLE_R = 56f
@@ -69,6 +69,22 @@ object UiArt {
     val side = if (left) "left" else "right"
     return "ui_ball_tail_${length}_$side.png"
   }
+
+  fun iceBallTail(band: BallTailBand, left: Boolean): String =
+    "ui_ice_ball_tail_" +
+      when (band) {
+        BallTailBand.SHORT -> "short"
+        BallTailBand.MEDIUM -> "medium"
+        BallTailBand.LONG -> "long"
+      } +
+      if (left) "_left.png" else "_right.png"
+
+  fun iceBurst(frame: Int): String =
+    when (frame.coerceIn(0, 2)) {
+      0 -> "ui_ice_burst_a.png"
+      1 -> "ui_ice_burst_b.png"
+      else -> "ui_ice_burst_c.png"
+    }
 
   /** Pocket center in PNG pixels (KEY hole, radius [TAIL_HOLE_R]). */
   fun ballTailPocket(path: String, width: Int, height: Int): Pair<Float, Float> {

@@ -8,6 +8,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Build
+import android.os.SystemClock
 import android.view.Choreographer
 import android.view.MotionEvent
 import android.view.SurfaceHolder
@@ -58,9 +59,14 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private var world = World()
   private var announced: Phase? = null
   private var dragging = false
+  private var grabOffsetY = 0f
+  private var grabPointerId = -1
+  private var lastCourtTapMs = 0L
+  private val youGrab = RectF()
   private var youFrames: Map<PaddlePose, Bitmap> = emptyMap()
   private var rivalFrames: Map<PaddlePose, Bitmap> = emptyMap()
   private var tailTravel = 0f
+  private var iceTailTravel = 0f
 
   private val stage = RectF()
   private val src = Rect()
@@ -155,8 +161,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val sw = stage.width()
     val sh = stage.height()
     if (event.actionMasked != MotionEvent.ACTION_DOWN &&
+      event.actionMasked != MotionEvent.ACTION_POINTER_DOWN &&
       event.actionMasked != MotionEvent.ACTION_MOVE &&
       event.actionMasked != MotionEvent.ACTION_UP &&
+      event.actionMasked != MotionEvent.ACTION_POINTER_UP &&
       event.actionMasked != MotionEvent.ACTION_CANCEL
     ) {
       return true
@@ -190,7 +198,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     world = World(you = you, rival = rival, cpuLevel = CpuLevel.HARD, attract = true)
     announced = null
     dragging = false
+    grabOffsetY = 0f
+    grabPointerId = -1
+    lastCourtTapMs = 0L
     tailTravel = 0f
+    iceTailTravel = 0f
     demoT = 0f
     screen = Screen.DEMO
   }
@@ -220,7 +232,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     world = World(you = you, rival = rival, cpuLevel = cpuLevel)
     announced = null
     dragging = false
+    grabOffsetY = 0f
+    grabPointerId = -1
+    lastCourtTapMs = 0L
     tailTravel = 0f
+    iceTailTravel = 0f
     resultCardT = 0f
     screen = Screen.MATCH
   }
@@ -230,6 +246,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     world.step(dt)
     if (world.phase == Phase.PLAYING && !world.impactFrozen()) {
       tailTravel += world.ballSpeed() * dt
+      if (world.starLive()) iceTailTravel += world.starSpeed() * dt
     }
     world.drainSfx()
     if (demoT >= DEMO_HOLD_S) goTitle()
@@ -239,11 +256,13 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     world.step(dt)
     if (world.phase == Phase.PLAYING && !world.impactFrozen()) {
       tailTravel += world.ballSpeed() * dt
+      if (world.starLive()) iceTailTravel += world.starSpeed() * dt
     }
     for (sfx in world.drainSfx()) {
       when (sfx) {
         GameSfx.SHIELD -> SoundManager.instance.playSFX(SoundManager.SFX_SHIELD, 1.05f, 1.22f)
         GameSfx.CHIP -> SoundManager.instance.playSFX(SoundManager.SFX_CHIP, 1.12f, 0.82f)
+        GameSfx.ICE -> SoundManager.instance.playSFX(SoundManager.SFX_ICE, 1.08f, 1.0f)
       }
     }
     val phase = world.phase
@@ -315,8 +334,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val courtT = World.FRAME_TOP * sh
     val courtR = sw - World.FRAME_RIGHT * sw
     val courtB = sh - World.FRAME_BOTTOM * sh
+    val courtW = (courtR - courtL).coerceAtLeast(1f)
     val courtH = (courtB - courtT).coerceAtLeast(1f)
-    val inCourt = x in courtL..courtR && y in courtT..courtB
+    layoutYouGrab(courtL, courtT, courtW, courtH)
+    val slop = 18f * resources.displayMetrics.density
+    youGrab.inset(-slop, -slop)
     when (event.actionMasked) {
       MotionEvent.ACTION_DOWN -> {
         if (world.phase == Phase.YOU_WIN || world.phase == Phase.CPU_WIN) {
@@ -326,17 +348,101 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
           }
           return
         }
-        if (inCourt) {
-          dragging = true
-          world.moveYouPaddle(((y - courtT) / courtH).coerceIn(0f, 1f))
-          world.launch()
+        val playing = world.phase == Phase.PLAYING
+        val inCourt = x in courtL..courtR && y in courtT..courtB
+        if (tryGrab(event.getPointerId(0), x, y, courtT, courtH)) {
+          // Rail held.
+        } else {
+          clearGrab()
+          if (playing && inCourt) onCourtTap(y, courtT, courtH)
+        }
+        if (inCourt) world.launch()
+      }
+      MotionEvent.ACTION_POINTER_DOWN -> {
+        val i = event.actionIndex
+        val px = event.getX(i) - stage.left
+        val py = event.getY(i) - stage.top
+        val inCourt = px in courtL..courtR && py in courtT..courtB
+        if (!dragging && tryGrab(event.getPointerId(i), px, py, courtT, courtH)) return
+        if (dragging && event.getPointerId(i) == grabPointerId) return
+        if (world.phase == Phase.PLAYING && inCourt && !youGrab.contains(px, py)) {
+          onCourtTap(py, courtT, courtH)
         }
       }
       MotionEvent.ACTION_MOVE -> {
-        if (dragging) world.moveYouPaddle(((y - courtT) / courtH).coerceIn(0f, 1f))
+        if (!dragging) return
+        val idx = event.findPointerIndex(grabPointerId)
+        if (idx < 0) return
+        val py = event.getY(idx) - stage.top
+        val touchY = ((py - courtT) / courtH).coerceIn(0f, 1f)
+        world.moveYouPaddle(touchY + grabOffsetY)
       }
-      MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> dragging = false
+      MotionEvent.ACTION_POINTER_UP -> {
+        if (event.getPointerId(event.actionIndex) == grabPointerId) clearGrab()
+      }
+      MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+        clearGrab()
+        if (event.actionMasked == MotionEvent.ACTION_CANCEL) lastCourtTapMs = 0L
+      }
     }
+  }
+
+  private fun tryGrab(pointerId: Int, x: Float, y: Float, courtT: Float, courtH: Float): Boolean {
+    if (!youGrab.contains(x, y)) return false
+    dragging = true
+    grabPointerId = pointerId
+    val touchY = ((y - courtT) / courtH).coerceIn(0f, 1f)
+    grabOffsetY = world.youPaddleY - touchY
+    return true
+  }
+
+  private fun clearGrab() {
+    dragging = false
+    grabPointerId = -1
+    grabOffsetY = 0f
+  }
+
+  private fun onCourtTap(y: Float, courtT: Float, courtH: Float) {
+    val now = SystemClock.uptimeMillis()
+    val aimY = ((y - courtT) / courtH).coerceIn(0f, 1f)
+    if (lastCourtTapMs != 0L && now - lastCourtTapMs <= DOUBLE_TAP_MS) {
+      lastCourtTapMs = 0L
+      world.callYouSpecial(aimY)
+      return
+    }
+    lastCourtTapMs = now
+  }
+
+  private fun layoutYouGrab(courtL: Float, courtT: Float, courtW: Float, courtH: Float) {
+    layoutFighterDest(
+      youGrab,
+      World.YOU_PADDLE_X,
+      world.youPaddleY,
+      leftCourt = true,
+      courtL,
+      courtT,
+      courtW,
+      courtH,
+    )
+  }
+
+  private fun layoutFighterDest(
+    out: RectF,
+    paddleX: Float,
+    paddleY: Float,
+    leftCourt: Boolean,
+    courtL: Float,
+    courtT: Float,
+    courtW: Float,
+    courtH: Float,
+  ) {
+    val spriteH = World.PADDLE_LEN * courtH
+    val spriteW = spriteH * (World.SPRITE_W / World.SPRITE_H.toFloat())
+    val top = courtT + (paddleY - World.PADDLE_LEN / 2f) * courtH
+    val left =
+      if (leftCourt) courtL + paddleX * courtW
+      else courtL + paddleX * courtW + World.PADDLE_THICK * courtW - spriteW
+    out.set(left, top, left + spriteW, top + spriteH)
   }
 
   private fun drawFrame(canvas: Canvas) {
@@ -663,22 +769,17 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     courtH: Float,
   ) {
     val bmp = frames[pose] ?: frames[PaddlePose.IDLE]
-    val spriteH = World.PADDLE_LEN * courtH
-    val spriteW = spriteH * (World.SPRITE_W / World.SPRITE_H.toFloat())
-    val top = courtT + (paddleY - World.PADDLE_LEN / 2f) * courtH
-    val left =
-      if (leftCourt) courtL + paddleX * courtW
-      else courtL + paddleX * courtW + World.PADDLE_THICK * courtW - spriteW
+    layoutFighterDest(dst, paddleX, paddleY, leftCourt, courtL, courtT, courtW, courtH)
     if (bmp != null) {
-      blitFit(canvas, bmp, left, top, spriteW, spriteH)
+      blitFit(canvas, bmp, dst.left, dst.top, dst.width(), dst.height())
     } else {
       val hitX = if (leftCourt) World.YOU_HIT_X else World.CPU_HIT_X
       fillPaint.color = fallback
       canvas.drawRect(
         courtL + hitX * courtW,
-        top,
+        dst.top,
         courtL + hitX * courtW + World.PADDLE_THICK * courtW,
-        top + spriteH,
+        dst.bottom,
         fillPaint,
       )
     }
@@ -739,28 +840,91 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       fillPaint.color = ((200 * flash).toInt().coerceIn(0, 255) shl 24) or 0x00FFF8DC
       canvas.drawCircle(cx, cy, radius * (1.12f + 0.28f * flash), fillPaint)
     }
-    val speed = world.ballSpeed()
+    drawComet(
+      canvas,
+      courtL,
+      courtT,
+      courtW,
+      courtH,
+      cx,
+      cy,
+      radius,
+      side,
+      world.ballSpeed(),
+      world.ballVx(),
+      world.ballVy(),
+      tailTravel,
+      ice = false,
+    )
+    if (world.starLive()) {
+      val sx = courtL + world.starX() * courtW
+      val sy = courtT + world.starY() * courtH
+      drawComet(
+        canvas,
+        courtL,
+        courtT,
+        courtW,
+        courtH,
+        sx,
+        sy,
+        radius,
+        side,
+        world.starSpeed(),
+        world.starVx(),
+        world.starVy(),
+        iceTailTravel,
+        ice = true,
+      )
+    }
+    if (world.iceBurstLive()) {
+      val bx = courtL + world.iceBurstX() * courtW
+      val by = courtT + world.iceBurstY() * courtH
+      val burst = side * 2.4f
+      blitFit(
+        canvas,
+        keyed(UiArt.iceBurst(world.iceBurstFrame())),
+        bx - burst / 2f,
+        by - burst / 2f,
+        burst,
+        burst,
+      )
+    }
+  }
+
+  private fun drawComet(
+    canvas: Canvas,
+    courtL: Float,
+    courtT: Float,
+    courtW: Float,
+    courtH: Float,
+    cx: Float,
+    cy: Float,
+    radius: Float,
+    side: Float,
+    speed: Float,
+    vx: Float,
+    vy: Float,
+    travel: Float,
+    ice: Boolean,
+  ) {
     if (speed > World.BALL_SPEED * 0.08f) {
-      val left = ((tailTravel / TAIL_FLICKER_DIST).toInt() and 1) == 0
-      val path = UiArt.ballTail(world.ballTailBand(), left)
+      val left = ((travel / TAIL_FLICKER_DIST).toInt() and 1) == 0
+      val band = World.tailBandForSpeed(speed)
+      val path = if (ice) UiArt.iceBallTail(band, left) else UiArt.ballTail(band, left)
       val bmp = keyed(path)
       val (px, py) = UiArt.ballTailPocket(path, bmp.width, bmp.height)
       val scale = radius / UiArt.TAIL_HOLE_R
       val tailW = bmp.width * scale
       val tailH = bmp.height * scale
-      val deg = Math.toDegrees(atan2(world.ballVy().toDouble(), world.ballVx().toDouble())).toFloat()
+      val deg = Math.toDegrees(atan2(vy.toDouble(), vx.toDouble())).toFloat()
       canvas.save()
       canvas.clipRect(courtL, courtT, courtL + courtW, courtT + courtH)
       canvas.rotate(deg, cx, cy)
       blit(canvas, bmp, cx - px * scale, cy - py * scale, tailW, tailH)
       canvas.restore()
     }
-    blitFit(canvas, keyed(UiArt.BALL), cx - side / 2f, cy - side / 2f, side, side)
-    if (world.starLive()) {
-      val sx = courtL + world.starX() * courtW
-      val sy = courtT + world.starY() * courtH
-      blitFit(canvas, keyed(UiArt.HEX_ORB), sx - side / 2f, sy - side / 2f, side, side)
-    }
+    val orb = if (ice) UiArt.ICE_BALL else UiArt.BALL
+    blitFit(canvas, keyed(orb), cx - side / 2f, cy - side / 2f, side, side)
   }
 
   private fun drawFlavorLine(canvas: Canvas, text: String, l: Float, t: Float, w: Float, h: Float) {
@@ -989,5 +1153,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     const val CPU = 0xFFFF6B6B.toInt()
     const val MUTE_DIM = 0x598FA3B0
     const val TAIL_FLICKER_DIST = 0.04f
+    const val DOUBLE_TAP_MS = 280L
   }
 }

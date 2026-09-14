@@ -31,7 +31,8 @@ Keep the 90s pixel look; just draw it on a phone-sized canvas. Do not generate 3
 | Word banners | **960** wide (`FIGHT`/`ROUND` height fits letters; `WIN` **768×384**, `VS` **384×384**) | Magenta `#FF00FF` |
 | Digits | **120×150** each | Magenta `#FF00FF` |
 | Ball | **60×60** | Magenta `#FF00FF` |
-| Hex orb | **60×60** | Magenta `#FF00FF` |
+| Ice ball | **60×60** | Magenta `#FF00FF` |
+| Ice burst | **128×128** | Magenta `#FF00FF` |
 | Life chips | standing **22×120**, down **48×120** | Magenta `#FF00FF` |
 | Nameplates | **480×90** | Magenta `#FF00FF` |
 | Ending still | **1440×840** letterboxed in 4:3 | Opaque |
@@ -70,6 +71,7 @@ WAV clips live in `app/src/main/res/raw/` (16-bit PCM, 44.1 kHz, uncompressed). 
 | Fight | `sfx_fight.wav` | Enter `Phase.SERVE` |
 | Shield hit | `sfx_shield.wav` | Ball bounces off a fighter |
 | Chip off | `sfx_chip.wav` | Ball kills a life tile |
+| Ice shatter | `sfx_ice.wav` | Ice comet smashed or flattening a gate |
 | Match BGM | `bgm_match.wav` | Loops from app start |
 
 ## Produce a sprite (mandatory)
@@ -380,23 +382,33 @@ A **match** is **best of three sets** (first to **2** sets wins). Each set is on
 
 Round `WIN` overlay on a set (`Phase.SET_WIN`); match win then the **result card** (not a game ending). Full-screen `ui_select_bg.png`. Right rail: winner `{name}_ending.png` at **full stage height**. Left rail: `{name}_wins.png` plus a non-flashing `ui_btn_continue.png` (same gold-bezel ivory chrome as SELECT). Ignore taps for **0.8s**, then tap (or **10s** idle) → character select. Do not staff-roll or bonus-tally here.
 
-Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1.8s, then `SERVE` with `ui_fight.png`. Tap serves. Do not typeset FIGHT or TAP TO SERVE.
+Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1.8s, then `SERVE` with `ui_fight.png`. Tap the playfield to serve (does not move the shield). Drag only starts if the thumb lands on P1’s sprite (fat-finger slop, grab offset held so the fighter does not teleport under the pad). Double-tap empty court in `PLAYING` (one thumb or a second thumb while holding the rail) calls that fighter’s **once-per-set** shot at a living gate near the second tap. Serve taps do not count. CPU HARD calls the same shot after three returns. Do not typeset FIGHT or TAP TO SERVE.
 
 **CPU** loads from the **2P fighter**. **Wall** (Maru, Hex): camps a living gate, smaller motion. **Slugger** (Rivet, Ash, Kite, Quill): chases, overcommits. VS opens on **EASY**; arrows cycle **EASY / HARD** buttons (`ui_btn_easy.png` / `ui_btn_hard.png`). Easy abandons high/low rails and reacts late. Hard predicts the bounce and cuts the line.
 
-**Fighter kits** (P1 and 2P, code): same sport, readable knobs. Rally creeps speed each paddle bounce (capped). HARD reacts earlier and closes faster. Signatures fire from the hit you already do — no extra button. Rivet stacks pop on consecutive hits (cools if the return never chips). Ash smash-swipes. Kite afterburns after a long rail dash. Maru dumps speed in the fat of the plate. Quill steals dive rims. Hex fires one electrified orb per set (same size as the fireball, not on the first touch, aimed at a living gate on a split angle). Court sprites **do not** scale with those knobs.
+**Fighter kits** (P1 and 2P, code): same sport, readable knobs. Rally creeps speed each paddle bounce (capped). HARD reacts earlier and closes faster. Signatures fire from the hit you already do — no extra button. Rivet stacks pop on consecutive hits (cools if the return never chips). Ash smash-swipes. Kite afterburns after a long rail dash. Maru dumps speed in the fat of the plate. Quill steals dive rims. Hex fires the same called orb as everyone else. Court sprites **do not** scale with those knobs.
 
 ## In-game extras
 
-Use section **D** for player sprites. Hex fires one live orb per set per Hex side (`art/ui_hex_orb.png`), **same drawn size as the fireball**. Not on the first Hex touch of the set. It aims at an upright opponent gate on a **steep split** from the fireball (not the same heading). Flattening a gate uses the same cabinet sting as the fireball (freeze, shake, flash). It only flattens the opponent's chips.
+Use section **D** for player sprites. Double-tap empty court calls **one ice comet** per set per side (`art/ui_ice_ball.png` plus ice tails), same size and flicker as the fireball, cyan instead of orange fire. From the fighter toward an upright opponent gate near the tap. Quill still prefers the high or low half. The orb **does not pass shields**: a paddle smash destroys it (shield SFX, flash, no freeze) so the defender chooses the fireball line or the ice line. Death overlays `ui_ice_burst_{a,b,c}.png` (crack → shards → flakes) at the orb for ~0.24s, gate flatten or shield smash, with `sfx_ice.wav`. If it gets through, it also plays chip SFX and flattens that side’s chip with the same cabinet sting as the fireball. CPU chases the nearer incoming shot.
 
-**Hex orb** (`art/ui_hex_orb.png`)
+**Ice burst** (`art/ui_ice_burst_a.png`, `_b`, `_c`)
 
-Same 60×60 keyed sphere language as the play-ball, but ice-blue and electrified: hard cyan bands, white highlight, lightning cracks on the surface, tiny spark ticks. No fire tail. Magenta `#FF00FF`. Draw at fireball size.
+Three keyed ice-shatter frames, 128×128. Overlay when the ice comet dies. Magenta `#FF00FF`.
 
-```
-60x60 bright ice-blue electrified orb, 1994 Neo Geo pixel art, hard cyan bands and dithering not smooth gradients, white highlight, jagged white-cyan lightning on the sphere, tiny spark ticks, NO dark shadows, NO outline, no fire halo, no tail, magenta background #FF00FF
-```
+**Ice ball** (`art/ui_ice_ball.png`)
+
+Same 60×60 keyed sphere as the play-ball, ice-blue / cyan instead of steel-gold. No fire. Magenta `#FF00FF`.
+
+**Ice tail** (six files, same pockets as the fire tails)
+
+Same tongue layouts as `ui_ball_tail_*`, recolored cyan ice. Flicker and heading match the fireball draw.
+
+| Length | Flicker A | Flicker B |
+| --- | --- | --- |
+| Short (slow) | `ui_ice_ball_tail_short_left.png` | `ui_ice_ball_tail_short_right.png` |
+| Medium | `ui_ice_ball_tail_medium_left.png` | `ui_ice_ball_tail_medium_right.png` |
+| Long (fast) | `ui_ice_ball_tail_long_left.png` | `ui_ice_ball_tail_long_right.png` |
 
 **Ball** (`art/ui_ball.png`)
 
@@ -593,6 +605,8 @@ Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to
 - Six gutter gates per rail (standing; flattened after a hit)
 - Paddles / fighters in the lane
 - Ball plus speed-banded tail (`ui_ball_tail_{short,medium,long}_{left,right}.png`)
+- Called ice comet plus ice tails (`ui_ice_ball.png`, `ui_ice_ball_tail_*.png`)
+- Ice burst overlay (`ui_ice_burst_{a,b,c}.png`) when the comet dies
 - `ROUND` / `FIGHT` / `WIN` banners
 - Select cursor (`ui_1p.png` / `ui_2p.png`), arrows (`ui_arrow_left.png` + flip), SELECT (`ui_btn_select.png`)
 - VS arrows cycle EASY/HARD; the EASY/HARD button starts the match

@@ -23,6 +23,7 @@ enum class PaddlePose {
 enum class GameSfx {
   SHIELD,
   CHIP,
+  ICE,
 }
 
 enum class BallTailBand {
@@ -123,14 +124,17 @@ class World(
   private var cpuRail = 0f
   private var youStarArmed = true
   private var cpuStarArmed = true
-  private var youHexTouches = 0
-  private var cpuHexTouches = 0
+  private var cpuPaddleHits = 0
   private var starLive = false
   private var starFromYou = true
+  private var starFighter = Fighter.RIVET
   private var starX = 0f
   private var starY = 0.5f
   private var starVx = 0f
   private var starVy = 0f
+  private var burstT = 0f
+  private var burstX = 0f
+  private var burstY = 0.5f
 
   init {
     dealChips()
@@ -283,9 +287,44 @@ class World(
 
   fun starY(): Float = starY
 
+  fun starFighter(): Fighter = starFighter
+
   internal fun starVx(): Float = starVx
 
   internal fun starVy(): Float = starVy
+
+  internal fun starSpeed(): Float = kotlin.math.sqrt(starVx * starVx + starVy * starVy)
+
+  fun iceBurstLive(): Boolean = burstT > 0f
+
+  fun iceBurstX(): Float = burstX
+
+  fun iceBurstY(): Float = burstY
+
+  fun iceBurstFrame(): Int {
+    val u = 1f - (burstT / ICE_BURST_S).coerceIn(0f, 1f)
+    return when {
+      u < 1f / 3f -> 0
+      u < 2f / 3f -> 1
+      else -> 2
+    }
+  }
+
+  private fun popIceBurst() {
+    burstX = starX
+    burstY = starY
+    burstT = ICE_BURST_S
+  }
+
+  internal fun placeStar(x: Float, y: Float, vx: Float, vy: Float) {
+    starLive = true
+    starX = x
+    starY = y
+    starVx = vx
+    starVy = vy
+  }
+
+  fun callYouSpecial(aimY: Float): Boolean = spawnSpecial(youSide = true, aimY = aimY)
 
   fun ballTailBand(): BallTailBand = tailBandForSpeed(ballSpeed())
 
@@ -330,9 +369,9 @@ class World(
     cpuRail = 0f
     youStarArmed = true
     cpuStarArmed = true
-    youHexTouches = 0
-    cpuHexTouches = 0
+    cpuPaddleHits = 0
     starLive = false
+    burstT = 0f
     dealChips()
     callRound()
   }
@@ -357,12 +396,21 @@ class World(
     val style = if (towardCpu) cpuStyle else youStyle
     val kit = if (towardCpu) cpuKit else youKit
     val y = if (towardCpu) cpuPaddleY else youPaddleY
-    val incoming = if (towardCpu) vx > 0f else vx < 0f
-    if (!incoming) return
-    if (towardCpu && ballX < cpuReactX()) return
-    if (!towardCpu && ballX > 1f - cpuReactX()) return
+    val ballIncoming = if (towardCpu) vx > 0f else vx < 0f
+    val orbIncoming = starLive && if (towardCpu) starVx > 0f else starVx < 0f
+    if (!ballIncoming && !orbIncoming) return
+    val chaseOrb =
+      orbIncoming &&
+        (!ballIncoming ||
+          if (towardCpu) starX >= ballX else starX <= ballX)
+    val threatX = if (chaseOrb) starX else ballX
+    if (towardCpu && threatX < cpuReactX()) return
+    if (!towardCpu && threatX > 1f - cpuReactX()) return
     val front = if (towardCpu) cpuFrontX() else youFrontX()
-    val chase = if (cpuLevel == CpuLevel.HARD) interceptY(front, towardCpu) else ballY
+    val chase =
+      if (chaseOrb) starY
+      else if (cpuLevel == CpuLevel.HARD) interceptY(front, towardCpu)
+      else ballY
     if (cpuLevel == CpuLevel.EASY && (chase < 0.17f || chase > 0.83f)) {
       // Leave the rails open — retreat toward mid instead of covering a high/low shot.
       val mid = 0.5f - y
@@ -372,7 +420,7 @@ class World(
       return
     }
     val camp = threatenedGateY(if (towardCpu) Side.CPU else Side.YOU) ?: chase
-    val mix = campMix(style)
+    val mix = if (chaseOrb) 0f else campMix(style)
     var target = chase * (1f - mix) + camp * mix
     val error = target - y
     if (style == CpuStyle.SLUGGER && kotlin.math.abs(error) > 0.012f) {
@@ -574,60 +622,59 @@ class World(
     normalize(speed)
     lastPaddle = side
     chipSincePaddle = false
-    if (fighter == Fighter.HEX) {
-      if (youSide) youHexTouches += 1 else cpuHexTouches += 1
-      maybeSpawnStar(youSide)
+    if (!youSide) {
+      cpuPaddleHits += 1
+      maybeCpuSpecial()
     }
   }
 
-  private fun maybeSpawnStar(youSide: Boolean) {
-    if (starLive) return
+  private fun maybeCpuSpecial() {
+    if (attract || starLive) return
+    if (cpuPaddleHits < CPU_SPECIAL_HITS) return
+    val aim = threatenedGateY(Side.YOU) ?: 0.5f
+    spawnSpecial(youSide = false, aimY = aim)
+  }
+
+  private fun spawnSpecial(youSide: Boolean, aimY: Float): Boolean {
+    if (phase != Phase.PLAYING || starLive) return false
     val armed = if (youSide) youStarArmed else cpuStarArmed
-    if (!armed) return
-    val touches = if (youSide) youHexTouches else cpuHexTouches
-    if (touches < HEX_ORB_TOUCH) return
-    val target = aimUprightChip(youSide) ?: return
+    if (!armed) return false
+    val fighter = if (youSide) you else rival
+    val target = aimCalledChip(youSide, aimY, fighter) ?: return false
     if (youSide) youStarArmed = false else cpuStarArmed = false
     starLive = true
     starFromYou = youSide
-    starX = ballX
-    starY = ballY
+    starFighter = fighter
+    starX = if (youSide) youFrontX() + BALL_R_X else cpuFrontX() - BALL_R_X
+    starY = if (youSide) youPaddleY else cpuPaddleY
     val cx = target.x + target.w / 2f
     val cy = target.y + target.h / 2f
-    var dx = cx - starX
-    var dy = cy - starY
+    val dx = cx - starX
+    val dy = cy - starY
     val mag = kotlin.math.sqrt(dx * dx + dy * dy).coerceAtLeast(0.001f)
-    val speed = ballSpeed() * STAR_SPEED
+    val speed = specialSpeed()
     starVx = dx / mag * speed
     starVy = dy / mag * speed
+    pendingSfx += GameSfx.SHIELD
+    return true
   }
 
-  /** Living opponent gate whose aim splits hardest from the fireball. */
-  private fun aimUprightChip(youSide: Boolean): Chip? {
+  private fun specialSpeed(): Float = (BALL_SPEED * STAR_SPEED).coerceAtMost(BALL_SPEED * SLICE_CAP)
+
+  private fun aimCalledChip(youSide: Boolean, aimY: Float, fighter: Fighter): Chip? {
     val side = if (youSide) Side.CPU else Side.YOU
-    val speed = ballSpeed().coerceAtLeast(0.001f)
-    val bx = vx / speed
-    val by = vy / speed
-    var best: Chip? = null
-    var bestScore = Float.NEGATIVE_INFINITY
-    for (chip in chips) {
-      if (!chip.alive || chip.side != side) continue
-      val cx = chip.x + chip.w / 2f
-      val cy = chip.y + chip.h / 2f
-      val dx = cx - ballX
-      val dy = cy - ballY
-      val mag = kotlin.math.sqrt(dx * dx + dy * dy).coerceAtLeast(0.001f)
-      val nx = dx / mag
-      val ny = dy / mag
-      val split = 1f - (bx * nx + by * ny)
-      val steep = kotlin.math.abs(ny)
-      val score = split * 2f + steep
-      if (score > bestScore) {
-        bestScore = score
-        best = chip
+    val y = aimY.coerceIn(0f, 1f)
+    var pool = chips.filter { it.alive && it.side == side }
+    if (pool.isEmpty()) return null
+    if (fighter == Fighter.QUILL) {
+      val high = y < 0.5f
+      val half = pool.filter { chip ->
+        val cy = chip.y + chip.h / 2f
+        if (high) cy < 0.5f else cy > 0.5f
       }
+      if (half.isNotEmpty()) pool = half
     }
-    return best
+    return pool.minBy { chip -> kotlin.math.abs(chip.y + chip.h / 2f - y) }
   }
 
   private fun advanceStar(dt: Float) {
@@ -641,6 +688,10 @@ class World(
       starY = 1f - STAR_R
       starVy = -kotlin.math.abs(starVy)
     }
+    smashOrbOnPaddle(youPaddleY, youFrontX(), incomingLeft = true, youSide = true)
+    if (!starLive) return
+    smashOrbOnPaddle(cpuPaddleY, cpuFrontX(), incomingLeft = false, youSide = false)
+    if (!starLive) return
     val side = if (starFromYou) Side.CPU else Side.YOU
     val hit =
       chips.firstOrNull { chip ->
@@ -651,12 +702,42 @@ class World(
       pendingSfx += GameSfx.CHIP
       chipSincePaddle = true
       sting(CHIP_FREEZE, SHAKE_CHIP, SHAKE_CHIP_T, FLASH_CHIP)
+      pendingSfx += GameSfx.ICE
       if (hit.side == Side.CPU) youScore += 1 else cpuScore += 1
+      popIceBurst()
       starLive = false
       if (suddenDeath) finishSet(if (hit.side == Side.CPU) Side.YOU else Side.CPU)
       return
     }
     if (starX < -0.05f || starX > 1.05f) starLive = false
+  }
+
+  private fun smashOrbOnPaddle(
+    paddleY: Float,
+    frontX: Float,
+    incomingLeft: Boolean,
+    youSide: Boolean,
+  ) {
+    if (!starLive) return
+    if (incomingLeft && starVx >= 0f) return
+    if (!incomingLeft && starVx <= 0f) return
+    if (incomingLeft && starX < frontX) return
+    if (!incomingLeft && starX > frontX) return
+    val kit = if (youSide) youKit else cpuKit
+    val half = kit.paddleLen / 2f
+    val top = paddleY - half
+    val bottom = top + kit.paddleLen
+    if (incomingLeft) {
+      if (starX - STAR_R_X > frontX) return
+    } else {
+      if (starX + STAR_R_X < frontX) return
+    }
+    if (starY < top - STAR_R || starY > bottom + STAR_R) return
+    popIceBurst()
+    starLive = false
+    if (youSide) youHitT = HIT_HOLD else cpuHitT = HIT_HOLD
+    pendingSfx += GameSfx.ICE
+    sting(0f, 0f, 0f, FLASH_HOLD)
   }
 
   private fun overlapsStar(chip: Chip): Boolean {
@@ -789,6 +870,7 @@ class World(
     if (freezeT > 0f) freezeT = (freezeT - dt).coerceAtLeast(0f)
     if (shakeT > 0f) shakeT = (shakeT - dt).coerceAtLeast(0f)
     if (flashT > 0f) flashT = (flashT - dt).coerceAtLeast(0f)
+    if (burstT > 0f) burstT = (burstT - dt).coerceAtLeast(0f)
   }
 
   private fun shakeAxis(span: Float, freq: Float): Float {
@@ -836,7 +918,8 @@ class World(
     const val QUILL_DIVE = 1.28f
     const val STAR_SPEED = 0.85f
     const val STAR_R = BALL_R
-    const val HEX_ORB_TOUCH = 2
+    const val CPU_SPECIAL_HITS = 3
+    const val ICE_BURST_S = 0.24f
     const val PADDLE_LEN = 0.20f
     const val PADDLE_THICK = 0.018f
     const val CHIP_COUNT = 6

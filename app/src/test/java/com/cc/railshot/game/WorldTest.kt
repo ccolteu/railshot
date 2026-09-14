@@ -399,25 +399,58 @@ class WorldTest {
   }
 
   @Test
+  fun calledSpecialFiresOnceTowardTheTappedGate() {
+    val world = World(you = Fighter.RIVET)
+    world.placeBall(0.5f, 0.5f, 0.4f, 0f)
+    assertTrue(world.callYouSpecial(0.12f))
+    assertTrue(world.starLive())
+    assertTrue(world.starVy() < -0.05f)
+    assertEquals(Fighter.RIVET, world.starFighter())
+    assertFalse(world.callYouSpecial(0.88f))
+  }
+
+  @Test
+  fun shieldSmashDestroysTheCalledOrb() {
+    val world = World(you = Fighter.RIVET)
+    world.placeBall(0.40f, 0.50f, -0.4f, 0f)
+    assertTrue(world.callYouSpecial(0.50f))
+    val chips = world.cpuChipsLeft()
+    world.placeStar(world.cpuFrontX() - World.STAR_R_X - 0.001f, world.cpuPaddleY, 0.6f, 0f)
+    var guard = 0
+    while (world.starLive() && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertFalse(world.starLive())
+    assertEquals(chips, world.cpuChipsLeft())
+    assertTrue(world.drainSfx().contains(GameSfx.ICE))
+    assertTrue(world.iceBurstLive())
+  }
+
+  @Test
+  fun calledOrbMissesAShieldOffTheLine() {
+    val world = World(you = Fighter.RIVET, cpuLevel = CpuLevel.EASY)
+    world.placeBall(0.40f, 0.50f, -0.4f, 0f)
+    assertTrue(world.callYouSpecial(0.12f))
+    var guard = 0
+    while (world.starLive() && world.cpuChipsLeft() == World.CHIP_COUNT && guard++ < 300) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.cpuChipsLeft() < World.CHIP_COUNT)
+    assertTrue(world.iceBurstLive())
+  }
+
+  @Test
   fun hexStarFiresOncePerSet() {
     val world = World(you = Fighter.HEX)
     youReturnSpeed(world, paddleY = 0.5f, ballY = 0.5f)
     assertFalse(world.starLive())
     thaw(world)
     youBounceAgain(world, paddleY = 0.5f, ballY = 0.5f)
+    assertFalse(world.starLive())
+    assertTrue(world.callYouSpecial(0.12f))
     assertTrue(world.starLive())
-    val ballHeading = kotlin.math.atan2(world.ballVy(), world.ballVx())
-    val orbHeading = kotlin.math.atan2(world.starVy(), world.starVx())
-    assertTrue(kotlin.math.abs(orbHeading - ballHeading) > 0.25f)
-    assertTrue(kotlin.math.abs(world.starVy()) > kotlin.math.abs(world.ballVy()) + 0.05f)
-    thaw(world)
-    var guard = 0
-    while (world.starLive() && world.phase == Phase.PLAYING && guard++ < 500) {
-      world.step(1f / 60f)
-    }
-    assertFalse(world.starLive())
-    youBounceAgain(world, paddleY = 0.5f, ballY = 0.5f)
-    assertFalse(world.starLive())
+    assertEquals(Fighter.HEX, world.starFighter())
+    assertFalse(world.callYouSpecial(0.88f))
   }
 
   private fun thaw(world: World) {
