@@ -33,7 +33,6 @@ Keep the 90s pixel look; just draw it on a phone-sized canvas. Do not generate 3
 | Ball | **60×60** | Magenta `#FF00FF` |
 | Ice ball | **60×60** | Magenta `#FF00FF` |
 | Ice burst | **128×128** | Magenta `#FF00FF` |
-| Ice trap | **224×256** | Magenta `#FF00FF` |
 | Life chips | standing **22×120**, down **48×120** | Magenta `#FF00FF` |
 | Nameplates | **480×90** | Magenta `#FF00FF` |
 | Ending still | **1440×840** letterboxed in 4:3 | Opaque |
@@ -73,7 +72,6 @@ WAV clips live in `app/src/main/res/raw/` (16-bit PCM, 44.1 kHz, uncompressed). 
 | Shield hit | `sfx_shield.wav` | Ball bounces off a fighter |
 | Chip off | `sfx_chip.wav` | Ball kills a life tile |
 | Ice shatter | `sfx_ice.wav` | Ice comet smashed or flattening a gate |
-| Ice cube break | `sfx_ice_break.wav` | Trap overlay hits the breaking-shard frames |
 | Match BGM | `bgm_match.wav` | Loops from app start |
 
 ## Produce a sprite (mandatory)
@@ -392,15 +390,11 @@ Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1
 
 ## In-game extras
 
-Use section **D** for player sprites. Double-tap empty court calls **one ice comet** per set per side (`art/ui_ice_ball.png` plus ice tails), same size and flicker as the fireball, cyan instead of orange fire. From the fighter toward an upright opponent gate near the tap. Quill still prefers the high or low half. The orb **does not pass shields**: a paddle smash destroys it (shield flash, `sfx_ice.wav`) and **ice-locks that fighter until the trap overlay finishes** (~1.05s: clear cube → cracks → shards → flying chips) while the fireball keeps moving. Overlay `ui_ice_trap_{a,b,c,d}.png` on the smasher in that order (blit alpha). The paddle cannot move until the last shard frame is gone. When the overlay hits the breaking frames it plays `sfx_ice_break.wav` (separate from the comet smash). After the trap, P1 **chases** the held thumb (elastic follow) instead of teleporting. Gate flatten does **not** lock a paddle. Death overlays `ui_ice_burst_{a,b,c}.png` at the orb for ~0.24s, gate flatten or shield smash. If it gets through, it also plays chip SFX and flattens that side’s chip with the same cabinet sting as the fireball. CPU chases the nearer incoming shot.
+Use section **D** for player sprites. Double-tap empty court calls **one ice comet** per set per side (`art/ui_ice_ball.png` plus ice tails), same size and flicker as the fireball, cyan instead of orange fire. From the fighter toward an upright opponent gate near the tap. Quill still prefers the high or low half. The orb **does not pass shields**: a paddle smash destroys it (shield flash, `sfx_ice.wav`) while the fireball keeps moving. Death overlays `ui_ice_burst_{a,b,c}.png` at the orb for ~0.24s, gate flatten or shield smash. If it gets through, it also plays chip SFX and flattens that side’s chip with the same cabinet sting as the fireball. CPU chases the nearer incoming shot.
 
 **Ice burst** (`art/ui_ice_burst_a.png`, `_b`, `_c`)
 
 Three keyed ice-shatter frames, 128×128. Overlay when the ice comet dies. Magenta `#FF00FF`.
-
-**Ice trap** (`art/ui_ice_trap_a.png` … `_d.png`)
-
-Four 224×256 frames, played in order over ~1.05s: **A** clear ice cube (keep), **B** thick phone-visible cracks, **C** same canvas as A/B, ice **shards only** (no solid ice frame) with wide `#FF00FF` gaps, **D** a few 2D chips flying on empty magenta. Overlay on the smasher. A/B filled tiles (blit alpha). C/D key magenta gaps.
 
 **Ice ball** (`art/ui_ice_ball.png`)
 
@@ -613,7 +607,6 @@ Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to
 - Ball plus speed-banded tail (`ui_ball_tail_{short,medium,long}_{left,right}.png`)
 - Called ice comet plus ice tails (`ui_ice_ball.png`, `ui_ice_ball_tail_*.png`)
 - Ice burst overlay (`ui_ice_burst_{a,b,c}.png`) when the comet dies
-- Ice trap overlay (`ui_ice_trap_{a,b,c,d}.png`) on the fighter that smashed the comet
 - `ROUND` / `FIGHT` / `WIN` banners
 - Select cursor (`ui_1p.png` / `ui_2p.png`), arrows (`ui_arrow_left.png` + flip), SELECT (`ui_btn_select.png`)
 - VS arrows cycle EASY/HARD; the EASY/HARD button starts the match

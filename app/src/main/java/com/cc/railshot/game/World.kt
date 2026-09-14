@@ -24,7 +24,6 @@ enum class GameSfx {
   SHIELD,
   CHIP,
   ICE,
-  ICE_BREAK,
 }
 
 enum class BallTailBand {
@@ -136,10 +135,6 @@ class World(
   private var burstT = 0f
   private var burstX = 0f
   private var burstY = 0.5f
-  private var youTrapT = 0f
-  private var cpuTrapT = 0f
-  private var youAimY = 0.5f
-  private var youCatchUp = false
   private var tailLock: BallTailBand? = null
   private var shieldGain = 1.05f
   private var shieldRate = 1.22f
@@ -173,46 +168,12 @@ class World(
   fun cpuChipsLeft(): Int = chips.count { it.side == Side.CPU && it.alive }
 
   fun moveYouPaddle(normalizedY: Float) {
-    aimYouPaddle(normalizedY)
-    if (youIceLocked()) return
-    youCatchUp = false
-    commitYouPaddle(youAimY)
-  }
-
-  /** Live thumb: tracks aim while frozen, chases after ice instead of snapping. */
-  fun dragYouPaddle(normalizedY: Float) {
-    aimYouPaddle(normalizedY)
-    if (youIceLocked() || youCatchUp) return
-    commitYouPaddle(youAimY)
-  }
-
-  fun releaseYouDrag() {
-    youAimY = youPaddleY
-    youCatchUp = false
-  }
-
-  private fun aimYouPaddle(normalizedY: Float) {
     val half = youKit.paddleLen / 2f
-    youAimY = normalizedY.coerceIn(half, 1f - half)
-  }
-
-  private fun commitYouPaddle(next: Float) {
+    val next = normalizedY.coerceIn(half, 1f - half)
     noteRail(youSide = true, from = youPaddleY, to = next)
     if (kotlin.math.abs(next - youPaddleY) > WALK_EPS) youWalkT = WALK_HOLD
     youPaddleY = next
     if (phase == Phase.SERVE || phase == Phase.ROUND) parkBall()
-  }
-
-  private fun chaseYouPaddle(dt: Float) {
-    if (attract || youIceLocked() || !youCatchUp) return
-    val err = youAimY - youPaddleY
-    if (kotlin.math.abs(err) < 0.002f) {
-      commitYouPaddle(youAimY)
-      youCatchUp = false
-      return
-    }
-    val u = 1f - kotlin.math.exp(-YOU_FOLLOW_K * dt)
-    commitYouPaddle(youPaddleY + err * u)
   }
 
   fun youPose(): PaddlePose = pose(youHitT, youWalkT > 0f)
@@ -251,7 +212,6 @@ class World(
     val clamped = dt.coerceAtMost(0.05f)
     tickHits(clamped)
     tickJuice(clamped)
-    chaseYouPaddle(clamped)
     if (!attract) {
       youPaddleVy = (youPaddleY - youPaddleYPrev) / clamped.coerceAtLeast(0.0001f)
       youPaddleYPrev = youPaddleY
@@ -354,28 +314,6 @@ class World(
     }
   }
 
-  fun youIceLocked(): Boolean = youTrapT > 0f
-
-  fun cpuIceLocked(): Boolean = cpuTrapT > 0f
-
-  fun youIceTrapLive(): Boolean = youTrapT > 0f
-
-  fun cpuIceTrapLive(): Boolean = cpuTrapT > 0f
-
-  fun youIceTrapFrame(): Int = iceTrapFrame(youTrapT)
-
-  fun cpuIceTrapFrame(): Int = iceTrapFrame(cpuTrapT)
-
-  private fun iceTrapFrame(t: Float): Int {
-    val u = 1f - (t / ICE_TRAP_S).coerceIn(0f, 1f)
-    return when {
-      u < ICE_TRAP_U_CRACK -> 0
-      u < ICE_TRAP_U_BREAK -> 1
-      u < ICE_TRAP_U_FLY -> 2
-      else -> 3
-    }
-  }
-
   private fun popIceBurst() {
     burstX = starX
     burstY = starY
@@ -419,8 +357,6 @@ class World(
     cpuScore = 0
     youPaddleY = 0.5f
     cpuPaddleY = 0.5f
-    youAimY = 0.5f
-    youCatchUp = false
     youHitT = 0f
     cpuHitT = 0f
     youWalkT = 0f
@@ -444,8 +380,6 @@ class World(
     cpuPaddleHits = 0
     starLive = false
     burstT = 0f
-    youTrapT = 0f
-    cpuTrapT = 0f
     tailLock = null
     shieldGain = 1.05f
     shieldRate = 1.22f
@@ -470,8 +404,6 @@ class World(
   }
 
   private fun steerPaddle(dt: Float, towardCpu: Boolean) {
-    if (towardCpu && cpuIceLocked()) return
-    if (!towardCpu && youIceLocked()) return
     val style = if (towardCpu) cpuStyle else youStyle
     val kit = if (towardCpu) cpuKit else youKit
     val y = if (towardCpu) cpuPaddleY else youPaddleY
@@ -877,13 +809,7 @@ class World(
     if (starY < top - STAR_R || starY > bottom + STAR_R) return
     popIceBurst()
     starLive = false
-    if (youSide) {
-      youHitT = HIT_HOLD
-      youTrapT = ICE_TRAP_S
-    } else {
-      cpuHitT = HIT_HOLD
-      cpuTrapT = ICE_TRAP_S
-    }
+    if (youSide) youHitT = HIT_HOLD else cpuHitT = HIT_HOLD
     pendingSfx += GameSfx.ICE
     sting(0f, 0f, 0f, FLASH_HOLD)
   }
@@ -1019,17 +945,6 @@ class World(
     if (shakeT > 0f) shakeT = (shakeT - dt).coerceAtLeast(0f)
     if (flashT > 0f) flashT = (flashT - dt).coerceAtLeast(0f)
     if (burstT > 0f) burstT = (burstT - dt).coerceAtLeast(0f)
-    val youPrev = youTrapT
-    val cpuPrev = cpuTrapT
-    if (youTrapT > 0f) youTrapT = (youTrapT - dt).coerceAtLeast(0f)
-    if (cpuTrapT > 0f) cpuTrapT = (cpuTrapT - dt).coerceAtLeast(0f)
-    maybeIceBreakSfx(youPrev, youTrapT)
-    maybeIceBreakSfx(cpuPrev, cpuTrapT)
-    if (youPrev > 0f && youTrapT <= 0f) youCatchUp = true
-  }
-
-  private fun maybeIceBreakSfx(prev: Float, next: Float) {
-    if (prev > ICE_TRAP_BREAK_AT && next <= ICE_TRAP_BREAK_AT) pendingSfx += GameSfx.ICE_BREAK
   }
 
   private fun shakeAxis(span: Float, freq: Float): Float {
@@ -1079,12 +994,6 @@ class World(
     const val STAR_R = BALL_R
     const val CPU_SPECIAL_HITS = 3
     const val ICE_BURST_S = 0.24f
-    const val ICE_TRAP_S = 1.05f
-    const val YOU_FOLLOW_K = 12f
-    const val ICE_TRAP_U_CRACK = 0.34f
-    const val ICE_TRAP_U_BREAK = 0.52f
-    const val ICE_TRAP_U_FLY = 0.74f
-    val ICE_TRAP_BREAK_AT: Float = ICE_TRAP_S * (1f - ICE_TRAP_U_BREAK)
     const val PADDLE_LEN = 0.20f
     const val PADDLE_THICK = 0.018f
     const val CHIP_COUNT = 6

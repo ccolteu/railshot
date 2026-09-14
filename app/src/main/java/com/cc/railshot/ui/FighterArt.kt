@@ -56,14 +56,6 @@ object UiArt {
   const val BALL = "ui_ball.png"
   const val ICE_BALL = "ui_ice_ball.png"
 
-  fun iceTrap(frame: Int): String =
-    when (frame.coerceIn(0, 3)) {
-      0 -> "ui_ice_trap_a.png"
-      1 -> "ui_ice_trap_b.png"
-      2 -> "ui_ice_trap_c.png"
-      else -> "ui_ice_trap_d.png"
-    }
-
   /** Packed KEY hole radius in every `ui_ball_tail_*.png`. */
   const val TAIL_HOLE_R = 56f
 

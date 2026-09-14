@@ -430,13 +430,10 @@ class WorldTest {
     assertEquals(chips, world.cpuChipsLeft())
     assertTrue(world.drainSfx().contains(GameSfx.ICE))
     assertTrue(world.iceBurstLive())
-    assertTrue(world.cpuIceLocked())
-    assertTrue(world.cpuIceTrapLive())
-    assertFalse(world.youIceLocked())
   }
 
   @Test
-  fun shieldSmashTrapsTheSmasherWhileTheBallKeepsMoving() {
+  fun shieldSmashDoesNotLockTheSmasher() {
     val world = World(you = Fighter.RIVET, cpuLevel = CpuLevel.EASY)
     world.placeBall(0.50f, 0.50f, 0.55f, 0f)
     world.placeStar(world.youFrontX() + World.STAR_R_X + 0.001f, world.youPaddleY, -0.7f, 0f)
@@ -445,31 +442,11 @@ class WorldTest {
       world.step(1f / 60f)
     }
     assertFalse(world.starLive())
-    assertTrue(world.youIceLocked())
-    assertEquals(0, world.youIceTrapFrame())
-    val held = world.youPaddleY
-    world.dragYouPaddle(0.82f)
-    assertEquals(held, world.youPaddleY, 0.0001f)
     val x0 = world.ballX
     world.step(1f / 60f)
     assertTrue(world.ballX > x0)
-    repeat(24) { world.step(1f / 60f) }
-    assertEquals(1, world.youIceTrapFrame())
-    repeat(14) { world.step(1f / 60f) }
-    assertEquals(2, world.youIceTrapFrame())
-    assertTrue(world.drainSfx().contains(GameSfx.ICE_BREAK))
-    repeat(14) { world.step(1f / 60f) }
-    assertEquals(3, world.youIceTrapFrame())
-    assertTrue(world.youIceLocked())
-    var thaw = 0
-    while (world.youIceLocked() && thaw++ < 120) {
-      world.step(1f / 60f)
-    }
-    assertFalse(world.youIceLocked())
-    assertFalse(world.youIceTrapLive())
-    assertTrue(kotlin.math.abs(world.youPaddleY - 0.82f) > 0.12f)
-    repeat(20) { world.step(1f / 60f) }
-    assertTrue(kotlin.math.abs(world.youPaddleY - 0.82f) < 0.05f)
+    world.moveYouPaddle(0.82f)
+    assertEquals(0.82f, world.youPaddleY, 0.0001f)
   }
 
   @Test
@@ -483,8 +460,6 @@ class WorldTest {
     }
     assertTrue(world.cpuChipsLeft() < World.CHIP_COUNT)
     assertTrue(world.iceBurstLive())
-    assertFalse(world.cpuIceLocked())
-    assertFalse(world.youIceLocked())
   }
 
   @Test
