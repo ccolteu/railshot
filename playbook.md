@@ -34,6 +34,7 @@ Keep the 90s pixel look; just draw it on a phone-sized canvas. Do not generate 3
 | Ice ball | **60×60** | Magenta `#FF00FF` |
 | Ice burst | **128×128** | Magenta `#FF00FF` |
 | Court wall | **96×176** | Magenta `#FF00FF` |
+| Court trace | **24×192** | Magenta `#FF00FF` |
 | Life chips | standing **22×120**, down **48×120** | Magenta `#FF00FF` |
 | Nameplates | **480×90** | Magenta `#FF00FF` |
 | Ending still | **1440×840** letterboxed in 4:3 | Opaque |
@@ -307,6 +308,16 @@ Match **court + cabinet + chips** load from the **2P / rival**. Files: `art/{nam
 
 **Circuit stadium**
 
+| Canvas | **1440×1080**, opaque |
+| Left gutter | darker teal chip lane |
+| Right gutter | darker teal chip lane |
+| Vertical center | x **720** |
+| Live dash size | **24×192** |
+| Live dash x | **708** (`TRACE_X_PX`) |
+| Dash travel (center y) | **168 → 912** |
+
+A **live dash** rides the midline only on **Rivet’s floor** (2P). After serve wait ~2.2s, the bead ping-pongs high ↔ low in ~3.6s each way. Only that bead is solid. Fireball and ice **ricochet**. HARD’s intercept includes the bounce. Paddles ignore it. Do not bake the bead into the floor PNG.
+
 ```
 Top-down 4:3 empty sports court floor, teal circuit-board traces only, gold broken circle with X in the center, dashed center line, empty side gutters, NO purple squares, NO IC pads, NO top or bottom rails, no people, no HUD, no text, pixel art arcade background, 1440x1080
 ```
@@ -410,6 +421,8 @@ Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1
 Use section **D** for player sprites. Double-tap empty court calls **one ice comet** per set per side (`art/ui_ice_ball.png` plus ice tails), same size and flicker as the fireball, cyan instead of orange fire. From the fighter toward an upright opponent gate near the tap. Quill still prefers the high or low half. The orb **does not pass shields**: a paddle smash destroys it (shield flash, `sfx_ice.wav`) while the fireball keeps moving. Death overlays `ui_ice_burst_{a,b,c}.png` at the orb for ~0.24s, gate flatten or shield smash. If it gets through, it flattens **whichever living gate it hits** (a wall bounce can send it into your own rail), plays chip SFX, and uses the same cabinet sting as the fireball. CPU chases the nearer incoming shot.
 
 A **court wall** comes out of a **mid-line well** only on **Ash’s floor** (the court loaded from 2P). Other courts stay empty. The camera is top-down: do **not** grow the sprite up the screen. Frames `ash/ash_court_wall_{a,b,c}.png` play inside the well toward the viewer. Three wells on the center line; as one **sinks**, the next **raises** (no empty rest). After serve wait ~2.2s, then high / mid / low in order. Hold ~3.4s at full. Fireball and ice comet **ricochet** like a wall — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it.
+
+A **live trace** rides Rivet’s midline (`art/rivet/rivet_court_trace.png`, **24×192**, magenta `#FF00FF`). Chunky 4px yellow/black hazard stripes like the cabinet posts. Same ricochet / HARD rules as Ash’s wall. Other courts stay empty of this bead.
 
 **Ice burst** (`art/ui_ice_burst_a.png`, `_b`, `_c`)
 
@@ -633,6 +646,7 @@ Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to
 - Called ice comet plus ice tails (`ui_ice_ball.png`, `ui_ice_ball_tail_*.png`)
 - Ice burst overlay (`ui_ice_burst_{a,b,c}.png`) when the comet dies
 - Rising court wall (`ash/ash_court_wall_{a,b,c}.png`) in the live mid-line well on Ash’s court
+- Live center dash (`rivet/rivet_court_trace.png`) on Rivet’s court
 - `ROUND` / `FIGHT` / `WIN` banners
 - Select cursor (`ui_1p.png` / `ui_2p.png`), arrows (`ui_arrow_left.png` + flip), SELECT (`ui_btn_select.png`)
 - VS arrows cycle EASY/HARD; the EASY/HARD button starts the match

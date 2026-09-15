@@ -535,6 +535,44 @@ class WorldTest {
   }
 
   @Test
+  fun rivetTraceBouncesTheBallWithoutScoring() {
+    val world = World(rival = Fighter.RIVET, cpuLevel = CpuLevel.EASY)
+    world.placeTrace(0.5f)
+    val chips = world.cpuChipsLeft()
+    world.placeBall(World.TRACE_X - World.BALL_R_X - 0.002f, 0.50f, 0.8f, 0f)
+    var guard = 0
+    while (world.ballVx() > 0f && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.ballVx() < 0f)
+    assertEquals(0, world.youScore)
+    assertEquals(chips, world.cpuChipsLeft())
+    assertFalse(world.drainSfx().contains(GameSfx.CHIP))
+  }
+
+  @Test
+  fun rivetTraceBouncesTheIceComet() {
+    val world = World(you = Fighter.ASH, rival = Fighter.RIVET, cpuLevel = CpuLevel.EASY)
+    world.placeTrace(0.5f)
+    world.placeBall(0.35f, 0.20f, -0.3f, 0f)
+    world.placeStar(World.TRACE_X - World.STAR_R_X - 0.002f, 0.50f, 0.7f, 0f)
+    var guard = 0
+    while (world.starVx() > 0f && world.starLive() && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.starLive())
+    assertTrue(world.starVx() < 0f)
+    assertEquals(World.CHIP_COUNT, world.cpuChipsLeft())
+  }
+
+  @Test
+  fun rivetTraceStaysOffOnOtherCourts() {
+    val world = World(rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    world.placeTrace(0.5f)
+    assertFalse(world.traceLive())
+  }
+
+  @Test
   fun calledOrbMissesAShieldOffTheLine() {
     val world = World(you = Fighter.RIVET, cpuLevel = CpuLevel.EASY)
     world.placeBall(0.40f, 0.50f, -0.4f, 0f)

@@ -85,6 +85,7 @@ class World(
   val youKit: FighterKit = FighterKit.of(you)
   val cpuKit: FighterKit = FighterKit.of(rival)
   private val courtWells: Boolean = rival == Fighter.ASH
+  private val courtTrace: Boolean = rival == Fighter.RIVET
   private val youStyle: CpuStyle = CpuStyle.forFighter(you)
   var phase: Phase = Phase.ROUND
     private set
@@ -152,6 +153,10 @@ class World(
   private val postGrow = FloatArray(3)
   private val postPhase = Array(3) { PostPhase.IDLE }
   private val postClock = FloatArray(3)
+  private var traceWait = TRACE_FIRST
+  private var traceOn = false
+  private var traceU = 0f
+  private var traceDir = 1f
   private var tailLock: BallTailBand? = null
   private var shieldGain = 1.05f
   private var shieldRate = 1.22f
@@ -223,7 +228,7 @@ class World(
     lastPaddle = null
     chipSincePaddle = false
     tailLock = null
-    armPost()
+    armCourtHazards()
   }
 
   fun step(dt: Float) {
@@ -271,6 +276,7 @@ class World(
       return
     }
     tickPost(clamped)
+    tickTrace(clamped)
     var left = clamped
     val slice = 1f / 120f
     cpuMoved = false
@@ -361,6 +367,24 @@ class World(
     postGrow[i] = 1f
   }
 
+  fun traceLive(): Boolean = courtTrace && traceOn
+
+  fun traceX(): Float = TRACE_X
+
+  fun traceY(): Float = traceCy() - TRACE_H / 2f
+
+  fun traceW(): Float = TRACE_W
+
+  fun traceH(): Float = TRACE_H
+
+  internal fun placeTrace(u: Float = 0.5f) {
+    if (!courtTrace) return
+    traceWait = 0f
+    traceOn = true
+    traceU = u.coerceIn(0f, 1f)
+    traceDir = 1f
+  }
+
   fun iceBurstFrame(): Int {
     val u = 1f - (burstT / ICE_BURST_S).coerceIn(0f, 1f)
     return when {
@@ -437,7 +461,7 @@ class World(
     starLive = false
     burstT = 0f
     tailLock = null
-    armPost()
+    armCourtHazards()
     shieldGain = 1.05f
     shieldRate = 1.22f
     dealChips()
@@ -611,6 +635,23 @@ class World(
           tHit = hit.t
           postKind = if (hit.vertical) 3 else 4
           kind = postKind
+        }
+      }
+      if (traceSolid()) {
+        val hit =
+          rayAabb(
+            x,
+            y,
+            svx,
+            svy,
+            traceLeft() - BALL_R_X,
+            traceTop() - BALL_R,
+            traceLeft() + TRACE_W + BALL_R_X,
+            traceTop() + TRACE_H + BALL_R,
+          )
+        if (hit != null && hit.t > 0.0001f && hit.t < tHit) {
+          tHit = hit.t
+          kind = if (hit.vertical) 3 else 4
         }
       }
       if (kind == 0) return (y + svy * tHit).coerceIn(lo, hi)
@@ -949,19 +990,30 @@ class World(
     rx: Float,
     ry: Float,
   ): AabbBounce? {
-    if (!courtWells) return null
     var x = px
     var y = py
     var vx = pvx
     var vy = pvy
     var hitAny = false
-    for (slot in 0 until 3) {
-      val hit = bounceOneWell(slot, x, y, vx, vy, rx, ry) ?: continue
-      x = hit.x
-      y = hit.y
-      vx = hit.vx
-      vy = hit.vy
-      hitAny = true
+    if (courtWells) {
+      for (slot in 0 until 3) {
+        val hit = bounceOneWell(slot, x, y, vx, vy, rx, ry) ?: continue
+        x = hit.x
+        y = hit.y
+        vx = hit.vx
+        vy = hit.vy
+        hitAny = true
+      }
+    }
+    if (traceSolid()) {
+      val hit = bounceBox(traceLeft(), traceTop(), TRACE_W, TRACE_H, x, y, vx, vy, rx, ry)
+      if (hit != null) {
+        x = hit.x
+        y = hit.y
+        vx = hit.vx
+        vy = hit.vy
+        hitAny = true
+      }
     }
     return if (hitAny) AabbBounce(x, y, vx, vy) else null
   }
@@ -976,10 +1028,21 @@ class World(
     ry: Float,
   ): AabbBounce? {
     if (!wellSolid(slot)) return null
-    val left = slotLeft(slot)
-    val top = slotTop(slot)
-    val w = slotW(slot)
-    val h = slotH(slot)
+    return bounceBox(slotLeft(slot), slotTop(slot), slotW(slot), slotH(slot), px, py, pvx, pvy, rx, ry)
+  }
+
+  private fun bounceBox(
+    left: Float,
+    top: Float,
+    w: Float,
+    h: Float,
+    px: Float,
+    py: Float,
+    pvx: Float,
+    pvy: Float,
+    rx: Float,
+    ry: Float,
+  ): AabbBounce? {
     val right = left + w
     val bot = top + h
     val closestX = px.coerceIn(left, right)
@@ -1018,6 +1081,49 @@ class World(
   private fun slotTop(slot: Int): Float = POST_SLOTS[slot] - slotH(slot) / 2f
 
   private fun wellCx(): Float = POST_X + POST_W / 2f
+
+  private fun armCourtHazards() {
+    armPost()
+    armTrace()
+  }
+
+  private fun armTrace() {
+    traceWait = TRACE_FIRST
+    traceOn = false
+    traceU = 0f
+    traceDir = 1f
+  }
+
+  private fun traceSolid(): Boolean = courtTrace && traceOn
+
+  private fun traceLeft(): Float = TRACE_X
+
+  private fun traceTop(): Float = traceCy() - TRACE_H / 2f
+
+  private fun traceCy(): Float = TRACE_CY0 + traceU * (TRACE_CY1 - TRACE_CY0)
+
+  private fun tickTrace(dt: Float) {
+    if (!courtTrace) {
+      traceOn = false
+      return
+    }
+    if (traceWait > 0f) {
+      traceWait -= dt
+      if (traceWait > 0f) return
+      traceOn = true
+      traceU = 0f
+      traceDir = 1f
+    }
+    if (!traceOn) return
+    traceU += traceDir * dt / TRACE_TRAVEL
+    if (traceU >= 1f) {
+      traceU = 1f
+      traceDir = -1f
+    } else if (traceU <= 0f) {
+      traceU = 0f
+      traceDir = 1f
+    }
+  }
 
   private fun armPost() {
     postWait = POST_FIRST
@@ -1193,7 +1299,7 @@ class World(
     vx = 0f
     vy = 0f
     starLive = false
-    armPost()
+    armCourtHazards()
     setWinT = SET_WIN_FREEZE + SET_WIN_BANNER
     phase = Phase.SET_WIN
   }
@@ -1291,6 +1397,22 @@ class World(
     const val POST_SINK = 0.40f
     const val POST_SOLID = 0.58f
     val POST_SLOTS: FloatArray = floatArrayOf(240f / 1080f, 540f / 1080f, 840f / 1080f)
+    /**
+     * Rivet court live dash on the 1440×1080 floor PNG.
+     * Travels the gold center line; only this bead is solid.
+     */
+    const val TRACE_W_PX = 24
+    const val TRACE_H_PX = 192
+    const val TRACE_X_PX = (1440 - TRACE_W_PX) / 2
+    const val TRACE_CY0_PX = 168
+    const val TRACE_CY1_PX = 912
+    const val TRACE_W: Float = TRACE_W_PX / 1440f
+    const val TRACE_H: Float = TRACE_H_PX / 1080f
+    const val TRACE_X: Float = TRACE_X_PX / 1440f
+    const val TRACE_CY0: Float = TRACE_CY0_PX / 1080f
+    const val TRACE_CY1: Float = TRACE_CY1_PX / 1080f
+    const val TRACE_FIRST = 2.2f
+    const val TRACE_TRAVEL = 3.6f
     const val PADDLE_LEN = 0.20f
     const val PADDLE_THICK = 0.018f
     const val CHIP_COUNT = 6

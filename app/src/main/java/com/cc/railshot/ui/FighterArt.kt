@@ -63,6 +63,8 @@ object UiArt {
       else -> "ash/ash_court_wall_c.png"
     }
 
+  const val COURT_TRACE = "rivet/rivet_court_trace.png"
+
   /** Packed KEY hole radius in every `ui_ball_tail_*.png`. */
   const val TAIL_HOLE_R = 56f
 

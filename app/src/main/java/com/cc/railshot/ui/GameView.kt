@@ -667,6 +667,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         )
       }
     }
+    if (world.traceLive()) {
+      drawTrace(canvas, courtL, courtT, courtW, courtH)
+    }
     drawFighter(
       canvas,
       youFrames,
@@ -822,6 +825,20 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val w = (world.wellW() * courtW).coerceAtLeast(1f)
     val h = (world.wellH() * courtH).coerceAtLeast(1f)
     blitFill(canvas, keyed(UiArt.courtWall(world.postWallFrame(slot))), left, top, w, h)
+  }
+
+  private fun drawTrace(
+    canvas: Canvas,
+    courtL: Float,
+    courtT: Float,
+    courtW: Float,
+    courtH: Float,
+  ) {
+    val left = courtL + world.traceX() * courtW
+    val top = courtT + world.traceY() * courtH
+    val w = (world.traceW() * courtW).coerceAtLeast(1f)
+    val h = (world.traceH() * courtH).coerceAtLeast(1f)
+    blitFill(canvas, keyed(UiArt.COURT_TRACE), left, top, w, h)
   }
 
   private fun drawChip(
