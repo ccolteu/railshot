@@ -302,7 +302,7 @@ Match **court + cabinet + chips** load from the **2P / rival**. Files: `art/{nam
 | Rivet | Circuit stadium | `rivet/rivet_court.png` | `rivet/rivet_ui_cabinet.png` |
 | Ash | Parking garage | `ash/ash_court.png` | `ash/ash_ui_cabinet.png` |
 | Kite | Airfield tarmac | `kite/kite_court.png` | `kite/kite_ui_cabinet.png` |
-| Maru | Highland moor | `maru/maru_court.png` | `maru/maru_ui_cabinet.png` |
+| Maru | Highland chasm | `maru/maru_court.png` | `maru/maru_ui_cabinet.png` |
 | Quill | Forest aerie | `quill/quill_court.png` | `quill/quill_ui_cabinet.png` |
 | Hex | Rainy neon street | `hex/hex_court.png` | `hex/hex_ui_cabinet.png` |
 
@@ -346,10 +346,12 @@ Wells are empty dark pits with a **chunky 4px steel rim** (nicked arcade pixels,
 Top-down 4:3 parking garage sports court, 1440x1080, grey concrete oil specks, gutters exactly 101px left and 101px right darker grey chip lanes, playable concrete centered, THREE thin 96x176 empty hydraulic wells at (672,152)-(768,328), (672,452)-(768,628), (672,752)-(768,928), gold stall hatch in open corners only, NO pink neon, NO magenta, NO gold X, NO dashed center line through wells, no people, no HUD, pixel art
 ```
 
-**Highland moor**
+**Highland chasm** (Maru)
+
+Left and right are **cliff-tops** (playable muted sage peat). The vertical middle is a **top-down irregular chasm** looking down at water and boulders — not a gold X, not a dashed line, not a straight canal, not an isometric canyon. Sparse tufts and a few stones on the tops only. No fish, no ducklings, no pink heather carpets. Empty darker peat chip gutters.
 
 ```
-Top-down 4:3 empty Scottish highland moor as a volley court, mostly OPEN light mottled sage peat, only a handful of heather tufts near the gutters (NOT a busy meadow, NOT dense grass, NOT mowed soccer stripes), gold broken circle with X, empty darker peat chip gutters (same grain as the floor, no cobblestone, no curb), no people, no HUD, pixel art, 1440x1080
+Top-down 4:3 empty Scottish highland cliff-tops as a volley court, camera STRAIGHT DOWN, muted sage peat LEFT and RIGHT, sparse tufts and a few grey rocks only (NOT busy, NOT lime, NOT pink flowers), IRREGULAR chasm down the vertical middle looking down into muted dark water with a few large grey boulders at the bottom, jagged grey rock rim, empty darker peat chip gutters (no cobblestone, no curb), no fish, no ducks, no people, no HUD, no gold X, pixel art, 1440x1080
 ```
 
 **Airfield tarmac** (Kite)
