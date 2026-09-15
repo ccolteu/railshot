@@ -304,7 +304,7 @@ Match **court + cabinet + chips** load from the **2P / rival**. Files: `art/{nam
 | Kite | Airfield tarmac | `kite/kite_court.png` | `kite/kite_ui_cabinet.png` |
 | Maru | Highland moor | `maru/maru_court.png` | `maru/maru_ui_cabinet.png` |
 | Quill | Forest aerie | `quill/quill_court.png` | `quill/quill_ui_cabinet.png` |
-| Hex | Night city grid (deep blue PCB) | `hex/hex_court.png` | `hex/hex_ui_cabinet.png` |
+| Hex | Rainy neon street | `hex/hex_court.png` | `hex/hex_ui_cabinet.png` |
 
 **Circuit stadium**
 
@@ -349,7 +349,7 @@ Top-down 4:3 parking garage sports court, 1440x1080, grey concrete oil specks, g
 **Highland moor**
 
 ```
-Top-down 4:3 empty Scottish highland moor as a volley court, mostly OPEN light mottled sage peat, only a handful of heather tufts near the gutters (NOT a busy meadow, NOT dense grass, NOT mowed soccer stripes), gold broken circle with X, empty plain stone chip gutters, no people, no HUD, pixel art, 1440x1080
+Top-down 4:3 empty Scottish highland moor as a volley court, mostly OPEN light mottled sage peat, only a handful of heather tufts near the gutters (NOT a busy meadow, NOT dense grass, NOT mowed soccer stripes), gold broken circle with X, empty darker peat chip gutters (same grain as the floor, no cobblestone, no curb), no people, no HUD, pixel art, 1440x1080
 ```
 
 **Airfield tarmac** (Kite)
@@ -364,10 +364,14 @@ Top-down 4:3 empty airfield runway tarmac as a volley court, grey concrete aspha
 Top-down 4:3 empty woodland clearing as a volley court, CLEAN even packed earth, sparse rust leaves at the edges only (NOT muddy, NOT stained, NOT dirty scuffs, NOT neon, NOT PCB traces), gold broken circle with X, empty plain bark chip gutters, no people, no HUD, pixel art, 1440x1080
 ```
 
-**Night city grid** (Hex)
+**Rainy neon street** (Hex) — court, cabinet, chips only; do **not** restyle Hex fighter sprites
+
+Wet night tar, **neon blue** + **neon pink** only (no sodium brown). Faint hex tessellation in those two neons, empty gutters. Center: gold broken hex + X. Corner hex lamps: blue / pink / pink / blue. No rooftops, no Tron grid, no Rivet PCB. No letters or logos.
+
+Cabinet (`hex/hex_ui_cabinet.png`): authored **360×270**, nearest **×4**, left half mirrored. Wet dark metal, **no louver posts**. Neon-blue hex lamp and neon-pink hex lamp per post, blue/pink hole bezel, blue/pink bumper. P2 well rims and bumper pink must **not** be `#FF00FF` or hole-bleed magenta (keep G **> 90** so `isCabinetHoleBleed` does not punch them). Same well / hole table. Magenta hole **1056800** px. Original IP.
 
 ```
-Top-down 4:3 empty neon grid court, deep blue PCB city map, green center beam, pink and gold vertical rails, empty chip gutters, no people, no HUD, pixel art, 1440x1080
+Top-down 4:3 rainy neon street as a volley court, wet night tar, neon blue and neon pink hex tiles, gold broken hexagon with X, four corner hex lamps blue and pink, empty dark chip gutters, no people, no HUD, no text, no logos, pixel art, 1440x1080
 ```
 
 **Cabinet** (`art/{name}/{name}_ui_cabinet.png`) — overlay on that fighter’s court when they are 2P
@@ -505,6 +509,22 @@ Ash (parking stall):
 ```
 
 P2: same drawing, crimson curb instead of teal.
+
+Hex (hex quartz):
+
+```
+1994 Neo Geo sprite, chunky pixels (author small, nearest scale), hard black outline. Standing 22×120: NEON BLUE hexagonal crystal pylon. Flattened 48×120: FULL SLOT neon-blue hex plate, inner hex detail, reads on the dark gutter. NO letters, NO logos, NO four corner bolts, NO brown, NO teal.
+```
+
+P2: same drawing, neon pink instead of neon blue.
+
+Maru (carved stone gate):
+
+```
+1994 Neo Geo sprite, chunky pixels (author small, nearest scale), hard black outline. Same as the cabinet TOP CORNER plates: cracked brown stone, chunky aged gold rim, large round gold rivet in the center, small round gold rivets in the four corners. Shape is a RECTANGLE not a square (rivets stay circular, do not stretch). Standing 22x120: that plate edge-on, gold face toward midcourt, NO rivet. Flattened 48x120: FULL SLOT rectangular plate, gold rim, complete center rivet plus four small corner rivets. NO ice-blue, NO crimson, NO tartan, NO magenta, NO text.
+```
+
+P2: same drawing as P1 (no team pip).
 
 Kite (olive airfield cabinet):
 
