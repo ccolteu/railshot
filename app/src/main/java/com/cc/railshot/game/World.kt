@@ -120,6 +120,7 @@ class World(
   private var youPaddleVy = 0f
   private var cpuPaddleVy = 0f
   private var roundHold = ROUND_HOLD
+  private var fightHold = 0f
   private var setWinT = 0f
   private var freezeT = 0f
   private var shakeT = 0f
@@ -242,7 +243,13 @@ class World(
       cpuMoved = false
       cpuPaddleVy = 0f
       roundHold -= clamped
-      if (roundHold <= 0f) phase = Phase.SERVE
+      if (roundHold <= 0f) startServe()
+      return
+    }
+    if (phase == Phase.SERVE) {
+      cpuMoved = false
+      cpuPaddleVy = 0f
+      if (fightHold > 0f) fightHold -= clamped
       return
     }
     if (phase == Phase.SET_WIN) {
@@ -443,6 +450,8 @@ class World(
     parkBall()
   }
 
+  fun fightBannerVisible(): Boolean = phase == Phase.SERVE && fightHold > 0f
+
   fun setWinBannerVisible(): Boolean = phase == Phase.SET_WIN && setWinT <= SET_WIN_BANNER
 
   internal fun skipSetWin() {
@@ -450,7 +459,13 @@ class World(
   }
 
   internal fun skipToServe() {
-    if (phase == Phase.ROUND) phase = Phase.SERVE
+    if (phase == Phase.ROUND) startServe()
+  }
+
+  private fun startServe() {
+    phase = Phase.SERVE
+    fightHold = FIGHT_HOLD
+    parkBall()
   }
 
   private fun steerPaddle(dt: Float, towardCpu: Boolean) {
@@ -1301,6 +1316,7 @@ class World(
     const val SET_TIME = 99f
     const val SETS_TO_WIN = 2
     const val ROUND_HOLD = 1.8f
+    const val FIGHT_HOLD = 1.2f
     const val SET_WIN_FREEZE = 0.5f
     const val SET_WIN_BANNER = 1.4f
     const val CABINET_W_PX = 1440

@@ -132,6 +132,16 @@ class WorldTest {
   }
 
   @Test
+  fun fightBannerClearsWhileStillWaitingToServe() {
+    val world = World()
+    world.skipToServe()
+    assertTrue(world.fightBannerVisible())
+    repeat((World.FIGHT_HOLD / 0.05f).toInt() + 2) { world.step(0.05f) }
+    assertEquals(Phase.SERVE, world.phase)
+    assertFalse(world.fightBannerVisible())
+  }
+
+  @Test
   fun deadChipsLeaveHolesInPlace() {
     val world = World()
     val keep = world.chips.first { it.side == Side.YOU && it.slot == 4 }

@@ -318,8 +318,8 @@ Do **not** freehand the wells or gutters. Author `ash_court_circuit.png` to this
 | Piece | Pixels |
 | --- | --- |
 | Canvas | **1440×1080**, opaque |
-| Left gutter (chip lane) | x **0…101** |
-| Right gutter (chip lane) | x **1339…1440** |
+| Left gutter (chip lane) | x **0…101** (dark grey, same grain as the floor, no curb) |
+| Right gutter (chip lane) | x **1339…1440** (dark grey, same grain as the floor, no curb) |
 | Playable floor | x **101…1339** |
 | Vertical center | x **720** |
 | Well size | **96×176** (thin tall rectangle) |
@@ -327,7 +327,7 @@ Do **not** freehand the wells or gutters. Author `ash_court_circuit.png` to this
 | Mid well | **(672, 452)–(768, 628)** |
 | Low well | **(672, 752)–(768, 928)** |
 
-Wells are empty dark pits with a thin steel rim. Walls overlay in code. No pink neon. No gold X / circle / dashed line through the pits. Gold stall paint only in open concrete.
+Wells are empty dark pits with a **chunky 4px steel rim** (nicked arcade pixels, not a clean CAD stroke). Walls overlay in code. No pink neon. No gold X / circle / dashed line through the pits. Gold stall paint only in open concrete. No vertical curb between the chip lanes and the floor.
 
 ```
 Top-down 4:3 parking garage sports court, 1440x1080, grey concrete oil specks, gutters exactly 101px left and 101px right darker grey chip lanes, playable concrete centered, THREE thin 96x176 empty hydraulic wells at (672,152)-(768,328), (672,452)-(768,628), (672,752)-(768,928), gold stall hatch in open corners only, NO pink neon, NO magenta, NO gold X, NO dashed center line through wells, no people, no HUD, pixel art
@@ -397,9 +397,9 @@ A **match** is **best of three sets** (first to **2** sets wins). Each set is on
 - **Names:** typeset in the name wells. Never `{name}_name_*.png` on the cabinet.
 - **Sets:** two dots per sets well. Match ends at two filled dots.
 
-Round `WIN` overlay on a set (`Phase.SET_WIN`); match win then the **result card** (not a game ending). Full-screen `ui_select_bg.png`. Right rail: winner `{name}_ending.png` at **full stage height**. Left rail: `{name}_wins.png` **right-aligned** and **vertically centered** on the stage, plus a non-flashing `ui_btn_continue.png` under it (same gold-bezel ivory chrome as SELECT) — not pinned to the bottom. Ignore taps for **0.8s**, then tap (or **10s** idle) → character select. Do not staff-roll or bonus-tally here.
+Round `WIN` overlay on a set (`Phase.SET_WIN`); match win then the **result card** (not a game ending). Full-screen `ui_select_bg.png`. Right rail: winner `{name}_ending.png` at **full stage height**. Left rail: `{name}_wins.png` **right-aligned** and **vertically centered** on the stage, plus a non-flashing `ui_btn_continue.png` (same gold-bezel ivory chrome as SELECT) **lower on the card**, **centered in the left half**. Ignore taps for **0.8s**, then tap (or **10s** idle) → character select. Do not staff-roll or bonus-tally here.
 
-Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1.8s, then `SERVE` with `ui_fight.png`. Tap the playfield to serve (does not move the shield). Drag only starts if the thumb lands on P1’s sprite (fat-finger slop, grab offset held so the fighter does not teleport under the pad). Double-tap empty court in `PLAYING` (one thumb or a second thumb while holding the rail) calls that fighter’s **once-per-set** shot at a living gate near the second tap. Serve taps do not count. CPU HARD calls the same shot after three returns. Do not typeset FIGHT or TAP TO SERVE.
+Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1.8s, then `SERVE` with `ui_fight.png` for ~1.2s (it clears; the set stays on serve). Tap the playfield to serve (does not move the shield). Drag only starts if the thumb lands on P1’s sprite (fat-finger slop, grab offset held so the fighter does not teleport under the pad). Double-tap empty court in `PLAYING` (one thumb or a second thumb while holding the rail) calls that fighter’s **once-per-set** shot at a living gate near the second tap. Serve taps do not count. CPU HARD calls the same shot after three returns. Do not typeset FIGHT or TAP TO SERVE.
 
 **CPU** loads from the **2P fighter**. **Wall** (Maru, Hex): camps a living gate, smaller motion. **Slugger** (Rivet, Ash, Kite, Quill): chases, overcommits. VS opens on **EASY**; arrows cycle **EASY / HARD** buttons (`ui_btn_easy.png` / `ui_btn_hard.png`). Easy abandons high/low rails and reacts late. Hard predicts the bounce and cuts the line.
 
@@ -417,7 +417,7 @@ Three keyed ice-shatter frames, 128×128. Overlay when the ice comet dies. Magen
 
 **Court wall** (`art/ash/ash_court_wall_a.png`, `_b`, `_c`)
 
-Keyed top-down steel plate, packed **96×176** (same rect as a well). Exact magenta `#FF00FF` field. **Solid muted garage yellow** matching the court stall hatch. Four corner bolts. **A** peeking, **B** mid-raise, **C** fills the well. Draw dest is the **full well rect**.
+Keyed top-down steel plate, packed **96×176** (same rect as a well). Exact magenta `#FF00FF` field. **Chunky 4px stall-hatch gold** (same parking-lot yellow as the court corners), limited palette, no anti-alias. Four corner bolts. **A** peeking, **B** mid-raise, **C** fills the well. Draw dest is the **full well rect**.
 
 **Mid-line wells** — Ash court only. Same table as **Parking garage** above. `World`: `COURT_GUTTER_W_PX` 101, `POST_W_PX` 96, `POST_H_PX` 176, `POST_X_PX` 672, `POST_SLOTS` 240 / 540 / 840. Do not bake wells into the other floors.
 
@@ -503,7 +503,7 @@ File: `art/ui_round.png`. Show at the start of each set with `art/ui_num_{1,2,3}
 Arcade pixel word FIGHT, icy blue metallic gradient, orange outline, 1994 title, magenta background, 960 wide
 ```
 
-File: `art/ui_fight.png`. Serve prompt — no typeset TAP TO SERVE. Tap still serves.
+File: `art/ui_fight.png`. Serve sting ~1.2s, then the court waits empty. No typeset TAP TO SERVE. Tap still serves.
 
 ```
 Arcade pixel word WIN, huge brush letters, yellow-orange-red gradient, blue outline, magenta background, 768x384

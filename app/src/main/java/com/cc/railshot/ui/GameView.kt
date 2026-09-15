@@ -719,10 +719,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         blitFit(canvas, num, courtL + (courtW - numW) / 2f, top + bannerH + gap, numW, numH)
       }
       Phase.SERVE -> {
-        val banner = keyed(UiArt.FIGHT)
-        val bannerW = courtW * 0.92f
-        val bannerH = bannerW * (banner.height / banner.width.toFloat())
-        blitFit(canvas, banner, courtL + (courtW - bannerW) / 2f, courtT + (courtH - bannerH) / 2f, bannerW, bannerH)
+        if (world.fightBannerVisible()) {
+          val banner = keyed(UiArt.FIGHT)
+          val bannerW = courtW * 0.92f
+          val bannerH = bannerW * (banner.height / banner.width.toFloat())
+          blitFit(canvas, banner, courtL + (courtW - bannerW) / 2f, courtT + (courtH - bannerH) / 2f, bannerW, bannerH)
+        }
       }
       Phase.SET_WIN -> {
         if (world.setWinBannerVisible()) {
@@ -756,7 +758,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     winner.art().ending?.let { path ->
       blitFillHeightEnd(canvas, keyed(path), railW, 0f, vw - railW, vh)
     }
-    var winsBottom = vh * 0.5f
     winner.art().wins?.let { path ->
       val bmp = keyed(path)
       val maxW = (right - pad).coerceAtLeast(1f)
@@ -770,12 +771,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       }
       val x = right - dw
       val y = (vh - dh) / 2f
-      winsBottom = y + dh
       blitFit(canvas, bmp, x, y, dw, dh)
     }
     if (resultCardT < RESULT_LOCK_S) return
-    val btnY = (winsBottom + 18f * dp).coerceAtMost(vh * 0.78f - btnH)
-    blitFit(canvas, keyed(UiArt.BTN_CONTINUE), right - btnW, btnY, btnW, btnH)
+    val btnX = (vw * 0.5f - btnW) / 2f
+    val btnY = vh - 28f * dp - btnH
+    blitFit(canvas, keyed(UiArt.BTN_CONTINUE), btnX, btnY, btnW, btnH)
   }
 
   private fun drawFighter(

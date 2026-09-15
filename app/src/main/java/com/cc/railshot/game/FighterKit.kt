@@ -26,7 +26,7 @@ data class FighterKit(
             sliceEdge = BASE_EDGE,
             sliceAngle = BASE_ANGLE,
             swipeMul = 1f,
-            flavor = "Hot bounce. Call an orb.",
+            flavor = "Hot bounce. Same reach as the rest.",
           )
         Fighter.ASH ->
           FighterKit(
@@ -36,7 +36,7 @@ data class FighterKit(
             sliceEdge = BASE_EDGE,
             sliceAngle = BASE_ANGLE,
             swipeMul = 1.85f,
-            flavor = "Smash swipe. Call an orb.",
+            flavor = "Drag the shield. The ball follows.",
           )
         Fighter.KITE ->
           FighterKit(
@@ -46,7 +46,7 @@ data class FighterKit(
             sliceEdge = BASE_EDGE,
             sliceAngle = BASE_ANGLE,
             swipeMul = 1f,
-            flavor = "Long rail. Call an orb.",
+            flavor = "Long shield. Fast on the rail.",
           )
         Fighter.MARU ->
           FighterKit(
@@ -56,7 +56,7 @@ data class FighterKit(
             sliceEdge = 0.50f,
             sliceAngle = 0.78f,
             swipeMul = 0.85f,
-            flavor = "Body block. Call an orb.",
+            flavor = "Slow. Fat slice. Holds the gate.",
           )
         Fighter.QUILL ->
           FighterKit(
@@ -66,7 +66,7 @@ data class FighterKit(
             sliceEdge = 0.48f,
             sliceAngle = 1.22f,
             swipeMul = 1.10f,
-            flavor = "Dive rims. Call an orb.",
+            flavor = "Steep rims. Hunts the high line.",
           )
         Fighter.HEX ->
           FighterKit(
@@ -76,7 +76,7 @@ data class FighterKit(
             sliceEdge = 0.30f,
             sliceAngle = BASE_ANGLE,
             swipeMul = 1f,
-            flavor = "Short shield. Call one orb.",
+            flavor = "Short shield. Softer pop. Tricky.",
           )
       }
   }
