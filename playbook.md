@@ -295,16 +295,16 @@ Do not skip ahead: later files are derived from earlier ones.
 
 No fighters, no HUD, no chips. Leave **empty vertical gutters** on left and right so in-game chips sit there. No purple IC squares. No top or bottom metal rails — the cabinet supplies those.
 
-Match **court + cabinet + chips** load from the **2P / rival**. Files: `art/{name}/{name}_court_circuit.png` (opaque 1440×1080), `art/{name}/{name}_ui_cabinet.png` (keyed 1440×1080, exact wells), and four gates `art/{name}/{name}_ui_chip_{you,cpu}.png` plus `..._down.png`. **Approve each fighter’s pair** (then that fighter’s chips) before generating the next. Missing files fall back to Rivet.
+Match **court + cabinet + chips** load from the **2P / rival**. Files: `art/{name}/{name}_court.png` (opaque 1440×1080), `art/{name}/{name}_ui_cabinet.png` (keyed 1440×1080, exact wells), and four gates `art/{name}/{name}_ui_chip_{you,cpu}.png` plus `..._down.png`. **Approve each fighter’s pair** (then that fighter’s chips) before generating the next. Missing files fall back to Rivet.
 
 | Fighter | Floor (playbook prompt) | Court file | Cabinet file |
 | --- | --- | --- | --- |
-| Rivet | Circuit stadium | `rivet/rivet_court_circuit.png` | `rivet/rivet_ui_cabinet.png` |
-| Ash | Parking garage | `ash/ash_court_circuit.png` | `ash/ash_ui_cabinet.png` |
-| Kite | Airfield tarmac | `kite/kite_court_circuit.png` | `kite/kite_ui_cabinet.png` |
-| Maru | Highland moor | `maru/maru_court_circuit.png` | `maru/maru_ui_cabinet.png` |
-| Quill | Forest aerie | `quill/quill_court_circuit.png` | `quill/quill_ui_cabinet.png` |
-| Hex | Night city grid (deep blue PCB) | `hex/hex_court_circuit.png` | `hex/hex_ui_cabinet.png` |
+| Rivet | Circuit stadium | `rivet/rivet_court.png` | `rivet/rivet_ui_cabinet.png` |
+| Ash | Parking garage | `ash/ash_court.png` | `ash/ash_ui_cabinet.png` |
+| Kite | Airfield tarmac | `kite/kite_court.png` | `kite/kite_ui_cabinet.png` |
+| Maru | Highland moor | `maru/maru_court.png` | `maru/maru_ui_cabinet.png` |
+| Quill | Forest aerie | `quill/quill_court.png` | `quill/quill_ui_cabinet.png` |
+| Hex | Night city grid (deep blue PCB) | `hex/hex_court.png` | `hex/hex_ui_cabinet.png` |
 
 **Circuit stadium**
 
@@ -318,13 +318,15 @@ Match **court + cabinet + chips** load from the **2P / rival**. Files: `art/{nam
 
 A **live dash** rides the midline only on **Rivet’s floor** (2P). After serve wait ~2.2s, the bead ping-pongs high ↔ low in ~3.6s each way. Only that bead is solid. Fireball and ice **ricochet**. HARD’s intercept includes the bounce. Paddles ignore it. Do not bake the bead into the floor PNG.
 
+Cabinet (`rivet/rivet_ui_cabinet.png`): authored **360×270**, nearest **×4** to 1440×1080. Left half mirrored. Chunky 8px dither, 12px traces, DIP / cap / LED / crystal / header / transistor. Gold bezels. No hazard stripes. Same well / hole table.
+
 ```
 Top-down 4:3 empty sports court floor, teal circuit-board traces only, gold broken circle with X in the center, dashed center line, empty side gutters, NO purple squares, NO IC pads, NO top or bottom rails, no people, no HUD, no text, pixel art arcade background, 1440x1080
 ```
 
 **Parking garage** (Ash) — **layout first, then pixels**
 
-Do **not** freehand the wells or gutters. Author `ash_court_circuit.png` to this 1440×1080 table (`World` `COURT_GUTTER_W_PX`, `POST_W_PX`, `POST_H_PX`, `POST_X_PX`, `POST_SLOTS`):
+Do **not** freehand the wells or gutters. Author `ash_court.png` to this 1440×1080 table (`World` `COURT_GUTTER_W_PX`, `POST_W_PX`, `POST_H_PX`, `POST_X_PX`, `POST_SLOTS`):
 
 | Piece | Pixels |
 | --- | --- |
@@ -396,7 +398,7 @@ Empty wells in the PNG: magenta `#FF00FF` only. No digits, letters, or dots in t
 `World` constants: `HOLE_*_PX`, `P1_SCORE_INSET`, `P1_NAME_INSET`, `P1_SETS_INSET`, `TIME_INSET`, `P2_SETS_INSET`, `P2_NAME_INSET`, `P2_SCORE_INSET`. `COURT_ASPECT` = 4/3.
 
 ```
-4:3 arcade cabinet 1440x1080, chrome drawn around these magenta wells only: P1 score 220,32,324,100; P1 name 340,32,528,100; P1 sets 544,32,620,100; time 636,32,804,100; P2 sets 820,32,896,100; P2 name 912,32,1100,100; P2 score 1116,32,1220,100; playfield hole 144,128,1296,992 (1152x864 4:3); hazard posts in side margins; wooden bumper below y=992; no text, no digits, no dots
+4:3 arcade cabinet 1440x1080, chrome drawn around these magenta wells only: P1 score 220,32,324,100; P1 name 340,32,528,100; P1 sets 544,32,620,100; time 636,32,804,100; P2 sets 820,32,896,100; P2 name 912,32,1100,100; P2 score 1116,32,1220,100; playfield hole 144,128,1296,992 (1152x864 4:3); themed posts in side margins; bumper below y=992; no text, no digits, no dots
 ```
 
 ### Match, time, score, sets (code)
@@ -422,7 +424,7 @@ Use section **D** for player sprites. Double-tap empty court calls **one ice com
 
 A **court wall** comes out of a **mid-line well** only on **Ash’s floor** (the court loaded from 2P). Other courts stay empty. The camera is top-down: do **not** grow the sprite up the screen. Frames `ash/ash_court_wall_{a,b,c}.png` play inside the well toward the viewer. Three wells on the center line; as one **sinks**, the next **raises** (no empty rest). After serve wait ~2.2s, then high / mid / low in order. Hold ~3.4s at full. Fireball and ice comet **ricochet** like a wall — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it.
 
-A **live trace** rides Rivet’s midline (`art/rivet/rivet_court_trace.png`, **24×192**, magenta `#FF00FF`). Chunky 4px yellow/black hazard stripes like the cabinet posts. Same ricochet / HARD rules as Ash’s wall. Other courts stay empty of this bead.
+A **live trace** rides Rivet’s midline (`art/rivet/rivet_court_trace.png`, **24×192**, magenta `#FF00FF`). Chunky 8px copper plus a gold via. Same ricochet / HARD rules as Ash’s wall. Other courts stay empty of this bead.
 
 **Ice burst** (`art/ui_ice_burst_a.png`, `_b`, `_c`)
 
@@ -430,7 +432,7 @@ Three keyed ice-shatter frames, 128×128. Overlay when the ice comet dies. Magen
 
 **Court wall** (`art/ash/ash_court_wall_a.png`, `_b`, `_c`)
 
-Keyed top-down steel plate, packed **96×176** (same rect as a well). Exact magenta `#FF00FF` field. **Chunky 4px stall-hatch gold** (same parking-lot yellow as the court corners), limited palette, no anti-alias. Four corner bolts. **A** peeking, **B** mid-raise, **C** fills the well. Draw dest is the **full well rect**.
+Keyed top-down hazard plate, packed **96×176** (same rect as a well). Author **24×44**, nearest **×4**. Exact magenta `#FF00FF` field. Diagonal cabinet stripes: **exactly 2 yellow + 2 dark** on every frame (A/B/C), 2×2 dither, steel rim, four corner bolts. Limited palette, no anti-alias. **A** peeking, **B** mid-raise, **C** fills the well. Draw dest is the **full well rect**.
 
 **Mid-line wells** — Ash court only. Same table as **Parking garage** above. `World`: `COURT_GUTTER_W_PX` 101, `POST_W_PX` 96, `POST_H_PX` 176, `POST_X_PX` 672, `POST_SLOTS` 240 / 540 / 840. Do not bake wells into the other floors.
 
@@ -488,13 +490,21 @@ Files: `{name}/{name}_ui_chip_you.png`, `{name}/{name}_ui_chip_cpu.png`, `{name}
 
 **Approve each fighter’s four chips** before the next fighter. Missing files fall back to Rivet. Gates must **read on that court’s empty side bands**: lighter or darker than the gutter, hard 1px ink, team seam. Do not paint them the same color as the gutter.
 
-Rivet (circuit steel):
+Rivet (ceramic gold DIP):
 
 ```
-1994 Neo Geo sprite matching the cabinet metal, flat 2D, chunky pixels, hard 1px black outline, steel plate, dither, no 3D, no isometric. Standing: one thick vertical steel bar, NO bolts, TEAL seam, magenta #FF00FF sides. Flattened: plain steel rectangle filling the canvas, FOUR MEDIUM gold bolts (one in each corner), thin TEAL accent lines at top AND bottom, NO bolt grid, NO hazard stripes, NO lamps, NO extra chrome. No text.
+1994 Neo Geo sprite, chunky pixels (author small, nearest scale), hard black outline. Ceramic brown body, GOLD plated lid with a left highlight (no die window, no waffle dither, not a DIMM or memory stick). Standing 22×120: DIP face-on, vertical, pin row toward midcourt, thin TEAL pip. Flattened 48×120: classic DIP on its back, gold lid, pins on BOTH long sides. NO text, NO four steel bolts, NO hazard stripes.
 ```
 
-P2: same drawing, crimson seam instead of teal.
+P2: same drawing, crimson pip instead of teal.
+
+Ash (parking stall):
+
+```
+1994 Neo Geo sprite, chunky pixels (author small, nearest scale), hard black outline. CONCRETE bay with GOLD stall hatch (2 gold + 2 concrete diagonals, same language as the floor corners). Standing 22×120: stall seen edge-on, hatch on the face, thin TEAL curb toward midcourt. Flattened 48×120: top-down parking bay, hatch inside yellow stall lines, TEAL curb at the stall head. NO steel plate, NO four corner bolts, NO black hazard (that's the cabinet / well wall). No text.
+```
+
+P2: same drawing, crimson curb instead of teal.
 
 Kite (olive airfield cabinet):
 
