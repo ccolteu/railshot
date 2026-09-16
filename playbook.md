@@ -368,12 +368,12 @@ Top-down 4:3 empty woodland clearing as a volley court, CLEAN even packed earth,
 
 **Rainy neon street** (Hex) — court, cabinet, chips only; do **not** restyle Hex fighter sprites
 
-Wet night tar, **neon blue** + **neon pink** only (no sodium brown). Faint hex tessellation in those two neons, empty gutters. Center: gold broken hex + X. Corner hex lamps: blue / pink / pink / blue. No rooftops, no Tron grid, no Rivet PCB. No letters or logos.
+Top-down **street canyon**: wet **empty** asphalt in the middle, dark empty **chip gutters** left and right (same dark lanes as the old Hex floor, 101px, no objects). Neon blue + neon pink only on the building faces (abstract hex / bars / chevrons, **no letters, no logos**). **No** vertical cyan/pink light beams or laser lanes down the street. Center: gold broken hex + X. Hex lamps on the inner roof corners: blue / pink / pink / blue. No cars, no people, no HUD, no Tron grid, no Rivet PCB.
 
-Cabinet (`hex/hex_ui_cabinet.png`): authored **360×270**, nearest **×4**, left half mirrored. Wet dark metal, **no louver posts**. Neon-blue hex lamp and neon-pink hex lamp per post, blue/pink hole bezel, blue/pink bumper. P2 well rims and bumper pink must **not** be `#FF00FF` or hole-bleed magenta (keep G **> 90** so `isCabinetHoleBleed` does not punch them). Same well / hole table. Magenta hole **1056800** px. Original IP.
+Cabinet (`hex/hex_ui_cabinet.png`): authored **360×270**, nearest **×4**, designed from scratch (not a recolor of the old hex CAD frame). Noir Blade Runner rain: wet dark steel posts, rain streaks, pipes, hex neon lamps, neon-blue LEFT / neon-pink RIGHT. Same well / hole table. P2 pink is `(255, 112, 200)` — G **> 90**. Magenta hole **1056800** px. No text. Original IP.
 
 ```
-Top-down 4:3 rainy neon street as a volley court, wet night tar, neon blue and neon pink hex tiles, gold broken hexagon with X, four corner hex lamps blue and pink, empty dark chip gutters, no people, no HUD, no text, no logos, pixel art, 1440x1080
+Top-down 4:3 rainy neon street canyon as a volley court, wet EMPTY dark asphalt (NO cars, NO vertical neon light beams, NO laser lanes), gold broken hexagon with X in the center, building faces with neon-blue and neon-pink abstract signs only (no text), empty dark chip gutters 101px left and right, hex lamps blue and pink, no people, no HUD, no logos, pixel art, 1440x1080
 ```
 
 **Cabinet** (`art/{name}/{name}_ui_cabinet.png`) — overlay on that fighter’s court when they are 2P
@@ -512,10 +512,10 @@ Ash (parking stall):
 
 P2: same drawing, crimson curb instead of teal.
 
-Hex (hex quartz):
+Hex (wet metal gate):
 
 ```
-1994 Neo Geo sprite, chunky pixels (author small, nearest scale), hard black outline. Standing 22×120: NEON BLUE hexagonal crystal pylon. Flattened 48×120: FULL SLOT neon-blue hex plate, inner hex detail, reads on the dark gutter. NO letters, NO logos, NO four corner bolts, NO brown, NO teal.
+1994 Neo Geo sprite, chunky pixels (author small, nearest scale). Wet WORN metal (rain pits, scratches), slightly lighter than Hex gutters. Hard dark ink rim (NOT a neon frame). Four NEON STUDS in the corners (blue P1 / pink P2), not thin neon outlines. Standing 22×120: that metal bar, four corner studs, a SINGLE vertical neon light down the CENTER only. Flattened 48×120: FULL SLOT worn-metal plate, four corner neon studs, no center stripe, no gold hex, no yellow X. NO crystal, NO letters, NO logos, NO four gold bolts, NO teal.
 ```
 
 P2: same drawing, neon pink instead of neon blue.
