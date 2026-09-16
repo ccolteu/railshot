@@ -573,6 +573,73 @@ class WorldTest {
   }
 
   @Test
+  fun hexCarStaysOffOnOtherCourts() {
+    val world = World(rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    world.placeHexCar()
+    assertFalse(world.hexCarLive())
+  }
+
+  @Test
+  fun hexCarPausesOnTheXThenDrivesOffTheTop() {
+    val world = World(rival = Fighter.HEX, cpuLevel = CpuLevel.EASY)
+    world.placeHexCar(hold = true)
+    assertTrue(world.hexCarLive())
+    val parked = 0.5f - World.HEX_CAR_H / 2f
+    assertEquals(parked, world.hexCarY(), 0.0001f)
+    val y0 = world.hexCarY()
+    repeat(12) { world.step(1f / 60f) }
+    assertEquals(y0, world.hexCarY(), 0.0001f)
+    var hold = 0
+    while (kotlin.math.abs(world.hexCarY() - y0) < 0.0001f && hold++ < 200) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.hexCarLive())
+    assertTrue(world.hexCarY() < y0)
+    var guard = 0
+    while (world.hexCarLive() && guard++ < 400) {
+      world.step(1f / 60f)
+    }
+    assertFalse(world.hexCarLive())
+    var wait = 0
+    while (!world.hexCarLive() && wait++ < 200) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.hexCarLive())
+    assertTrue(world.hexCarY() > parked)
+  }
+
+  @Test
+  fun hexCarBouncesTheBallWithoutScoring() {
+    val world = World(rival = Fighter.HEX, cpuLevel = CpuLevel.EASY)
+    world.placeHexCar(hold = true)
+    val chips = world.cpuChipsLeft()
+    world.placeBall(World.HEX_CAR_X - World.BALL_R_X - 0.002f, 0.50f, 0.8f, 0f)
+    var guard = 0
+    while (world.ballVx() > 0f && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.ballVx() < 0f)
+    assertEquals(0, world.youScore)
+    assertEquals(chips, world.cpuChipsLeft())
+    assertFalse(world.drainSfx().contains(GameSfx.CHIP))
+  }
+
+  @Test
+  fun hexCarBouncesTheIceComet() {
+    val world = World(you = Fighter.ASH, rival = Fighter.HEX, cpuLevel = CpuLevel.EASY)
+    world.placeHexCar(hold = true)
+    world.placeBall(0.35f, 0.20f, -0.3f, 0f)
+    world.placeStar(World.HEX_CAR_X - World.STAR_R_X - 0.002f, 0.50f, 0.7f, 0f)
+    var guard = 0
+    while (world.starVx() > 0f && world.starLive() && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.starLive())
+    assertTrue(world.starVx() < 0f)
+    assertEquals(World.CHIP_COUNT, world.cpuChipsLeft())
+  }
+
+  @Test
   fun calledOrbMissesAShieldOffTheLine() {
     val world = World(you = Fighter.RIVET, cpuLevel = CpuLevel.EASY)
     world.placeBall(0.40f, 0.50f, -0.4f, 0f)

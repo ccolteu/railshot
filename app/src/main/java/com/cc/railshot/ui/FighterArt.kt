@@ -64,6 +64,7 @@ object UiArt {
     }
 
   const val COURT_TRACE = "rivet/rivet_court_trace.png"
+  const val HEX_CAR = "hex/hex_car.png"
 
   /** Packed KEY hole radius in every `ui_ball_tail_*.png`. */
   const val TAIL_HOLE_R = 56f

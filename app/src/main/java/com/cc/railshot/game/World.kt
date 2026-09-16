@@ -39,6 +39,13 @@ private enum class PostPhase {
   SINK,
 }
 
+private enum class HexCarPhase {
+  GAP,
+  ENTER,
+  HOLD,
+  EXIT,
+}
+
 private data class AabbBounce(val x: Float, val y: Float, val vx: Float, val vy: Float)
 
 private data class RayHit(val t: Float, val vertical: Boolean)
@@ -86,6 +93,7 @@ class World(
   val cpuKit: FighterKit = FighterKit.of(rival)
   private val courtWells: Boolean = rival == Fighter.ASH
   private val courtTrace: Boolean = rival == Fighter.RIVET
+  private val courtCar: Boolean = rival == Fighter.HEX
   private val youStyle: CpuStyle = CpuStyle.forFighter(you)
   var phase: Phase = Phase.ROUND
     private set
@@ -157,6 +165,8 @@ class World(
   private var traceOn = false
   private var traceU = 0f
   private var traceDir = 1f
+  private var hexCarPhase = HexCarPhase.GAP
+  private var hexCarT = 0f
   private var tailLock: BallTailBand? = null
   private var shieldGain = 1.05f
   private var shieldRate = 1.22f
@@ -233,6 +243,14 @@ class World(
 
   fun step(dt: Float) {
     val clamped = dt.coerceAtMost(0.05f)
+    if (
+      phase == Phase.ROUND ||
+        phase == Phase.SERVE ||
+        phase == Phase.PLAYING ||
+        phase == Phase.SET_WIN
+    ) {
+      tickHexCar(clamped)
+    }
     tickHits(clamped)
     tickJuice(clamped)
     if (!attract) {
@@ -383,6 +401,22 @@ class World(
     traceOn = true
     traceU = u.coerceIn(0f, 1f)
     traceDir = 1f
+  }
+
+  fun hexCarLive(): Boolean = courtCar && hexCarPhase != HexCarPhase.GAP
+
+  fun hexCarX(): Float = hexCarLeft()
+
+  fun hexCarY(): Float = hexCarTop()
+
+  fun hexCarW(): Float = HEX_CAR_W
+
+  fun hexCarH(): Float = HEX_CAR_H
+
+  internal fun placeHexCar(hold: Boolean = true) {
+    if (!courtCar) return
+    hexCarT = 0f
+    hexCarPhase = if (hold) HexCarPhase.HOLD else HexCarPhase.ENTER
   }
 
   fun iceBurstFrame(): Int {
@@ -648,6 +682,23 @@ class World(
             traceTop() - BALL_R,
             traceLeft() + TRACE_W + BALL_R_X,
             traceTop() + TRACE_H + BALL_R,
+          )
+        if (hit != null && hit.t > 0.0001f && hit.t < tHit) {
+          tHit = hit.t
+          kind = if (hit.vertical) 3 else 4
+        }
+      }
+      if (hexCarSolid()) {
+        val hit =
+          rayAabb(
+            x,
+            y,
+            svx,
+            svy,
+            hexCarLeft() - BALL_R_X,
+            hexCarTop() - BALL_R,
+            hexCarLeft() + HEX_CAR_W + BALL_R_X,
+            hexCarTop() + HEX_CAR_H + BALL_R,
           )
         if (hit != null && hit.t > 0.0001f && hit.t < tHit) {
           tHit = hit.t
@@ -1015,6 +1066,16 @@ class World(
         hitAny = true
       }
     }
+    if (hexCarSolid()) {
+      val hit = bounceBox(hexCarLeft(), hexCarTop(), HEX_CAR_W, HEX_CAR_H, x, y, vx, vy, rx, ry)
+      if (hit != null) {
+        x = hit.x
+        y = hit.y
+        vx = hit.vx
+        vy = hit.vy
+        hitAny = true
+      }
+    }
     return if (hitAny) AabbBounce(x, y, vx, vy) else null
   }
 
@@ -1100,6 +1161,12 @@ class World(
 
   private fun traceTop(): Float = traceCy() - TRACE_H / 2f
 
+  private fun hexCarSolid(): Boolean = hexCarLive()
+
+  private fun hexCarLeft(): Float = HEX_CAR_X
+
+  private fun hexCarTop(): Float = hexCarCy() - HEX_CAR_H / 2f
+
   private fun traceCy(): Float = TRACE_CY0 + traceU * (TRACE_CY1 - TRACE_CY0)
 
   private fun tickTrace(dt: Float) {
@@ -1123,6 +1190,61 @@ class World(
       traceU = 0f
       traceDir = 1f
     }
+  }
+
+  private fun hexCarCy(): Float {
+    val start = 1f + HEX_CAR_H / 2f
+    val mid = 0.5f
+    val end = 0f - HEX_CAR_H / 2f
+    return when (hexCarPhase) {
+      HexCarPhase.GAP,
+      HexCarPhase.ENTER,
+      -> {
+        val u = ease((hexCarT / HEX_CAR_ENTER).coerceIn(0f, 1f))
+        start + (mid - start) * u
+      }
+      HexCarPhase.HOLD -> mid
+      HexCarPhase.EXIT -> {
+        val u = ease((hexCarT / HEX_CAR_EXIT).coerceIn(0f, 1f))
+        mid + (end - mid) * u
+      }
+    }
+  }
+
+  private fun tickHexCar(dt: Float) {
+    if (!courtCar) {
+      hexCarPhase = HexCarPhase.GAP
+      hexCarT = 0f
+      return
+    }
+    hexCarT += dt
+    when (hexCarPhase) {
+      HexCarPhase.GAP -> {
+        if (hexCarT < HEX_CAR_GAP) return
+        hexCarPhase = HexCarPhase.ENTER
+        hexCarT = 0f
+      }
+      HexCarPhase.ENTER -> {
+        if (hexCarT < HEX_CAR_ENTER) return
+        hexCarPhase = HexCarPhase.HOLD
+        hexCarT = 0f
+      }
+      HexCarPhase.HOLD -> {
+        if (hexCarT < HEX_CAR_HOLD) return
+        hexCarPhase = HexCarPhase.EXIT
+        hexCarT = 0f
+      }
+      HexCarPhase.EXIT -> {
+        if (hexCarT < HEX_CAR_EXIT) return
+        hexCarPhase = HexCarPhase.GAP
+        hexCarT = 0f
+      }
+    }
+  }
+
+  private fun ease(u: Float): Float {
+    val x = u.coerceIn(0f, 1f)
+    return x * x * (3f - 2f * x)
   }
 
   private fun armPost() {
@@ -1413,6 +1535,20 @@ class World(
     const val TRACE_CY1: Float = TRACE_CY1_PX / 1080f
     const val TRACE_FIRST = 2.2f
     const val TRACE_TRAVEL = 3.6f
+    /**
+     * Hex street hovercar on the 1440×1080 floor PNG.
+     * Visual only. Enters from the bottom, pauses on the gold X, exits the top, loops.
+     */
+    const val HEX_CAR_W_PX = 240
+    const val HEX_CAR_H_PX = 320
+    const val HEX_CAR_X_PX = (1440 - HEX_CAR_W_PX) / 2
+    const val HEX_CAR_W: Float = HEX_CAR_W_PX / 1440f
+    const val HEX_CAR_H: Float = HEX_CAR_H_PX / 1080f
+    const val HEX_CAR_X: Float = HEX_CAR_X_PX / 1440f
+    const val HEX_CAR_GAP = 1.8f
+    const val HEX_CAR_ENTER = 3.2f
+    const val HEX_CAR_HOLD = 1.4f
+    const val HEX_CAR_EXIT = 2.8f
     const val PADDLE_LEN = 0.20f
     const val PADDLE_THICK = 0.018f
     const val CHIP_COUNT = 6

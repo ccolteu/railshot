@@ -635,6 +635,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val courtW = courtR - courtL
     val courtH = courtB - courtT
     blitFill(canvas, opaqueOrFallback(rival.art().stageCourt(), Fighter.RIVET.art().stageCourt()), courtL, courtT, courtW, courtH)
+    if (world.hexCarLive()) {
+      drawHexCar(canvas, courtL, courtT, courtW, courtH)
+    }
     for (chip in world.chips) {
       drawChip(
         canvas,
@@ -839,6 +842,23 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val w = (world.traceW() * courtW).coerceAtLeast(1f)
     val h = (world.traceH() * courtH).coerceAtLeast(1f)
     blitFill(canvas, keyed(UiArt.COURT_TRACE), left, top, w, h)
+  }
+
+  private fun drawHexCar(
+    canvas: Canvas,
+    courtL: Float,
+    courtT: Float,
+    courtW: Float,
+    courtH: Float,
+  ) {
+    val left = courtL + world.hexCarX() * courtW
+    val top = courtT + world.hexCarY() * courtH
+    val w = (world.hexCarW() * courtW).coerceAtLeast(1f)
+    val h = (world.hexCarH() * courtH).coerceAtLeast(1f)
+    canvas.save()
+    canvas.clipRect(courtL, courtT, courtL + courtW, courtT + courtH)
+    blitFill(canvas, keyed(UiArt.HEX_CAR), left, top, w, h)
+    canvas.restore()
   }
 
   private fun drawChip(

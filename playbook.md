@@ -368,7 +368,7 @@ Top-down 4:3 empty woodland clearing as a volley court, CLEAN even packed earth,
 
 **Rainy neon street** (Hex) — court, cabinet, chips only; do **not** restyle Hex fighter sprites
 
-Top-down **street canyon**: wet **empty** asphalt in the middle, dark empty **chip gutters** left and right (same dark lanes as the old Hex floor, 101px, no objects). Neon blue + neon pink only on the building faces (abstract hex / bars / chevrons, **no letters, no logos**). **No** vertical cyan/pink light beams or laser lanes down the street. Center: gold broken hex + X. Hex lamps on the inner roof corners: blue / pink / pink / blue. No cars, no people, no HUD, no Tron grid, no Rivet PCB.
+Top-down **street canyon**: wet **empty** asphalt in the middle, dark empty **chip gutters** left and right (same dark lanes as the old Hex floor, 101px, no objects). Neon blue + neon pink only on the building faces (abstract hex / bars / chevrons, **no letters, no logos**). **No** vertical cyan/pink light beams or laser lanes down the street. Center: gold broken hex + X. Hex lamps on the inner roof corners: blue / pink / pink / blue. No baked cars (the live hovercar is overlay), no people, no HUD, no Tron grid, no Rivet PCB.
 
 Cabinet (`hex/hex_ui_cabinet.png`): authored **360×270**, nearest **×4**, designed from scratch (not a recolor of the old hex CAD frame). Noir Blade Runner rain: wet dark steel posts, rain streaks, pipes, hex neon lamps, neon-blue LEFT / neon-pink RIGHT. Same well / hole table. P2 pink is `(255, 112, 200)` — G **> 90**. Magenta hole **1056800** px. No text. Original IP.
 
@@ -431,6 +431,8 @@ Use section **D** for player sprites. Double-tap empty court calls **one ice com
 A **court wall** comes out of a **mid-line well** only on **Ash’s floor** (the court loaded from 2P). Other courts stay empty. The camera is top-down: do **not** grow the sprite up the screen. Frames `ash/ash_court_wall_{a,b,c}.png` play inside the well toward the viewer. Three wells on the center line; as one **sinks**, the next **raises** (no empty rest). After serve wait ~2.2s, then high / mid / low in order. Hold ~3.4s at full. Fireball and ice comet **ricochet** like a wall — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it.
 
 A **live trace** rides Rivet’s midline (`art/rivet/rivet_court_trace.png`, **48×192**, magenta `#FF00FF`). Gold-plated DIP / memory chip (ceramic body, gold lid, pins on both long sides, notch), same language as Rivet’s life chips — not a teal copper dash. Same ricochet / HARD rules as Ash’s wall. Other courts stay empty of this bead.
+
+A **live hovercar** rides Hex’s street (`art/hex/hex_car.png`, keyed magenta `#FF00FF`). On **Hex’s floor** (2P) it enters from the bottom of the playfield, pauses on the gold X, then drives off through the top, and loops. Clip to the court hole. Fireball and ice comet **ricochet** off it while it is on screen — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it. Other courts stay empty of this car.
 
 **Ice burst** (`art/ui_ice_burst_a.png`, `_b`, `_c`)
 
@@ -679,6 +681,7 @@ Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to
 - Ice burst overlay (`ui_ice_burst_{a,b,c}.png`) when the comet dies
 - Rising court wall (`ash/ash_court_wall_{a,b,c}.png`) in the live mid-line well on Ash’s court
 - Live center dash (`rivet/rivet_court_trace.png`) on Rivet’s court
+- Live street hovercar (`hex/hex_car.png`) on Hex’s court — bottom → pause on X → top, loop
 - `ROUND` / `FIGHT` / `WIN` banners
 - Select cursor (`ui_1p.png` / `ui_2p.png`), arrows (`ui_arrow_left.png` + flip), SELECT (`ui_btn_select.png`)
 - VS arrows cycle EASY/HARD; the EASY/HARD button starts the match
