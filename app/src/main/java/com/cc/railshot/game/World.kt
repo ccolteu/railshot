@@ -1401,7 +1401,7 @@ class World(
      * Rivet court live dash on the 1440×1080 floor PNG.
      * Travels the gold center line; only this bead is solid.
      */
-    const val TRACE_W_PX = 24
+    const val TRACE_W_PX = 48
     const val TRACE_H_PX = 192
     const val TRACE_X_PX = (1440 - TRACE_W_PX) / 2
     const val TRACE_CY0_PX = 168

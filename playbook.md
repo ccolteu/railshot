@@ -34,7 +34,7 @@ Keep the 90s pixel look; just draw it on a phone-sized canvas. Do not generate 3
 | Ice ball | **60×60** | Magenta `#FF00FF` |
 | Ice burst | **128×128** | Magenta `#FF00FF` |
 | Court wall | **96×176** | Magenta `#FF00FF` |
-| Court trace | **24×192** | Magenta `#FF00FF` |
+| Court trace | **48×192** | Magenta `#FF00FF` |
 | Life chips | standing **22×120**, down **48×120** | Magenta `#FF00FF` |
 | Nameplates | **480×90** | Magenta `#FF00FF` |
 | Ending still | **1440×840** letterboxed in 4:3 | Opaque |
@@ -312,8 +312,8 @@ Match **court + cabinet + chips** load from the **2P / rival**. Files: `art/{nam
 | Left gutter | darker teal chip lane |
 | Right gutter | darker teal chip lane |
 | Vertical center | x **720** |
-| Live dash size | **24×192** |
-| Live dash x | **708** (`TRACE_X_PX`) |
+| Live dash size | **48×192** |
+| Live dash x | **696** (`TRACE_X_PX`) |
 | Dash travel (center y) | **168 → 912** |
 
 A **live dash** rides the midline only on **Rivet’s floor** (2P). After serve wait ~2.2s, the bead ping-pongs high ↔ low in ~3.6s each way. Only that bead is solid. Fireball and ice **ricochet**. HARD’s intercept includes the bounce. Paddles ignore it. Do not bake the bead into the floor PNG.
@@ -430,7 +430,7 @@ Use section **D** for player sprites. Double-tap empty court calls **one ice com
 
 A **court wall** comes out of a **mid-line well** only on **Ash’s floor** (the court loaded from 2P). Other courts stay empty. The camera is top-down: do **not** grow the sprite up the screen. Frames `ash/ash_court_wall_{a,b,c}.png` play inside the well toward the viewer. Three wells on the center line; as one **sinks**, the next **raises** (no empty rest). After serve wait ~2.2s, then high / mid / low in order. Hold ~3.4s at full. Fireball and ice comet **ricochet** like a wall — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it.
 
-A **live trace** rides Rivet’s midline (`art/rivet/rivet_court_trace.png`, **24×192**, magenta `#FF00FF`). Chunky 8px copper plus a gold via. Same ricochet / HARD rules as Ash’s wall. Other courts stay empty of this bead.
+A **live trace** rides Rivet’s midline (`art/rivet/rivet_court_trace.png`, **48×192**, magenta `#FF00FF`). Gold-plated DIP / memory chip (ceramic body, gold lid, pins on both long sides, notch), same language as Rivet’s life chips — not a teal copper dash. Same ricochet / HARD rules as Ash’s wall. Other courts stay empty of this bead.
 
 **Ice burst** (`art/ui_ice_burst_a.png`, `_b`, `_c`)
 
