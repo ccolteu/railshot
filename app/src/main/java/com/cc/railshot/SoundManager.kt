@@ -17,8 +17,8 @@ import android.os.Looper
 class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListener {
 
   private val lock = Any()
-  private val loadedIds = IntArray(SFX_COUNT)
-  private val sfxReady = BooleanArray(SFX_COUNT)
+  private val loadedIds = IntArray(MAX_SFX)
+  private val sfxReady = BooleanArray(MAX_SFX)
   private var appContext: Context? = null
   private var audioManager: AudioManager? = null
   private var soundPool: SoundPool? = null
@@ -51,8 +51,11 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
 
   fun initialize(context: Context) {
     synchronized(lock) {
-      if (initialized) return
       val app = context.applicationContext
+      if (initialized) {
+        loadSfxLocked(app)
+        return
+      }
       appContext = app
       audioManager = app.getSystemService(Context.AUDIO_SERVICE) as AudioManager
       val attrs =
@@ -63,24 +66,18 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
       soundPool = SoundPool.Builder().setMaxStreams(MAX_STREAMS).setAudioAttributes(attrs).build()
       val pool = soundPool ?: return
       pool.setOnLoadCompleteListener { _, soundId, status ->
-        if (status != 0) return@setOnLoadCompleteListener
         synchronized(lock) {
           var i = 0
           while (i < SFX_COUNT) {
             if (loadedIds[i] == soundId) {
-              sfxReady[i] = true
+              sfxReady[i] = status == 0
               break
             }
             i++
           }
         }
       }
-      var i = 0
-      while (i < SFX_COUNT) {
-        sfxReady[i] = false
-        loadedIds[i] = pool.load(app, SFX_RAW[i], 1)
-        i++
-      }
+      loadSfxLocked(app)
       val musicAttrs =
         AudioAttributes.Builder()
           .setUsage(AudioAttributes.USAGE_GAME)
@@ -95,6 +92,19 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
     }
   }
 
+  private fun loadSfxLocked(app: Context) {
+    val pool = soundPool ?: return
+    var i = 0
+    while (i < SFX_COUNT) {
+      if (loadedIds[i] == 0) {
+        val sid = pool.load(app, SFX_RAW[i], 1)
+        loadedIds[i] = sid
+        sfxReady[i] = sid != 0
+      }
+      i++
+    }
+  }
+
   fun playSFX(id: Int) {
     playSFX(id, 1f, 1f)
   }
@@ -105,7 +115,7 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
       if (id < 0 || id >= SFX_COUNT) return
       val pool = soundPool ?: return
       val sid = loadedIds[id]
-      if (sid == 0 || !sfxReady[id]) return
+      if (sid == 0) return
       val callout = isCallout(id)
       val vol =
         if (callout) CALLOUT_VOLUME
@@ -450,11 +460,13 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
     const val SFX_SHIELD = 6
     const val SFX_CHIP = 7
     const val SFX_ICE = 8
+    const val SFX_WALL = 9
 
     val BGM_MATCH: Int
       get() = R.raw.bgm_match
 
-    private const val SFX_COUNT = 9
+    private const val SFX_COUNT = 10
+    private const val MAX_SFX = 16
     private const val MAX_STREAMS = 12
     private const val DUCK_VOLUME = 0.45f
     private const val BGM_VOLUME = 0.58f
@@ -477,6 +489,7 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
         R.raw.sfx_shield,
         R.raw.sfx_chip,
         R.raw.sfx_ice,
+        R.raw.sfx_wall,
       )
 
     val instance: SoundManager by lazy { SoundManager() }

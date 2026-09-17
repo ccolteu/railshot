@@ -24,6 +24,7 @@ enum class GameSfx {
   SHIELD,
   CHIP,
   ICE,
+  WALL,
 }
 
 enum class BallTailBand {
@@ -104,6 +105,8 @@ class World(
   var youSets: Int = 0
     private set
   var cpuSets: Int = 0
+    private set
+  var setWinner: Side = Side.YOU
     private set
   var timeLeft: Float = SET_TIME
     private set
@@ -729,10 +732,16 @@ class World(
     ballY += vy * dt
     if (ballY - BALL_R <= 0f) {
       ballY = BALL_R
-      vy = kotlin.math.abs(vy)
+      if (vy < 0f) {
+        vy = kotlin.math.abs(vy)
+        bumpWall()
+      }
     } else if (ballY + BALL_R >= 1f) {
       ballY = 1f - BALL_R
-      vy = -kotlin.math.abs(vy)
+      if (vy > 0f) {
+        vy = -kotlin.math.abs(vy)
+        bumpWall()
+      }
     }
     bounceSprite(youPaddleY, youFrontX(), incomingLeft = true, youSide = true)
     bounceSprite(cpuPaddleY, cpuFrontX(), incomingLeft = false, youSide = false)
@@ -742,10 +751,16 @@ class World(
     if (phase != Phase.PLAYING) return
     if (ballX - BALL_R_X <= 0f) {
       ballX = BALL_R_X
-      vx = kotlin.math.abs(vx)
+      if (vx < 0f) {
+        vx = kotlin.math.abs(vx)
+        bumpWall()
+      }
     } else if (ballX + BALL_R_X >= 1f) {
       ballX = 1f - BALL_R_X
-      vx = -kotlin.math.abs(vx)
+      if (vx > 0f) {
+        vx = -kotlin.math.abs(vx)
+        bumpWall()
+      }
     }
     when {
       cpuChipsLeft() == 0 -> finishSet(Side.YOU)
@@ -950,10 +965,16 @@ class World(
     starY += starVy * dt
     if (starY - STAR_R <= 0f) {
       starY = STAR_R
-      starVy = kotlin.math.abs(starVy)
+      if (starVy < 0f) {
+        starVy = kotlin.math.abs(starVy)
+        bumpWall()
+      }
     } else if (starY + STAR_R >= 1f) {
       starY = 1f - STAR_R
-      starVy = -kotlin.math.abs(starVy)
+      if (starVy > 0f) {
+        starVy = -kotlin.math.abs(starVy)
+        bumpWall()
+      }
     }
     smashOrbOnPaddle(youPaddleY, youFrontX(), incomingLeft = true, youSide = true)
     if (!starLive) return
@@ -1018,19 +1039,27 @@ class World(
 
   private fun bouncePost() {
     val hit = bounceAabb(ballX, ballY, vx, vy, BALL_R_X, BALL_R) ?: return
+    val bounced = hit.vx != vx || hit.vy != vy
     ballX = hit.x
     ballY = hit.y
     vx = hit.vx
     vy = hit.vy
+    if (bounced) bumpWall()
   }
 
   private fun bounceStarPost() {
     if (!starLive) return
     val hit = bounceAabb(starX, starY, starVx, starVy, STAR_R_X, STAR_R) ?: return
+    val bounced = hit.vx != starVx || hit.vy != starVy
     starX = hit.x
     starY = hit.y
     starVx = hit.vx
     starVy = hit.vy
+    if (bounced) bumpWall()
+  }
+
+  private fun bumpWall() {
+    pendingSfx += GameSfx.WALL
   }
 
   private fun bounceAabb(
@@ -1417,6 +1446,7 @@ class World(
   }
 
   private fun finishSet(winner: Side) {
+    setWinner = winner
     if (winner == Side.YOU) youSets += 1 else cpuSets += 1
     vx = 0f
     vy = 0f

@@ -64,6 +64,7 @@ class WorldTest {
     assertEquals(1, world.youSets)
     assertEquals(0, world.cpuSets)
     assertEquals(Phase.SET_WIN, world.phase)
+    assertEquals(Side.YOU, world.setWinner)
     assertEquals(0, world.cpuChipsLeft())
     world.skipSetWin()
     assertEquals(Phase.ROUND, world.phase)
@@ -99,8 +100,24 @@ class WorldTest {
     assertEquals(1, world.youSets)
     assertEquals(0, world.cpuSets)
     assertEquals(Phase.SET_WIN, world.phase)
+    assertEquals(Side.YOU, world.setWinner)
     world.skipSetWin()
     assertEquals(Phase.ROUND, world.phase)
+  }
+
+  @Test
+  fun timeExpiryAwardsTheSetToCpuWhenCpuHasMoreChips() {
+    val world = World()
+    world.skipToServe()
+    world.launch()
+    val keep = world.chips.first { it.side == Side.YOU && it.slot == 0 }
+    world.killAllBut(Side.YOU, keep)
+    world.setTimeLeft(0.01f)
+    world.step(1f / 30f)
+    assertEquals(0, world.youSets)
+    assertEquals(1, world.cpuSets)
+    assertEquals(Phase.SET_WIN, world.phase)
+    assertEquals(Side.CPU, world.setWinner)
   }
 
   @Test
@@ -114,6 +131,7 @@ class WorldTest {
       world.step(1f / 60f)
     }
     assertEquals(Phase.SET_WIN, world.phase)
+    assertEquals(Side.YOU, world.setWinner)
     assertEquals(false, world.setWinBannerVisible())
     repeat((World.SET_WIN_FREEZE / 0.05f).toInt() + 2) { world.step(0.05f) }
     assertEquals(true, world.setWinBannerVisible())
@@ -195,6 +213,32 @@ class WorldTest {
     assertEquals(PaddlePose.HIT, world.youPose())
     assertTrue(world.drainSfx().contains(GameSfx.SHIELD))
     assertTrue(world.impactFrozen())
+  }
+
+  @Test
+  fun fireballHitsTheCourtRailWithAWallCue() {
+    val world = World()
+    world.placeBall(0.50f, World.BALL_R + 0.004f, 0.12f, -0.9f)
+    var guard = 0
+    while (world.ballVy() < 0f && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.ballVy() > 0f)
+    assertTrue(world.drainSfx().contains(GameSfx.WALL))
+  }
+
+  @Test
+  fun iceCometHitsTheCourtRailWithAWallCue() {
+    val world = World()
+    world.placeBall(0.40f, 0.50f, -0.2f, 0f)
+    world.placeStar(0.50f, World.STAR_R + 0.004f, 0.12f, -0.9f)
+    var guard = 0
+    while (world.starVy() < 0f && world.starLive() && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.starLive())
+    assertTrue(world.starVy() > 0f)
+    assertTrue(world.drainSfx().contains(GameSfx.WALL))
   }
 
   @Test
@@ -472,7 +516,9 @@ class WorldTest {
     assertTrue(world.ballVx() < 0f)
     assertEquals(0, world.youScore)
     assertEquals(chips, world.cpuChipsLeft())
-    assertFalse(world.drainSfx().contains(GameSfx.CHIP))
+    val postSfx = world.drainSfx()
+    assertFalse(postSfx.contains(GameSfx.CHIP))
+    assertTrue(postSfx.contains(GameSfx.WALL))
   }
 
   @Test
@@ -488,6 +534,7 @@ class WorldTest {
     assertTrue(world.starLive())
     assertTrue(world.starVx() < 0f)
     assertEquals(World.CHIP_COUNT, world.cpuChipsLeft())
+    assertTrue(world.drainSfx().contains(GameSfx.WALL))
   }
 
   @Test
@@ -547,7 +594,9 @@ class WorldTest {
     assertTrue(world.ballVx() < 0f)
     assertEquals(0, world.youScore)
     assertEquals(chips, world.cpuChipsLeft())
-    assertFalse(world.drainSfx().contains(GameSfx.CHIP))
+    val traceSfx = world.drainSfx()
+    assertFalse(traceSfx.contains(GameSfx.CHIP))
+    assertTrue(traceSfx.contains(GameSfx.WALL))
   }
 
   @Test
@@ -563,6 +612,7 @@ class WorldTest {
     assertTrue(world.starLive())
     assertTrue(world.starVx() < 0f)
     assertEquals(World.CHIP_COUNT, world.cpuChipsLeft())
+    assertTrue(world.drainSfx().contains(GameSfx.WALL))
   }
 
   @Test
@@ -621,7 +671,9 @@ class WorldTest {
     assertTrue(world.ballVx() < 0f)
     assertEquals(0, world.youScore)
     assertEquals(chips, world.cpuChipsLeft())
-    assertFalse(world.drainSfx().contains(GameSfx.CHIP))
+    val carSfx = world.drainSfx()
+    assertFalse(carSfx.contains(GameSfx.CHIP))
+    assertTrue(carSfx.contains(GameSfx.WALL))
   }
 
   @Test
@@ -637,6 +689,7 @@ class WorldTest {
     assertTrue(world.starLive())
     assertTrue(world.starVx() < 0f)
     assertEquals(World.CHIP_COUNT, world.cpuChipsLeft())
+    assertTrue(world.drainSfx().contains(GameSfx.WALL))
   }
 
   @Test

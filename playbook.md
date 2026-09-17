@@ -28,7 +28,7 @@ Keep the 90s pixel look; just draw it on a phone-sized canvas. Do not generate 3
 | Face tiles | **192×192** | Magenta `#FF00FF`. **No drawn border.** Content flush left, right, and bottom. |
 | Standing select portraits | **480×720** | Magenta `#FF00FF` |
 | VS busts | **480×600** | Magenta `#FF00FF` |
-| Word banners | **960** wide (`FIGHT`/`ROUND` height fits letters; `WIN` **768×384**, `VS` **384×384**) | Magenta `#FF00FF` |
+| Word banners | **960** wide (`FIGHT`/`ROUND`/`YOU WIN`/`YOU LOSE` height fits letters; `VS` **384×384**) | Magenta `#FF00FF` |
 | Digits | **120×150** each | Magenta `#FF00FF` |
 | Ball | **60×60** | Magenta `#FF00FF` |
 | Ice ball | **60×60** | Magenta `#FF00FF` |
@@ -74,6 +74,7 @@ WAV clips live in `app/src/main/res/raw/` (16-bit PCM, 44.1 kHz, uncompressed). 
 | Shield hit | `sfx_shield.wav` | Ball bounces off a fighter |
 | Chip off | `sfx_chip.wav` | Ball kills a life tile |
 | Ice shatter | `sfx_ice.wav` | Ice comet smashed or flattening a gate |
+| Court bounce | `sfx_wall.wav` | Fireball or ice comet hits a rail, Ash wall, Rivet trace, or Hex car |
 | Match BGM | `bgm_match.wav` | Loops from app start |
 
 ## Produce a sprite (mandatory)
@@ -409,14 +410,14 @@ Empty wells in the PNG: magenta `#FF00FF` only. No digits, letters, or dots in t
 
 ### Match, time, score, sets (code)
 
-A **match** is **best of three sets** (first to **2** sets wins). Each set is one round of chips. After a set: freeze on the court (~0.5s) so the last flattened gate is visible, then overlay `ui_win.png` (~1.4s), then reset chips and current-set points, fill one set dot, `ROUND`. At **2** dots, the WIN overlay still plays, then match over.
+A **match** is **best of three sets** (first to **2** sets wins). Each set is one round of chips. After a set: freeze on the court (~0.5s) so the last flattened gate is visible, then overlay `ui_you_win.png` or `ui_you_lose.png` (~1.4s) for the P1 result, then reset chips and current-set points, fill one set dot, `ROUND`. At **2** dots, that overlay still plays, then match over.
 
 - **Time:** **99 → 00** in the TIME well. Runs in `PLAYING`. At **00**, more chips remaining wins the set; if tied, next chip wins (sudden death).
 - **Score:** P1 points in the **left score well**, P2 in the **right score well**. Current-set chip-hits only.
 - **Names:** typeset in the name wells. Never `{name}_name_*.png` on the cabinet.
 - **Sets:** two dots per sets well. Match ends at two filled dots.
 
-Round `WIN` overlay on a set (`Phase.SET_WIN`); match win then the **result card** (not a game ending). Full-screen `ui_select_bg.png`. Right rail: winner `{name}_ending.png` at **full stage height**. Left rail: `{name}_wins.png` **right-aligned** and **vertically centered** on the stage, plus a non-flashing `ui_btn_continue.png` (same gold-bezel ivory chrome as SELECT) **lower on the card**, **centered in the left half**. Ignore taps for **0.8s**, then tap (or **10s** idle) → character select. Do not staff-roll or bonus-tally here.
+Round result overlay on a set (`Phase.SET_WIN`): `YOU WIN` if P1 took the set, `YOU LOSE` if the CPU did. Match then the **result card** (not a game ending). Full-screen `ui_select_bg.png`. Right rail: winner `{name}_ending.png` at **full stage height**. Left rail: `{name}_wins.png` **right-aligned** and **vertically centered** on the stage, plus a non-flashing `ui_btn_continue.png` (same gold-bezel ivory chrome as SELECT) **lower on the card**, **centered in the left half**. Ignore taps for **0.8s**, then tap (or **10s** idle) → character select. Do not staff-roll or bonus-tally here.
 
 Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1.8s, then `SERVE` with `ui_fight.png` for ~1.2s (it clears; the set stays on serve). Tap the playfield to serve (does not move the shield). Drag only starts if the thumb lands on P1’s sprite (fat-finger slop, grab offset held so the fighter does not teleport under the pad). Double-tap empty court in `PLAYING` (one thumb or a second thumb while holding the rail) calls that fighter’s **once-per-set** shot at a living gate near the second tap. Serve taps do not count. CPU HARD calls the same shot after three returns. Do not typeset FIGHT or TAP TO SERVE.
 
@@ -428,11 +429,11 @@ Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1
 
 Use section **D** for player sprites. Double-tap empty court calls **one ice comet** per set per side (`art/ui_ice_ball.png` plus ice tails), same size and flicker as the fireball, cyan instead of orange fire. From the fighter toward an upright opponent gate near the tap. Quill still prefers the high or low half. The orb **does not pass shields**: a paddle smash destroys it (shield flash, `sfx_ice.wav`) while the fireball keeps moving. Death overlays `ui_ice_burst_{a,b,c}.png` at the orb for ~0.24s, gate flatten or shield smash. If it gets through, it flattens **whichever living gate it hits** (a wall bounce can send it into your own rail), plays chip SFX, and uses the same cabinet sting as the fireball. CPU chases the nearer incoming shot.
 
-A **court wall** comes out of a **mid-line well** only on **Ash’s floor** (the court loaded from 2P). Other courts stay empty. The camera is top-down: do **not** grow the sprite up the screen. Frames `ash/ash_court_wall_{a,b,c}.png` play inside the well toward the viewer. Three wells on the center line; as one **sinks**, the next **raises** (no empty rest). After serve wait ~2.2s, then high / mid / low in order. Hold ~3.4s at full. Fireball and ice comet **ricochet** like a wall — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it.
+A **court wall** comes out of a **mid-line well** only on **Ash’s floor** (the court loaded from 2P). Other courts stay empty. The camera is top-down: do **not** grow the sprite up the screen. Frames `ash/ash_court_wall_{a,b,c}.png` play inside the well toward the viewer. Three wells on the center line; as one **sinks**, the next **raises** (no empty rest). After serve wait ~2.2s, then high / mid / low in order. Hold ~3.4s at full. Fireball and ice comet **ricochet** like a wall (`sfx_wall.wav`) — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it.
 
 A **live trace** rides Rivet’s midline (`art/rivet/rivet_court_trace.png`, **48×192**, magenta `#FF00FF`). Gold-plated DIP / memory chip (ceramic body, gold lid, pins on both long sides, notch), same language as Rivet’s life chips — not a teal copper dash. Same ricochet / HARD rules as Ash’s wall. Other courts stay empty of this bead.
 
-A **live hovercar** rides Hex’s street (`art/hex/hex_car.png`, keyed magenta `#FF00FF`). On **Hex’s floor** (2P) it enters from the bottom of the playfield, pauses on the gold X, then drives off through the top, and loops. Clip to the court hole. Fireball and ice comet **ricochet** off it while it is on screen — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it. Other courts stay empty of this car.
+A **live hovercar** rides Hex’s street (`art/hex/hex_car.png`, keyed magenta `#FF00FF`). On **Hex’s floor** (2P) it enters from the bottom of the playfield, pauses on the gold X, then drives off through the top, and loops. Clip to the court hole. Fireball and ice comet **ricochet** off it while it is on screen (`sfx_wall.wav`) — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it. Other courts stay empty of this car.
 
 **Ice burst** (`art/ui_ice_burst_a.png`, `_b`, `_c`)
 
@@ -553,10 +554,18 @@ Arcade pixel word FIGHT, icy blue metallic gradient, orange outline, 1994 title,
 File: `art/ui_fight.png`. Serve sting ~1.2s, then the court waits empty. No typeset TAP TO SERVE. Tap still serves.
 
 ```
-Arcade pixel word WIN, huge brush letters, yellow-orange-red gradient, blue outline, magenta background, 768x384
+Arcade pixel words YOU WIN, huge brush letters, yellow-orange-red gradient, blue outline, magenta background, 960 wide
 ```
 
-File: `art/ui_win.png`. After the last gate of a set flattens: hold the court 0.5s with no banner, then this overlay 1.4s, then next `ROUND` or the ending still.
+File: `art/ui_you_win.png`. P1 took the set.
+
+```
+Arcade pixel words YOU LOSE, huge brush letters, icy blue-to-purple gradient, orange outline, magenta background, 960 wide
+```
+
+File: `art/ui_you_lose.png`. CPU took the set.
+
+After the last gate of a set flattens: hold the court 0.5s with no banner, then the matching overlay 1.4s, then next `ROUND` or the ending still.
 ```
 Arcade pixel letters VS, overlapping block capitals V and S (not script, not italic), gold chrome fill, orange outline, magenta #FF00FF, 384x384
 ```
@@ -649,10 +658,11 @@ Wallpaper (`art/ui_vs_bg.png`): quiet dark navy with a faint center glow for the
 4. Draw `ui_vs.png` in the center. Under each bust draw `{name}_name_vs.png` (first pick left, second pick right). Missing name sprite: placeholder.
 5. Bottom bar is two rows: fighter `{name}_name_vs.png` plates on the first row (large, under each bust), then a gap, then left arrow / **EASY or HARD** / right arrow centered on the second row. Same gold-bezel ivory arcade button as SELECT/START (`ui_btn_easy.png` / `ui_btn_hard.png`, 264×150). VS opens on **EASY**. Arrows cycle EASY/HARD (arrow SFX). Pressing the EASY or HARD button starts the match (select confirm SFX). Do not typeset EASY/HARD.
 6. Stay on VS until the difficulty button is pressed. Left court then uses the first fighter’s `*_left` anims; right court uses the second’s `*_right` anims.
+7. **Intro:** EASY/HARD arrows are on from frame one. Busts (and their name plates) slide in from the left/right edges. After they land, `ui_vs.png` scales up from zero at its resting center.
 
 ## Win / bonus / congratulations layout
 
-Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to **2** of **3** sets wins the match). Use piece **E** for the match champion. Other cards:
+Round win in-court is the `YOU WIN` / `YOU LOSE` overlay when a **set** is taken (first to **2** of **3** sets wins the match). Use piece **E** for the match champion. Other cards:
 
 **Bonus tally**
 
@@ -682,7 +692,7 @@ Round win in-court is the `WIN` sprite overlay when a **set** is taken (first to
 - Rising court wall (`ash/ash_court_wall_{a,b,c}.png`) in the live mid-line well on Ash’s court
 - Live center dash (`rivet/rivet_court_trace.png`) on Rivet’s court
 - Live street hovercar (`hex/hex_car.png`) on Hex’s court — bottom → pause on X → top, loop
-- `ROUND` / `FIGHT` / `WIN` banners
+- `ROUND` / `FIGHT` / `YOU WIN` / `YOU LOSE` banners
 - Select cursor (`ui_1p.png` / `ui_2p.png`), arrows (`ui_arrow_left.png` + flip), SELECT (`ui_btn_select.png`)
 - VS arrows cycle EASY/HARD; the EASY/HARD button starts the match
 - Select flavor line under the name sprite (`FighterKit`)

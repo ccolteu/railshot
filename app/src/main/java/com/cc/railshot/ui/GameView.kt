@@ -52,6 +52,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private var lingerT = 0f
   private var selectIdleT = 0f
   private var resultCardT = 0f
+  private var vsAnimT = 0f
   private val select = SelectSession()
   private var you: Fighter = Fighter.RIVET
   private var rival: Fighter = Fighter.RIVET
@@ -140,7 +141,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
           if (selectIdleT >= SELECT_IDLE_S) goTitle()
         }
       }
-      Screen.VS -> {}
+      Screen.VS -> vsAnimT += dt
       Screen.MATCH -> stepMatch(dt)
     }
     val canvas = lockGameCanvas()
@@ -223,6 +224,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     rival = second
     lingerT = 0f
     cpuLevel = CpuLevel.EASY
+    vsAnimT = 0f
     screen = Screen.VS
   }
 
@@ -268,6 +270,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
           )
         GameSfx.CHIP -> SoundManager.instance.playSFX(SoundManager.SFX_CHIP, 1.12f, 0.82f)
         GameSfx.ICE -> SoundManager.instance.playSFX(SoundManager.SFX_ICE, 1.08f, 1.0f)
+        GameSfx.WALL -> SoundManager.instance.playSFX(SoundManager.SFX_WALL, 1.15f, 1.0f)
       }
     }
     val phase = world.phase
@@ -588,24 +591,36 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val totalW = 1f + 0.42f + 1f
     val leftW = sw * (1f / totalW)
     val vsW = sw * (0.42f / totalW)
+    val enter = 1f - easeOutCubic((vsAnimT / VS_PORTRAIT_S).coerceIn(0f, 1f))
+    val fromLeft = -enter * leftW
+    val fromRight = enter * leftW
     you.art().vsLeft?.let { path ->
-      blitFit(canvas, keyed(path), 8f * dp, 12f * dp, leftW - 16f * dp, bustH - 24f * dp)
+      blitFit(canvas, keyed(path), 8f * dp + fromLeft, 12f * dp, leftW - 16f * dp, bustH - 24f * dp)
     }
     val vsBmp = keyed(UiArt.VS)
     val vsDrawH = min(140f * dp, bustH)
     val vsDrawW = min(vsW, vsDrawH * (vsBmp.width / vsBmp.height.toFloat()))
-    blitFit(canvas, vsBmp, leftW + (vsW - vsDrawW) / 2f, (bustH - vsDrawH) / 2f, vsDrawW, vsDrawH)
+    val vsScale = easeOutBack(((vsAnimT - VS_PORTRAIT_S) / VS_MARK_S).coerceIn(0f, 1f))
+    if (vsScale > 0.01f) {
+      val vsL = leftW + (vsW - vsDrawW) / 2f
+      val vsT = (bustH - vsDrawH) / 2f
+      val cx = vsL + vsDrawW / 2f
+      val cy = vsT + vsDrawH / 2f
+      val dw = vsDrawW * vsScale
+      val dh = vsDrawH * vsScale
+      blitFit(canvas, vsBmp, cx - dw / 2f, cy - dh / 2f, dw, dh)
+    }
     rival.art().vsRight?.let { path ->
-      blitFit(canvas, keyed(path), leftW + vsW + 8f * dp, 12f * dp, leftW - 16f * dp, bustH - 24f * dp)
+      blitFit(canvas, keyed(path), leftW + vsW + 8f * dp + fromRight, 12f * dp, leftW - 16f * dp, bustH - 24f * dp)
     }
     val nameY = bustH + barPadT
     val namePad = 10f * dp
     val nw = leftW - namePad * 2f
     you.art().nameVs?.let { path ->
-      blitFit(canvas, keyed(path), namePad, nameY, nw, nameH)
+      blitFit(canvas, keyed(path), namePad + fromLeft, nameY, nw, nameH)
     }
     rival.art().nameVs?.let { path ->
-      blitFit(canvas, keyed(path), leftW + vsW + namePad, nameY, nw, nameH)
+      blitFit(canvas, keyed(path), leftW + vsW + namePad + fromRight, nameY, nw, nameH)
     }
     layoutVsHits(sw, sh)
     blitFit(canvas, keyed(UiArt.ARROW_LEFT), leftArrow.left, leftArrow.top, leftArrow.width(), leftArrow.height())
@@ -734,8 +749,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       }
       Phase.SET_WIN -> {
         if (world.setWinBannerVisible()) {
-          val banner = keyed(UiArt.WIN)
-          val bannerW = courtW * 0.72f
+          val banner = keyed(if (world.setWinner == Side.YOU) UiArt.YOU_WIN else UiArt.YOU_LOSE)
+          val bannerW = courtW * 0.88f
           val bannerH = bannerW * (banner.height / banner.width.toFloat())
           blitFit(canvas, banner, courtL + (courtW - bannerW) / 2f, courtT + (courtH - bannerH) / 2f, bannerW, bannerH)
         }
@@ -1233,5 +1248,19 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     const val MUTE_DIM = 0x598FA3B0
     const val TAIL_FLICKER_DIST = 0.04f
     const val DOUBLE_TAP_MS = 280L
+    const val VS_PORTRAIT_S = 0.38f
+    const val VS_MARK_S = 0.28f
+
+    private fun easeOutCubic(u: Float): Float {
+      val t = 1f - u.coerceIn(0f, 1f)
+      return 1f - t * t * t
+    }
+
+    private fun easeOutBack(u: Float): Float {
+      val t = u.coerceIn(0f, 1f)
+      val c = 1.70158f
+      val p = t - 1f
+      return 1f + (c + 1f) * p * p * p + c * p * p
+    }
   }
 }
