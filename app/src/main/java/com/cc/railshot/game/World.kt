@@ -97,6 +97,7 @@ class World(
   private val courtCar: Boolean = rival == Fighter.HEX
   private val courtHawk: Boolean = rival == Fighter.QUILL
   private val courtKiteX: Boolean = rival == Fighter.KITE
+  private val courtLogs: Boolean = rival == Fighter.MARU
   private val youStyle: CpuStyle = CpuStyle.forFighter(you)
   var phase: Phase = Phase.ROUND
     private set
@@ -175,6 +176,7 @@ class World(
   private var hawkT = 0f
   private var hawkAnimT = 0f
   private var kiteXT = 0f
+  private var maruLogT = 0f
   private var tailLock: BallTailBand? = null
   private var shieldGain = 1.05f
   private var shieldRate = 1.22f
@@ -260,6 +262,7 @@ class World(
       tickHexCar(clamped)
       tickHawk(clamped)
       tickKiteX(clamped)
+      tickMaruLogs(clamped)
     }
     tickHits(clamped)
     tickJuice(clamped)
@@ -479,6 +482,37 @@ class World(
     if (!courtKiteX) return
     val u = ((deg / 360f) % 1f + 1f) % 1f
     kiteXT = u * KITE_X_SPIN
+  }
+
+  fun maruLogLive(): Boolean = courtLogs
+
+  fun maruLogCount(): Int = LOG_COUNT
+
+  fun maruLogX(slot: Int = 0): Float = maruLogCx(slot) - maruLogLen(slot) / 2f
+
+  fun maruLogY(slot: Int): Float = maruLogCy(slot) - maruLogThick(slot) / 2f
+
+  fun maruLogW(slot: Int = 0): Float = maruLogLen(slot)
+
+  fun maruLogH(slot: Int = 0): Float = maruLogThick(slot)
+
+  fun maruLogDeg(slot: Int): Float = maruLogPose(slot).deg
+
+  internal fun placeMaruLogs(u0: Float = 0f) {
+    if (!courtLogs) return
+    maruLogT = ((u0 % 1f + 1f) % 1f) * LOG_TRAVEL
+  }
+
+  internal fun placeMaruLogAtY(slot: Int, y: Float) {
+    if (!courtLogs) return
+    var lo = 0f
+    var hi = 1f
+    repeat(18) {
+      val mid = (lo + hi) * 0.5f
+      if (logPath(mid).y < y) lo = mid else hi = mid
+    }
+    val u = (lo + hi) * 0.5f
+    maruLogT = (((u - LOG_U[slot]) % 1f + 1f) % 1f) * LOG_TRAVEL
   }
 
   fun iceBurstFrame(): Int {
@@ -791,6 +825,25 @@ class World(
           tHit = hit.t
           kind = 5
           kiteFlipV = hit.vertical
+        }
+      }
+      if (maruLogSolid()) {
+        for (slot in 0 until LOG_COUNT) {
+          val hit =
+            rayAabb(
+              x,
+              y,
+              svx,
+              svy,
+              maruLogHitLeft(slot) - BALL_R_X,
+              maruLogHitTop(slot) - BALL_R,
+              maruLogHitLeft(slot) + maruLogHitW(slot) + BALL_R_X,
+              maruLogHitTop(slot) + maruLogHitH(slot) + BALL_R,
+            )
+          if (hit != null && hit.t > 0.0001f && hit.t < tHit) {
+            tHit = hit.t
+            kind = if (hit.vertical) 3 else 4
+          }
         }
       }
       if (kind == 0) return (y + svy * tHit).coerceIn(lo, hi)
@@ -1215,6 +1268,28 @@ class World(
         hitAny = true
       }
     }
+    if (maruLogSolid()) {
+      for (slot in 0 until LOG_COUNT) {
+        val hit =
+          bounceBox(
+            maruLogHitLeft(slot),
+            maruLogHitTop(slot),
+            maruLogHitW(slot),
+            maruLogHitH(slot),
+            x,
+            y,
+            vx,
+            vy,
+            rx,
+            ry,
+          ) ?: continue
+        x = hit.x
+        y = hit.y
+        vx = hit.vx
+        vy = hit.vy
+        hitAny = true
+      }
+    }
     return if (hitAny) AabbBounce(x, y, vx, vy) else null
   }
 
@@ -1387,6 +1462,81 @@ class World(
     }
     kiteXT += dt
     if (kiteXT >= KITE_X_SPIN) kiteXT -= KITE_X_SPIN
+  }
+
+  private fun maruLogSolid(): Boolean = maruLogLive()
+
+  private fun tickMaruLogs(dt: Float) {
+    if (!courtLogs) {
+      maruLogT = 0f
+      return
+    }
+    maruLogT += dt
+    if (maruLogT >= LOG_TRAVEL) maruLogT -= LOG_TRAVEL
+  }
+
+  private fun maruLogU(slot: Int): Float {
+    val u = maruLogT / LOG_TRAVEL + LOG_U[slot]
+    return (u % 1f + 1f) % 1f
+  }
+
+  private fun maruLogLen(slot: Int): Float = LOG_LEN * LOG_SCALE[slot]
+
+  private fun maruLogThick(slot: Int): Float = LOG_THICK * LOG_SCALE[slot]
+
+  private data class LogPose(val x: Float, val y: Float, val deg: Float)
+
+  private fun maruLogPose(slot: Int): LogPose {
+    val p = logPath(maruLogU(slot))
+    val deg = Math.toDegrees(kotlin.math.atan2(p.dy.toDouble(), p.dx.toDouble())).toFloat()
+    return LogPose(p.x, p.y, deg)
+  }
+
+  private fun maruLogCx(slot: Int): Float = maruLogPose(slot).x
+
+  private fun maruLogCy(slot: Int): Float = maruLogPose(slot).y
+
+  private fun maruLogHitExt(slot: Int): Pair<Float, Float> {
+    val pose = maruLogPose(slot)
+    val rad = Math.toRadians(pose.deg.toDouble())
+    val c = kotlin.math.abs(kotlin.math.cos(rad)).toFloat()
+    val s = kotlin.math.abs(kotlin.math.sin(rad)).toFloat()
+    val hw = maruLogLen(slot) / 2f
+    val hh = maruLogThick(slot) / 2f
+    return Pair(c * hw + s * hh, s * hw + c * hh)
+  }
+
+  private fun maruLogHitLeft(slot: Int): Float = maruLogCx(slot) - maruLogHitExt(slot).first
+
+  private fun maruLogHitTop(slot: Int): Float = maruLogCy(slot) - maruLogHitExt(slot).second
+
+  private fun maruLogHitW(slot: Int): Float = maruLogHitExt(slot).first * 2f
+
+  private fun maruLogHitH(slot: Int): Float = maruLogHitExt(slot).second * 2f
+
+  private fun logPath(uRaw: Float): HawkPose {
+    val u = ((uRaw % 1f + 1f) % 1f) * LOG_PATH_LEN
+    var s = u
+    for (i in 0 until LOG_PATH_PX.size - 1) {
+      val seg = LOG_SEG[i]
+      if (s <= seg) {
+        val t = if (seg < 1e-4f) 0f else s / seg
+        val x0 = LOG_PATH_PX[i][0] / 1440f
+        val y0 = LOG_PATH_PX[i][1] / 1080f
+        val x1 = LOG_PATH_PX[i + 1][0] / 1440f
+        val y1 = LOG_PATH_PX[i + 1][1] / 1080f
+        return HawkPose(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, x1 - x0, y1 - y0)
+      }
+      s -= seg
+    }
+    val last = LOG_PATH_PX.size - 1
+    val prev = last - 1
+    return HawkPose(
+      LOG_PATH_PX[last][0] / 1440f,
+      LOG_PATH_PX[last][1] / 1080f,
+      LOG_PATH_PX[last][0] / 1440f - LOG_PATH_PX[prev][0] / 1440f,
+      LOG_PATH_PX[last][1] / 1080f - LOG_PATH_PX[prev][1] / 1080f,
+    )
   }
 
   private fun kiteXArmRad(): Float =
@@ -1900,6 +2050,43 @@ class World(
     const val KITE_X_ARM_T: Float = KITE_X_ARM_T_PX / 1080f
     const val KITE_X_SPIN = 10f
     const val KITE_X_ARM_OFFSET_DEG = 45f
+    /**
+     * Maru highland logs. Packed 240×40, dest long×thick along the current.
+     * Three copies of mixed size drift the water, weave around painted boulders, wrap.
+     */
+    const val LOG_COUNT = 3
+    const val LOG_LEN_PX = 112
+    const val LOG_THICK_PX = 34
+    const val LOG_LEN: Float = LOG_LEN_PX / 1440f
+    const val LOG_THICK: Float = LOG_THICK_PX / 1080f
+    const val LOG_TRAVEL = 7f
+    val LOG_U = floatArrayOf(0f, 0.22f, 0.63f)
+    val LOG_SCALE = floatArrayOf(0.72f, 1.20f, 0.94f)
+    val LOG_PATH_PX =
+      arrayOf(
+        intArrayOf(688, 36),
+        intArrayOf(720, 80),
+        intArrayOf(752, 128),
+        intArrayOf(760, 180),
+        intArrayOf(720, 260),
+        intArrayOf(700, 340),
+        intArrayOf(668, 420),
+        intArrayOf(656, 470),
+        intArrayOf(700, 530),
+        intArrayOf(744, 610),
+        intArrayOf(736, 700),
+        intArrayOf(708, 800),
+        intArrayOf(700, 880),
+        intArrayOf(676, 960),
+        intArrayOf(692, 1044),
+      )
+    val LOG_SEG: FloatArray =
+      FloatArray(LOG_PATH_PX.size - 1) { i ->
+        val dx = (LOG_PATH_PX[i + 1][0] - LOG_PATH_PX[i][0]).toFloat()
+        val dy = (LOG_PATH_PX[i + 1][1] - LOG_PATH_PX[i][1]).toFloat()
+        kotlin.math.hypot(dx, dy)
+      }
+    val LOG_PATH_LEN: Float = LOG_SEG.sum()
     const val PADDLE_LEN = 0.20f
     const val PADDLE_THICK = 0.018f
     const val CHIP_COUNT = 6

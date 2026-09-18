@@ -349,7 +349,8 @@ class WorldTest {
 
   @Test
   fun hardWallMovesTowardAThreatenedGate() {
-    val world = World(CpuStyle.WALL, CpuLevel.HARD)
+    val world =
+      World(you = Fighter.RIVET, rival = Fighter.ASH, cpuLevel = CpuLevel.HARD, cpuStyle = CpuStyle.WALL)
     val gate = world.chips.first { it.side == Side.CPU && it.slot == 0 && it.alive }
     val gateY = gate.y + gate.h / 2f
     world.placeBall(0.40f, gateY, 0.55f, 0f)
@@ -360,7 +361,13 @@ class WorldTest {
 
   @Test
   fun hardCpuCutsADownwardAngleBeforeTheBallArrives() {
-    val world = World(CpuStyle.SLUGGER, CpuLevel.HARD)
+    val world =
+      World(
+        you = Fighter.RIVET,
+        rival = Fighter.ASH,
+        cpuLevel = CpuLevel.HARD,
+        cpuStyle = CpuStyle.SLUGGER,
+      )
     world.placeBall(0.38f, 0.50f, 0.55f, 0.42f)
     repeat(12) { world.step(1f / 60f) }
     assertTrue(world.cpuPaddleY > 0.52f)
@@ -831,8 +838,93 @@ class WorldTest {
   }
 
   @Test
+  fun maruLogsStayOffOnOtherCourts() {
+    val world = World(rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    world.placeMaruLogs()
+    assertFalse(world.maruLogLive())
+  }
+
+  @Test
+  fun maruLogsDriftDownTheChasmAndWrap() {
+    val world = World(rival = Fighter.MARU, cpuLevel = CpuLevel.EASY)
+    world.placeMaruLogs(0f)
+    assertTrue(world.maruLogLive())
+    assertEquals(World.LOG_COUNT, world.maruLogCount())
+    val y0 = world.maruLogY(0)
+    val y1 = world.maruLogY(1)
+    val y2 = world.maruLogY(2)
+    assertTrue(y0 < y1)
+    assertTrue(y1 < y2)
+    val gap01 = y1 - y0
+    val gap12 = y2 - y1
+    assertTrue(kotlin.math.abs(gap01 - gap12) > 0.04f)
+    assertTrue(kotlin.math.abs(world.maruLogW(0) - world.maruLogW(1)) > 0.01f)
+    assertTrue(kotlin.math.abs(world.maruLogH(1) - world.maruLogH(2)) > 0.004f)
+    repeat(20) { world.step(0.05f) }
+    assertTrue(world.maruLogY(0) > y0)
+    world.placeMaruLogs(0.98f)
+    val nearBot = world.maruLogY(0)
+    repeat(20) { world.step(0.05f) }
+    assertTrue(world.maruLogY(0) < nearBot)
+  }
+
+  @Test
+  fun maruLogsWeaveAroundTheBoulders() {
+    val world = World(rival = Fighter.MARU, cpuLevel = CpuLevel.EASY)
+    world.placeMaruLogAtY(0, 127f / 1080f)
+    val rightOfTopRock = world.maruLogX(0) + world.maruLogW(0) / 2f
+    world.placeMaruLogAtY(0, 447f / 1080f)
+    val leftOfMidRock = world.maruLogX(0) + world.maruLogW(0) / 2f
+    world.placeMaruLogAtY(0, 611f / 1080f)
+    val rightOfLowRock = world.maruLogX(0) + world.maruLogW(0) / 2f
+    assertTrue(rightOfTopRock > 0.50f)
+    assertTrue(leftOfMidRock < rightOfTopRock - 0.02f)
+    assertTrue(rightOfLowRock > leftOfMidRock + 0.02f)
+    world.placeMaruLogAtY(0, 420f / 1080f)
+    assertTrue(kotlin.math.abs(world.maruLogDeg(0) - 90f) > 8f)
+  }
+
+  @Test
+  fun maruLogBouncesTheBallWithoutScoring() {
+    val world = World(rival = Fighter.MARU, cpuLevel = CpuLevel.EASY)
+    world.placeMaruLogAtY(0, 0.5f)
+    val chips = world.cpuChipsLeft()
+    val cx = world.maruLogX() + world.maruLogW() / 2f
+    val cy = world.maruLogY(0) + world.maruLogH(0) / 2f
+    world.placeBall(cx - World.BALL_R_X - 0.012f, cy, 0.8f, 0f)
+    var guard = 0
+    while (world.ballVx() > 0f && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.ballVx() < 0f)
+    assertEquals(0, world.youScore)
+    assertEquals(chips, world.cpuChipsLeft())
+    val sfx = world.drainSfx()
+    assertFalse(sfx.contains(GameSfx.CHIP))
+    assertTrue(sfx.contains(GameSfx.WALL))
+  }
+
+  @Test
+  fun maruLogBouncesTheIceComet() {
+    val world = World(you = Fighter.ASH, rival = Fighter.MARU, cpuLevel = CpuLevel.EASY)
+    world.placeMaruLogAtY(0, 0.5f)
+    world.placeBall(0.35f, 0.20f, -0.3f, 0f)
+    val cx = world.maruLogX() + world.maruLogW() / 2f
+    val cy = world.maruLogY(0) + world.maruLogH(0) / 2f
+    world.placeStar(cx - World.STAR_R_X - 0.012f, cy, 0.7f, 0f)
+    var guard = 0
+    while (world.starVx() > 0f && world.starLive() && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.starLive())
+    assertTrue(world.starVx() < 0f)
+    assertEquals(World.CHIP_COUNT, world.cpuChipsLeft())
+    assertTrue(world.drainSfx().contains(GameSfx.WALL))
+  }
+
+  @Test
   fun calledOrbMissesAShieldOffTheLine() {
-    val world = World(you = Fighter.RIVET, cpuLevel = CpuLevel.EASY)
+    val world = World(you = Fighter.RIVET, rival = Fighter.HEX, cpuLevel = CpuLevel.EASY)
     world.placeBall(0.40f, 0.50f, -0.4f, 0f)
     assertTrue(world.callYouSpecial(0.12f))
     var guard = 0

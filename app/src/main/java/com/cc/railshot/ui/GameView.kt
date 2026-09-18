@@ -659,6 +659,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     if (world.kiteXLive()) {
       drawKiteX(canvas, courtL, courtT, courtW, courtH)
     }
+    if (world.maruLogLive()) {
+      drawMaruLogs(canvas, courtL, courtT, courtW, courtH)
+    }
     for (chip in world.chips) {
       drawChip(
         canvas,
@@ -924,6 +927,31 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     canvas.rotate(world.kiteXDeg(), cx, cy)
     blitFill(canvas, keyed(UiArt.KITE_X), left, top, w, h)
     canvas.restore()
+    canvas.restore()
+  }
+
+  private fun drawMaruLogs(
+    canvas: Canvas,
+    courtL: Float,
+    courtT: Float,
+    courtW: Float,
+    courtH: Float,
+  ) {
+    val bmp = keyed(UiArt.MARU_LOG)
+    canvas.save()
+    canvas.clipRect(courtL, courtT, courtL + courtW, courtT + courtH)
+    for (slot in 0 until world.maruLogCount()) {
+      val left = courtL + world.maruLogX(slot) * courtW
+      val top = courtT + world.maruLogY(slot) * courtH
+      val w = (world.maruLogW(slot) * courtW).coerceAtLeast(1f)
+      val h = (world.maruLogH(slot) * courtH).coerceAtLeast(1f)
+      val cx = left + w / 2f
+      val cy = top + h / 2f
+      canvas.save()
+      canvas.rotate(world.maruLogDeg(slot), cx, cy)
+      blitFill(canvas, bmp, left, top, w, h)
+      canvas.restore()
+    }
     canvas.restore()
   }
 
