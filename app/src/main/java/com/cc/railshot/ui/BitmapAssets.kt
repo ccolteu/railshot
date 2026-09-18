@@ -48,7 +48,7 @@ internal fun chromaKeyMagenta(src: Bitmap, keyHoleBleed: Boolean = false): Bitma
 }
 
 internal fun isKeyMagenta(r: Int, g: Int, b: Int): Boolean {
-  return r >= 248 && b >= 248 && g <= 8
+  return r >= 240 && b >= 240 && g <= 16
 }
 
 internal fun isCabinetHoleBleed(r: Int, g: Int, b: Int): Boolean {
