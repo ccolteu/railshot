@@ -26,4 +26,8 @@ enum class CpuStyle {
 enum class CpuLevel {
   EASY,
   HARD,
+  ;
+
+  /** 1-based EEPROM table id, same shape as WW2 Blitz. */
+  val table: Int get() = ordinal + 1
 }

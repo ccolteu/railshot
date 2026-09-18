@@ -20,6 +20,12 @@ class WorldTest {
   }
 
   @Test
+  fun arcadeStartSkillCarriesIntoTheMatch() {
+    val world = World(startSkill = 700)
+    assertEquals(700, world.youSkill)
+  }
+
+  @Test
   fun hittingACpuChipScoresForYou() {
     val world = World()
     val target = world.chips.first { it.side == Side.CPU && it.slot == 2 && it.alive }
@@ -32,6 +38,7 @@ class WorldTest {
     assertEquals(World.CHIP_COUNT - 1, world.cpuChipsLeft())
     assertTrue(world.drainSfx().contains(GameSfx.CHIP))
     assertTrue(world.impactFrozen())
+    assertEquals(100, world.youSkill)
     val frozenX = world.ballX
     world.step(1f / 60f)
     assertEquals(frozenX, world.ballX, 0.0001f)
@@ -920,6 +927,123 @@ class WorldTest {
     assertTrue(world.starVx() < 0f)
     assertEquals(World.CHIP_COUNT, world.cpuChipsLeft())
     assertTrue(world.drainSfx().contains(GameSfx.WALL))
+  }
+
+  @Test
+  fun skillPointsKeepOneThreeFiveIceDouble() {
+    assertEquals(100, World.skillPoints(0))
+    assertEquals(300, World.skillPoints(1))
+    assertEquals(500, World.skillPoints(2))
+    assertEquals(700, World.skillPoints(3))
+    assertEquals(200, World.skillPoints(0, ice = true))
+    assertEquals(600, World.skillPoints(1, ice = true))
+    assertEquals(1000, World.skillPoints(2, ice = true))
+  }
+
+  @Test
+  fun p1DirectChipAwards100Skill() {
+    val world = World(you = Fighter.RIVET, rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    val target = world.chips.first { it.side == Side.CPU && it.slot == 2 && it.alive }
+    world.armYouShot(0)
+    world.placeBall(target.x - World.BALL_R_X - 0.001f, target.y + target.h / 2f, 0.9f, 0f)
+    var guard = 0
+    while (world.youScore == 0 && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertEquals(1, world.youScore)
+    assertEquals(100, world.youSkill)
+    assertEquals(1, world.skillPopups.size)
+    assertEquals(100, world.skillPopups[0].value)
+    val popY = world.skillPopups[0].y
+    world.step(1f / 60f)
+    assertTrue(world.skillPopups[0].y < popY)
+  }
+
+  @Test
+  fun p1WallBankUsesThreeAndFiveTable() {
+    val world = World(you = Fighter.RIVET, rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    val target = world.chips.first { it.side == Side.CPU && it.slot == 2 && it.alive }
+    world.armYouShot(1)
+    world.placeBall(target.x - World.BALL_R_X - 0.001f, target.y + target.h / 2f, 0.9f, 0f)
+    var guard = 0
+    while (world.youScore == 0 && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertEquals(300, world.youSkill)
+    thaw(world)
+    val next = world.chips.first { it.side == Side.CPU && it.alive }
+    world.armYouShot(2)
+    world.placeBall(next.x - World.BALL_R_X - 0.001f, next.y + next.h / 2f, 0.9f, 0f)
+    guard = 0
+    while (world.youScore == 1 && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertEquals(800, world.youSkill)
+  }
+
+  @Test
+  fun p1OwnGoalStillBanksTheTimeWell() {
+    val world = World(you = Fighter.RIVET, rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    val target = world.chips.first { it.side == Side.YOU && it.slot == 0 && it.alive }
+    world.armYouShot(4)
+    world.placeBall(target.x + target.w + World.BALL_R_X + 0.001f, target.y + target.h / 2f, -0.9f, 0f)
+    var guard = 0
+    while (world.cpuScore == 0 && world.phase == Phase.PLAYING && guard++ < 80) {
+      world.step(1f / 60f)
+    }
+    assertEquals(1, world.cpuScore)
+    assertEquals(World.skillPoints(4), world.youSkill)
+    assertEquals(1, world.skillPopups.size)
+    assertEquals(World.skillPoints(4), world.skillPopups[0].value)
+  }
+
+  @Test
+  fun p1IceChipDoublesTheTable() {
+    val world = World(you = Fighter.RIVET, rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    val target = world.chips.first { it.side == Side.CPU && it.slot == 2 && it.alive }
+    world.placeBall(0.4f, 0.5f, -0.2f, 0f)
+    world.armYouIce(0)
+    world.placeStar(target.x - World.STAR_R_X - 0.001f, target.y + target.h / 2f, 0.8f, 0f)
+    var guard = 0
+    while (world.youScore == 0 && world.starLive() && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertEquals(1, world.youScore)
+    assertEquals(200, world.youSkill)
+    assertEquals(200, world.skillPopups[0].value)
+  }
+
+  @Test
+  fun skillPersistsAcrossSets() {
+    val world = World(you = Fighter.RIVET, rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    val keep = world.chips.first { it.side == Side.CPU && it.slot == 2 && it.alive }
+    world.killAllBut(Side.CPU, keep)
+    world.armYouShot(0)
+    world.placeBall(keep.x - World.BALL_R_X - 0.001f, keep.y + keep.h / 2f, 0.9f, 0f)
+    var guard = 0
+    while (world.youSets == 0 && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertEquals(100, world.youSkill)
+    world.skipSetWin()
+    assertEquals(0, world.youScore)
+    assertEquals(100, world.youSkill)
+  }
+
+  @Test
+  fun attractDoesNotBankSkill() {
+    val world = World(you = Fighter.RIVET, rival = Fighter.ASH, cpuLevel = CpuLevel.EASY, attract = true)
+    val target = world.chips.first { it.side == Side.CPU && it.slot == 2 && it.alive }
+    world.armYouShot(2)
+    world.placeBall(target.x - World.BALL_R_X - 0.001f, target.y + target.h / 2f, 0.9f, 0f)
+    var guard = 0
+    while (world.youScore == 0 && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertEquals(1, world.youScore)
+    assertEquals(0, world.youSkill)
+    assertEquals(1, world.skillPopups.size)
+    assertEquals(World.skillPoints(2), world.skillPopups[0].value)
   }
 
   @Test

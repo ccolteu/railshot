@@ -3,6 +3,7 @@ package com.cc.railshot.ui
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
@@ -19,6 +20,7 @@ import com.cc.railshot.game.CpuLevel
 import com.cc.railshot.game.Fighter
 import com.cc.railshot.game.FighterKit
 import com.cc.railshot.game.GameSfx
+import com.cc.railshot.game.HighScoreManager
 import com.cc.railshot.game.PaddlePose
 import com.cc.railshot.game.PlayMode
 import com.cc.railshot.game.Phase
@@ -29,6 +31,7 @@ import com.cc.railshot.game.Side
 import com.cc.railshot.game.World
 import kotlin.math.atan2
 import kotlin.math.min
+import kotlin.math.sin
 
 /**
  * One Choreographer SurfaceView for title, demo, select, VS, and match (WW2 Blitz shape).
@@ -38,9 +41,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private enum class Screen {
     TITLE,
     DEMO,
+    RANKING,
     SELECT,
     VS,
     MATCH,
+    REGISTER,
   }
 
   private val choreographer = Choreographer.getInstance()
@@ -56,6 +61,17 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private var vsAnimT = 0f
   private val select = SelectSession()
   private var playMode = PlayMode.VS
+  private var arcadeSkill = 0
+  private var arcadeWins = 0
+  private var rankingT = 0f
+  private var registerT = 0f
+  private var registerCharIndex = 0
+  private var registerChar = 'A'
+  private val registerName = CharArray(3) { 'A' }
+  private val registerLeft = RectF()
+  private val registerRight = RectF()
+  private val registerSet = RectF()
+  private val rankLine = StringBuilder(32)
   private var you: Fighter = Fighter.RIVET
   private var rival: Fighter = Fighter.RIVET
   private var cpuLevel: CpuLevel = CpuLevel.EASY
@@ -99,8 +115,38 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       textAlign = Paint.Align.CENTER
     }
   private val dotPaint = Paint().apply { isAntiAlias = false }
+  private val popupPaint =
+    Paint().apply {
+      typeface = Typeface.DEFAULT_BOLD
+      isAntiAlias = false
+      isFakeBoldText = true
+    }
+  private val popupShadowPaint =
+    Paint().apply {
+      color = Color.BLACK
+      typeface = Typeface.DEFAULT_BOLD
+      isAntiAlias = false
+      isFakeBoldText = true
+    }
+  private val goldPaint =
+    Paint().apply {
+      color = GOLD
+      typeface = Typeface.DEFAULT_BOLD
+      isAntiAlias = false
+      isFakeBoldText = true
+      textAlign = Paint.Align.CENTER
+    }
+  private val goldShadowPaint =
+    Paint().apply {
+      color = Color.BLACK
+      typeface = Typeface.DEFAULT_BOLD
+      isAntiAlias = false
+      isFakeBoldText = true
+      textAlign = Paint.Align.CENTER
+    }
 
   init {
+    HighScoreManager.loadHighScores(context)
     holder.addCallback(this)
     isFocusable = true
     isFocusableInTouchMode = true
@@ -138,6 +184,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         if (titleT >= TITLE_HOLD_S) goDemo()
       }
       Screen.DEMO -> stepDemo(dt)
+      Screen.RANKING -> {
+        rankingT += dt
+        if (rankingT >= RANKING_HOLD_S) goTitle()
+      }
       Screen.SELECT -> {
         if (select.step == SelectStep.LOCKED) {
           lingerT += dt
@@ -149,6 +199,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       }
       Screen.VS -> vsAnimT += dt
       Screen.MATCH -> stepMatch(dt)
+      Screen.REGISTER -> registerT += dt
     }
     val canvas = lockGameCanvas()
     if (canvas != null) {
@@ -179,7 +230,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     when (screen) {
       Screen.TITLE ->
         if (event.actionMasked == MotionEvent.ACTION_DOWN) touchTitle(x, y, sw, sh)
-      Screen.DEMO -> if (event.actionMasked == MotionEvent.ACTION_DOWN) goTitle()
+      Screen.DEMO, Screen.RANKING ->
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) goTitle()
       Screen.SELECT ->
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
           if (select.step != SelectStep.LOCKED) selectIdleT = 0f
@@ -187,6 +239,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         }
       Screen.VS -> if (event.actionMasked == MotionEvent.ACTION_DOWN) touchVs(x, y, sw, sh)
       Screen.MATCH -> touchMatch(event, x, y, sw, sh)
+      Screen.REGISTER ->
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) touchRegister(x, y, sw, sh)
     }
     return true
   }
@@ -197,6 +251,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     demoT = 0f
     lingerT = 0f
     selectIdleT = 0f
+    rankingT = 0f
   }
 
   private fun goDemo() {
@@ -219,6 +274,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private fun goSelect(mode: PlayMode? = null) {
     if (screen == Screen.SELECT) return
     if (mode != null) playMode = mode
+    if (playMode == PlayMode.ARCADE) {
+      arcadeSkill = 0
+      arcadeWins = 0
+    }
     screen = Screen.SELECT
     select.reset(arcade = playMode == PlayMode.ARCADE)
     lingerT = 0f
@@ -231,17 +290,39 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       goTitle()
       return
     }
+    arcadeSkill = world.youSkill
     if (world.phase != Phase.YOU_WIN) {
-      goTitle()
+      endArcadeCredit()
       return
     }
+    arcadeWins += 1
     val next = Fighter.nextArcadeRival(you, rival)
     if (next == null) {
-      goTitle()
+      endArcadeCredit()
       return
     }
     rival = next
     goVs(fromSelect = false)
+  }
+
+  private fun endArcadeCredit() {
+    val dip = cpuLevel.table
+    if (HighScoreManager.checkIfQualifies(arcadeSkill, dip)) goRegister() else goRanking()
+  }
+
+  private fun goRanking() {
+    rankingT = 0f
+    screen = Screen.RANKING
+  }
+
+  private fun goRegister() {
+    registerCharIndex = 0
+    registerChar = 'A'
+    registerName[0] = 'A'
+    registerName[1] = 'A'
+    registerName[2] = 'A'
+    registerT = 0f
+    screen = Screen.REGISTER
   }
 
   private fun goVs(fromSelect: Boolean = true) {
@@ -259,7 +340,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private fun goMatch() {
     youFrames = loadCourtFrames(you.art(), left = true)
     rivalFrames = loadCourtFrames(rival.art(), left = false)
-    world = World(you = you, rival = rival, cpuLevel = cpuLevel)
+    world = World(you = you, rival = rival, cpuLevel = cpuLevel, startSkill = if (playMode == PlayMode.ARCADE) arcadeSkill else 0)
     announced = null
     dragging = false
     grabOffsetY = 0f
@@ -279,7 +360,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       if (world.starLive()) iceTailTravel += world.starSpeed() * dt
     }
     world.drainSfx()
-    if (demoT >= DEMO_HOLD_S) goTitle()
+    if (demoT >= DEMO_HOLD_S) goRanking()
   }
 
   private fun stepMatch(dt: Float) {
@@ -486,9 +567,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     when (screen) {
       Screen.TITLE -> drawTitle(canvas, sw, sh)
       Screen.DEMO -> drawDemo(canvas, sw, sh)
+      Screen.RANKING -> drawRanking(canvas, sw, sh)
       Screen.SELECT -> drawSelect(canvas, sw, sh)
       Screen.VS -> drawVs(canvas, sw, sh)
       Screen.MATCH -> drawMatch(canvas, sw, sh)
+      Screen.REGISTER -> drawRegister(canvas, sw, sh)
     }
     canvas.restore()
   }
@@ -604,6 +687,144 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     diffBtn.set(x, y, x + btnW, y + btnH)
     x += btnW + gap
     vsBtn.set(x, y, x + btnW, y + btnH)
+  }
+
+  private fun drawGoldLine(canvas: Canvas, text: CharSequence, cx: Float, y: Float, size: Float, color: Int = GOLD) {
+    goldShadowPaint.textSize = size
+    goldPaint.textSize = size
+    goldPaint.color = color
+    val drop = size * 0.06f
+    canvas.drawText(text, 0, text.length, cx + drop, y + drop, goldShadowPaint)
+    canvas.drawText(text, 0, text.length, cx, y, goldPaint)
+    goldPaint.color = GOLD
+  }
+
+  private fun drawRanking(canvas: Canvas, sw: Float, sh: Float) {
+    blitFill(canvas, opaque(UiArt.SELECT_BG), 0f, 0f, sw, sh)
+    val cx = sw * 0.5f
+    val dip = cpuLevel.table
+    drawGoldLine(canvas, "TOP SCORES", cx, sh * 0.10f, sh * 0.075f)
+    val diff = if (cpuLevel == CpuLevel.EASY) "EASY" else "HARD"
+    drawGoldLine(canvas, diff, cx, sh * 0.16f, sh * 0.045f, CREAM)
+    val rowStep = sh * 0.062f
+    val size = sh * 0.038f
+    var i = 0
+    while (i < HighScoreManager.SLOT_COUNT) {
+      rankLine.setLength(0)
+      rankLine.append(i + 1)
+      rankLine.append(' ')
+      val score = HighScoreManager.scoreAt(dip, i).coerceIn(0, 99_999_999)
+      var digits = 1
+      var tally = score
+      while (tally >= 10) {
+        tally /= 10
+        digits++
+      }
+      var pad = 8 - digits
+      while (pad > 0) {
+        rankLine.append('0')
+        pad--
+      }
+      rankLine.append(score)
+      rankLine.append("  ")
+      rankLine.append(HighScoreManager.nameChar(dip, i, 0))
+      rankLine.append(HighScoreManager.nameChar(dip, i, 1))
+      rankLine.append(HighScoreManager.nameChar(dip, i, 2))
+      rankLine.append("  FT")
+      rankLine.append(HighScoreManager.fightsAt(dip, i))
+      drawGoldLine(canvas, rankLine, cx, sh * 0.23f + i * rowStep, size, CREAM)
+      i++
+    }
+    if ((System.currentTimeMillis() / 600L) % 2L == 0L) {
+      drawGoldLine(canvas, "1P START", cx, sh * 0.93f, sh * 0.042f)
+    }
+  }
+
+  private fun layoutRegisterHits(sw: Float, sh: Float) {
+    registerLeft.set(0f, sh * 0.25f, sw * 0.45f, sh * 0.65f)
+    registerRight.set(sw * 0.55f, sh * 0.25f, sw, sh * 0.65f)
+    registerSet.set(sw * 0.10f, sh * 0.75f, sw * 0.90f, sh * 0.88f)
+  }
+
+  private fun drawRegister(canvas: Canvas, sw: Float, sh: Float) {
+    blitFill(canvas, opaque(UiArt.SELECT_BG), 0f, 0f, sw, sh)
+    layoutRegisterHits(sw, sh)
+    val cx = sw * 0.5f
+    drawGoldLine(canvas, "REGISTRATION", cx, sh * 0.16f, sh * 0.07f, CPU)
+    drawGoldLine(canvas, "HI-SCORE ENTRY", cx, sh * 0.24f, sh * 0.04f, CREAM)
+    val diff = if (cpuLevel == CpuLevel.EASY) "EASY" else "HARD"
+    drawGoldLine(canvas, diff, cx, sh * 0.30f, sh * 0.04f)
+    val letterSize = sh * 0.12f
+    val spacing = sh * 0.18f
+    val startX = cx - spacing
+    val letterY = sh * 0.50f
+    val blink = sin(registerT * 14f) * 0.5f + 0.5f
+    val blinkAlpha = (80f + blink * 175f).toInt()
+    val wing = sh * 0.08f
+    var idx = 0
+    while (idx < 3) {
+      val slotX = startX + idx * spacing
+      val ch = if (idx == registerCharIndex) registerChar else registerName[idx]
+      if (idx == registerCharIndex) {
+        goldPaint.alpha = blinkAlpha
+        goldShadowPaint.alpha = blinkAlpha
+        drawGoldLine(canvas, "<", slotX - wing, letterY, letterSize * 0.45f, CREAM)
+        drawGoldLine(canvas, ">", slotX + wing, letterY, letterSize * 0.45f, CREAM)
+      }
+      drawGoldLine(canvas, ch.toString(), slotX, letterY, letterSize)
+      goldPaint.alpha = 255
+      goldShadowPaint.alpha = 255
+      idx++
+    }
+    drawGoldLine(canvas, "[ TAP TO LOCK INITIAL ]", cx, sh * 0.82f, sh * 0.032f)
+  }
+
+  private fun touchRegister(x: Float, y: Float, sw: Float, sh: Float) {
+    layoutRegisterHits(sw, sh)
+    if (registerSet.contains(x, y)) {
+      confirmRegisterLetter()
+      return
+    }
+    if (registerLeft.contains(x, y)) {
+      bumpRegisterChar(false)
+      return
+    }
+    if (registerRight.contains(x, y)) {
+      bumpRegisterChar(true)
+    }
+  }
+
+  private fun bumpRegisterChar(up: Boolean) {
+    var code = registerChar.code
+    if (up) {
+      code++
+      if (code > 'Z'.code) code = 'A'.code
+    } else {
+      code--
+      if (code < 'A'.code) code = 'Z'.code
+    }
+    registerChar = code.toChar()
+    SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
+  }
+
+  private fun confirmRegisterLetter() {
+    registerName[registerCharIndex] = registerChar
+    registerCharIndex++
+    SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
+    if (registerCharIndex >= 3) {
+      HighScoreManager.checkAndInsertNewScore(
+        context,
+        arcadeSkill,
+        registerName[0],
+        registerName[1],
+        registerName[2],
+        arcadeWins,
+        cpuLevel.table,
+      )
+      goRanking()
+    } else {
+      registerChar = 'A'
+    }
   }
 
   private fun drawDemo(canvas: Canvas, sw: Float, sh: Float) {
@@ -860,6 +1081,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       courtH,
     )
     drawBall(canvas, courtL, courtT, courtW, courtH)
+    drawSkillPops(canvas, courtL, courtT, courtW, courtH)
     when (world.phase) {
       Phase.ROUND -> {
         val banner = keyed(UiArt.ROUND)
@@ -906,7 +1128,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     drawWellText(canvas, World.P1_SCORE_INSET, world.youScore.toString().padStart(2, '0'), YOU, 0.72f, vw, vh)
     drawWellText(canvas, World.P1_NAME_INSET, you.displayName.uppercase(), CREAM, 0.42f, vw, vh)
     drawSetDots(canvas, World.P1_SETS_INSET, world.youSets, YOU, vw, vh)
-    drawWellText(canvas, World.TIME_INSET, world.timeDisplay(), CREAM, 0.72f, vw, vh)
+    drawWellText(canvas, World.TIME_INSET, world.youSkill.toString(), YOU, 0.72f, vw, vh, rows = 2, row = 0)
+    drawWellText(canvas, World.TIME_INSET, world.timeDisplay(), CREAM, 0.72f, vw, vh, rows = 2, row = 1)
     drawSetDots(canvas, World.P2_SETS_INSET, world.cpuSets, CPU, vw, vh)
     drawWellText(canvas, World.P2_NAME_INSET, rival.displayName.uppercase(), CREAM, 0.42f, vw, vh)
     drawWellText(canvas, World.P2_SCORE_INSET, world.cpuScore.toString().padStart(2, '0'), CPU, 0.72f, vw, vh)
@@ -1091,6 +1314,35 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     canvas.restore()
   }
 
+  private fun drawSkillPops(
+    canvas: Canvas,
+    courtL: Float,
+    courtT: Float,
+    courtW: Float,
+    courtH: Float,
+  ) {
+    if (world.skillPopups.isEmpty()) return
+    val size = courtH * (36f / 864f)
+    val drop = courtH * (2f / 864f)
+    popupPaint.textSize = size
+    popupShadowPaint.textSize = size
+    for (pop in world.skillPopups) {
+      val fade = (1f - pop.age / World.SKILL_POP_LIFE).coerceIn(0f, 1f)
+      val alpha = (255f * fade).toInt()
+      popupPaint.color = if (pop.you) YOU else CPU
+      popupPaint.alpha = alpha
+      popupShadowPaint.alpha = alpha
+      val text = pop.value.toString()
+      val x = courtL + pop.x * courtW
+      val y = courtT + pop.y * courtH
+      val w = popupPaint.measureText(text)
+      canvas.drawText(text, x - w * 0.5f + drop, y + drop, popupShadowPaint)
+      canvas.drawText(text, x - w * 0.5f, y, popupPaint)
+    }
+    popupPaint.alpha = 255
+    popupShadowPaint.alpha = 255
+  }
+
   private fun drawChip(
     canvas: Canvas,
     sprite: Bitmap,
@@ -1248,15 +1500,19 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     heightFrac: Float,
     vw: Float,
     vh: Float,
+    rows: Int = 1,
+    row: Int = 0,
   ) {
     val l = inset.leftF * vw
     val t = inset.topF * vh
     val wellW = inset.widthF * vw
     val wellH = inset.heightF * vh
+    val rowH = wellH / rows.coerceAtLeast(1)
+    val rowT = t + rowH * row
     textPaint.color = color
-    textPaint.textSize = min(wellH * heightFrac, wellW / (text.length.coerceAtLeast(1) * 0.62f))
+    textPaint.textSize = min(rowH * heightFrac, wellW / (text.length.coerceAtLeast(1) * 0.62f))
     val fm = textPaint.fontMetrics
-    canvas.drawText(text, l + wellW / 2f, t + wellH / 2f - (fm.ascent + fm.descent) / 2f, textPaint)
+    canvas.drawText(text, l + wellW / 2f, rowT + rowH / 2f - (fm.ascent + fm.descent) / 2f, textPaint)
   }
 
   private fun drawSetDots(canvas: Canvas, inset: CabinetInset, won: Int, accent: Int, vw: Float, vh: Float) {
@@ -1459,6 +1715,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     const val TITLE_LEFT = 3
     val TITLE_DRAW_ORDER = intArrayOf(0, 1, 2, 5, 4, 3)
     const val DEMO_HOLD_S = 10f
+    const val RANKING_HOLD_S = 4f
     const val SELECT_IDLE_S = 45f
     const val RESULT_LOCK_S = 0.8f
     const val RESULT_IDLE_S = 10f
@@ -1467,6 +1724,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     const val CABINET = 0xFF0C1822.toInt()
     const val INK = 0xFF071018.toInt()
     const val CREAM = 0xFFF3EFE4.toInt()
+    const val GOLD = 0xFFE6C35A.toInt()
     const val YOU = 0xFF5EE0C8.toInt()
     const val CPU = 0xFFFF6B6B.toInt()
     const val MUTE_DIM = 0x598FA3B0

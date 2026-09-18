@@ -61,6 +61,14 @@ data class Chip(
   var alive: Boolean = true,
 )
 
+data class SkillPopup(
+  val x: Float,
+  var y: Float,
+  val value: Int,
+  val you: Boolean,
+  var age: Float = 0f,
+)
+
 /** Pixel well on the 1440×1080 cabinet. Right/bottom exclusive. */
 data class CabinetInset(val left: Int, val top: Int, val right: Int, val bottom: Int) {
   val leftF: Float get() = left / CABINET_W
@@ -82,6 +90,7 @@ class World(
   val cpuLevel: CpuLevel = CpuLevel.HARD,
   val cpuStyle: CpuStyle = CpuStyle.forFighter(rival),
   val attract: Boolean = false,
+  startSkill: Int = 0,
 ) {
   constructor(cpuStyle: CpuStyle, cpuLevel: CpuLevel) : this(
     you = Fighter.RIVET,
@@ -105,6 +114,8 @@ class World(
     private set
   var cpuScore: Int = 0
     private set
+  var youSkill: Int = startSkill.coerceAtLeast(0)
+    private set
   var youSets: Int = 0
     private set
   var cpuSets: Int = 0
@@ -124,6 +135,7 @@ class World(
   var ballY: Float = 0.5f
     private set
   val chips: MutableList<Chip> = mutableListOf()
+  val skillPopups: MutableList<SkillPopup> = mutableListOf()
 
   private var vx = 0f
   private var vy = 0f
@@ -146,6 +158,8 @@ class World(
   private var rallyHits = 0
   private var lastPaddle: Side? = null
   private var chipSincePaddle = false
+  private var bankBounces = 0
+  private var starBankBounces = 0
   private var youHeat = 0
   private var cpuHeat = 0
   private var youRail = 0f
@@ -245,8 +259,9 @@ class World(
     normalize(speed)
     phase = Phase.PLAYING
     rallyHits = 0
-    lastPaddle = null
+    lastPaddle = Side.YOU
     chipSincePaddle = false
+    bankBounces = 0
     tailLock = null
     armCourtHazards()
   }
@@ -339,6 +354,16 @@ class World(
     this.vx = vx
     this.vy = vy
     phase = Phase.PLAYING
+  }
+
+  internal fun armYouShot(bounces: Int) {
+    lastPaddle = Side.YOU
+    bankBounces = bounces.coerceAtLeast(0)
+  }
+
+  internal fun armYouIce(bounces: Int) {
+    starFromYou = true
+    starBankBounces = bounces.coerceAtLeast(0)
   }
 
   internal fun ballSpeed(): Float = kotlin.math.sqrt(vx * vx + vy * vy)
@@ -559,6 +584,7 @@ class World(
   private fun resetMatch() {
     youSets = 0
     cpuSets = 0
+    youSkill = 0
     resetSet()
   }
 
@@ -581,6 +607,8 @@ class World(
     rallyHits = 0
     lastPaddle = null
     chipSincePaddle = false
+    bankBounces = 0
+    starBankBounces = 0
     youHeat = 0
     cpuHeat = 0
     youRail = 0f
@@ -590,6 +618,7 @@ class World(
     cpuPaddleHits = 0
     starLive = false
     burstT = 0f
+    skillPopups.clear()
     tailLock = null
     armCourtHazards()
     shieldGain = 1.05f
@@ -995,6 +1024,7 @@ class World(
     normalize(speed)
     lastPaddle = side
     chipSincePaddle = false
+    bankBounces = 0
     noteKitTell(dumped, dived, smashed, burned, fighter, heat, speed)
     if (!youSide) {
       cpuPaddleHits += 1
@@ -1019,6 +1049,7 @@ class World(
     starLive = true
     starFromYou = youSide
     starFighter = fighter
+    starBankBounces = 0
     starX = if (youSide) youFrontX() + BALL_R_X else cpuFrontX() - BALL_R_X
     starY = if (youSide) youPaddleY else cpuPaddleY
     val cx = target.x + target.w / 2f
@@ -1110,13 +1141,13 @@ class World(
       starY = STAR_R
       if (starVy < 0f) {
         starVy = kotlin.math.abs(starVy)
-        bumpWall()
+        bumpWall(star = true)
       }
     } else if (starY + STAR_R >= 1f) {
       starY = 1f - STAR_R
       if (starVy > 0f) {
         starVy = -kotlin.math.abs(starVy)
-        bumpWall()
+        bumpWall(star = true)
       }
     }
     smashOrbOnPaddle(youPaddleY, youFrontX(), incomingLeft = true, youSide = true)
@@ -1135,7 +1166,7 @@ class World(
       chipSincePaddle = true
       sting(CHIP_FREEZE, SHAKE_CHIP, SHAKE_CHIP_T, FLASH_CHIP)
       pendingSfx += GameSfx.ICE
-      if (hit.side == Side.CPU) youScore += 1 else cpuScore += 1
+      awardChip(hit, ice = true)
       popIceBurst()
       starLive = false
       if (suddenDeath) finishSet(if (hit.side == Side.CPU) Side.YOU else Side.CPU)
@@ -1198,11 +1229,33 @@ class World(
     starY = hit.y
     starVx = hit.vx
     starVy = hit.vy
-    if (bounced) bumpWall()
+    if (bounced) bumpWall(star = true)
   }
 
-  private fun bumpWall() {
+  private fun bumpWall(star: Boolean = false) {
     pendingSfx += GameSfx.WALL
+    if (star) starBankBounces += 1 else bankBounces += 1
+  }
+
+  private fun awardChip(hit: Chip, ice: Boolean) {
+    if (hit.side == Side.CPU) youScore += 1 else cpuScore += 1
+    val n = if (ice) starBankBounces else bankBounces
+    val pts = skillPoints(n, ice)
+    spawnSkillPopup(hit, pts)
+    if (attract) return
+    val fromYou = if (ice) starFromYou else lastPaddle == Side.YOU
+    if (fromYou || hit.side == Side.CPU) youSkill += pts
+  }
+
+  private fun spawnSkillPopup(hit: Chip, value: Int) {
+    if (value <= 0) return
+    skillPopups +=
+      SkillPopup(
+        x = hit.x + hit.w / 2f,
+        y = hit.y + hit.h / 2f,
+        value = value,
+        you = hit.side == Side.CPU,
+      )
   }
 
   private fun bounceAabb(
@@ -1803,7 +1856,7 @@ class World(
     pendingSfx += GameSfx.CHIP
     chipSincePaddle = true
     sting(CHIP_FREEZE, SHAKE_CHIP, SHAKE_CHIP_T, FLASH_CHIP)
-    if (hit.side == Side.CPU) youScore += 1 else cpuScore += 1
+    awardChip(hit, ice = false)
     if (suddenDeath) {
       finishSet(if (hit.side == Side.CPU) Side.YOU else Side.CPU)
       return
@@ -1919,6 +1972,15 @@ class World(
     if (shakeT > 0f) shakeT = (shakeT - dt).coerceAtLeast(0f)
     if (flashT > 0f) flashT = (flashT - dt).coerceAtLeast(0f)
     if (burstT > 0f) burstT = (burstT - dt).coerceAtLeast(0f)
+    if (skillPopups.isNotEmpty()) {
+      var i = 0
+      while (i < skillPopups.size) {
+        val pop = skillPopups[i]
+        pop.age += dt
+        pop.y -= SKILL_POP_SPEED * dt
+        if (pop.age >= SKILL_POP_LIFE) skillPopups.removeAt(i) else i++
+      }
+    }
   }
 
   private fun shakeAxis(span: Float, freq: Float): Float {
@@ -1968,6 +2030,19 @@ class World(
     const val STAR_R = BALL_R
     const val CPU_SPECIAL_HITS = 3
     const val ICE_BURST_S = 0.24f
+    const val SKILL_POP_SPEED = 90f / 864f
+    const val SKILL_POP_LIFE = 0.75f
+
+    fun skillPoints(bounces: Int, ice: Boolean = false): Int {
+      val n = bounces.coerceAtLeast(0)
+      val base =
+        when (n) {
+          0 -> 100
+          1 -> 300
+          else -> 500 + (n - 2) * 200
+        }
+      return if (ice) base * 2 else base
+    }
     /**
      * Ash court template on the 1440×1080 floor PNG.
      * Do not author art off this table.
