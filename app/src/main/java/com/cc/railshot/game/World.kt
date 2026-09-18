@@ -95,6 +95,7 @@ class World(
   private val courtWells: Boolean = rival == Fighter.ASH
   private val courtTrace: Boolean = rival == Fighter.RIVET
   private val courtCar: Boolean = rival == Fighter.HEX
+  private val courtHawk: Boolean = rival == Fighter.QUILL
   private val youStyle: CpuStyle = CpuStyle.forFighter(you)
   var phase: Phase = Phase.ROUND
     private set
@@ -170,6 +171,8 @@ class World(
   private var traceDir = 1f
   private var hexCarPhase = HexCarPhase.GAP
   private var hexCarT = 0f
+  private var hawkT = 0f
+  private var hawkAnimT = 0f
   private var tailLock: BallTailBand? = null
   private var shieldGain = 1.05f
   private var shieldRate = 1.22f
@@ -253,6 +256,7 @@ class World(
         phase == Phase.SET_WIN
     ) {
       tickHexCar(clamped)
+      tickHawk(clamped)
     }
     tickHits(clamped)
     tickJuice(clamped)
@@ -420,6 +424,37 @@ class World(
     if (!courtCar) return
     hexCarT = 0f
     hexCarPhase = if (hold) HexCarPhase.HOLD else HexCarPhase.ENTER
+  }
+
+  fun hawkLive(): Boolean = courtHawk
+
+  fun hawkX(): Float = hawkLeft()
+
+  fun hawkY(): Float = hawkTop()
+
+  fun hawkW(): Float = HAWK_W
+
+  fun hawkH(): Float = HAWK_H
+
+  fun hawkHeadingDeg(): Float {
+    val p = hawkPose()
+    return Math.toDegrees(kotlin.math.atan2(p.dy.toDouble(), p.dx.toDouble())).toFloat()
+  }
+
+  fun hawkFlapFrame(): Int {
+    val step = ((hawkAnimT / HAWK_FLAP).toInt() % 4 + 4) % 4
+    return when (step) {
+      0 -> 0
+      1 -> 1
+      2 -> 2
+      else -> 1
+    }
+  }
+
+  internal fun placeHawk(u: Float = 0f) {
+    if (!courtHawk) return
+    hawkT = u.coerceIn(0f, 1f) * HAWK_LAP
+    hawkAnimT = 0f
   }
 
   fun iceBurstFrame(): Int {
@@ -702,6 +737,23 @@ class World(
             hexCarTop() - BALL_R,
             hexCarLeft() + HEX_CAR_W + BALL_R_X,
             hexCarTop() + HEX_CAR_H + BALL_R,
+          )
+        if (hit != null && hit.t > 0.0001f && hit.t < tHit) {
+          tHit = hit.t
+          kind = if (hit.vertical) 3 else 4
+        }
+      }
+      if (hawkSolid()) {
+        val hit =
+          rayAabb(
+            x,
+            y,
+            svx,
+            svy,
+            hawkLeft() - BALL_R_X,
+            hawkTop() - BALL_R,
+            hawkLeft() + HAWK_W + BALL_R_X,
+            hawkTop() + HAWK_H + BALL_R,
           )
         if (hit != null && hit.t > 0.0001f && hit.t < tHit) {
           tHit = hit.t
@@ -1105,6 +1157,16 @@ class World(
         hitAny = true
       }
     }
+    if (hawkSolid()) {
+      val hit = bounceBox(hawkLeft(), hawkTop(), HAWK_W, HAWK_H, x, y, vx, vy, rx, ry)
+      if (hit != null) {
+        x = hit.x
+        y = hit.y
+        vx = hit.vx
+        vy = hit.vy
+        hitAny = true
+      }
+    }
     return if (hitAny) AabbBounce(x, y, vx, vy) else null
   }
 
@@ -1195,6 +1257,78 @@ class World(
   private fun hexCarLeft(): Float = HEX_CAR_X
 
   private fun hexCarTop(): Float = hexCarCy() - HEX_CAR_H / 2f
+
+  private fun hawkSolid(): Boolean = hawkLive()
+
+  private fun hawkLeft(): Float = hawkCx() - HAWK_W / 2f
+
+  private fun hawkTop(): Float = hawkCy() - HAWK_H / 2f
+
+  private fun hawkCx(): Float = hawkPose().x
+
+  private fun hawkCy(): Float = hawkPose().y
+
+  private data class HawkPose(val x: Float, val y: Float, val dx: Float, val dy: Float)
+
+  private fun hawkPose(): HawkPose = hawkPath(hawkT / HAWK_LAP)
+
+  private fun hawkPath(uRaw: Float): HawkPose {
+    val left = HAWK_LEFT_CX
+    val right = HAWK_RIGHT_CX
+    val top = HAWK_TOP_CY
+    val bot = HAWK_BOT_CY
+    val r = HAWK_CORNER_R
+    val sh = (right - left - 2f * r).coerceAtLeast(0.02f)
+    val sv = (bot - top - 2f * r).coerceAtLeast(0.02f)
+    val quarter = (kotlin.math.PI.toFloat() * 0.5f) * r
+    val total = 2f * sh + 2f * sv + 4f * quarter
+    var s = ((uRaw % 1f + 1f) % 1f) * total
+    fun corner(cx: Float, cy: Float, a0: Float, t: Float): HawkPose {
+      val a = a0 + t * (kotlin.math.PI.toFloat() * 0.5f)
+      val cos = kotlin.math.cos(a)
+      val sin = kotlin.math.sin(a)
+      return HawkPose(cx + r * cos, cy + r * sin, -sin, cos)
+    }
+    if (s <= sh) {
+      val t = s / sh
+      return HawkPose(left + r + t * sh, top, 1f, 0f)
+    }
+    s -= sh
+    if (s <= quarter) return corner(right - r, top + r, -kotlin.math.PI.toFloat() * 0.5f, s / quarter)
+    s -= quarter
+    if (s <= sv) {
+      val t = s / sv
+      return HawkPose(right, top + r + t * sv, 0f, 1f)
+    }
+    s -= sv
+    if (s <= quarter) return corner(right - r, bot - r, 0f, s / quarter)
+    s -= quarter
+    if (s <= sh) {
+      val t = s / sh
+      return HawkPose(right - r - t * sh, bot, -1f, 0f)
+    }
+    s -= sh
+    if (s <= quarter) return corner(left + r, bot - r, kotlin.math.PI.toFloat() * 0.5f, s / quarter)
+    s -= quarter
+    if (s <= sv) {
+      val t = s / sv
+      return HawkPose(left, bot - r - t * sv, 0f, -1f)
+    }
+    s -= sv
+    val t = (s / quarter).coerceIn(0f, 1f)
+    return corner(left + r, top + r, kotlin.math.PI.toFloat(), t)
+  }
+
+  private fun tickHawk(dt: Float) {
+    if (!courtHawk) {
+      hawkT = 0f
+      hawkAnimT = 0f
+      return
+    }
+    hawkT += dt
+    if (hawkT >= HAWK_LAP) hawkT -= HAWK_LAP
+    hawkAnimT += dt
+  }
 
   private fun traceCy(): Float = TRACE_CY0 + traceU * (TRACE_CY1 - TRACE_CY0)
 
@@ -1579,6 +1713,19 @@ class World(
     const val HEX_CAR_ENTER = 3.2f
     const val HEX_CAR_HOLD = 1.4f
     const val HEX_CAR_EXIT = 2.8f
+    /**
+     * Quill aerie hawk. Rounded square around the playfield, in front of the
+     * fighters — never the gold X. Packed 136×192.
+     */
+    const val HAWK_W_PX = 136
+    const val HAWK_H_PX = 192
+    const val HAWK_W: Float = HAWK_W_PX / 1440f
+    const val HAWK_H: Float = HAWK_H_PX / 1080f
+    const val HAWK_TOP_CY: Float = 0.16f
+    const val HAWK_BOT_CY: Float = 0.84f
+    const val HAWK_CORNER_R: Float = 0.10f
+    const val HAWK_LAP = 12f
+    const val HAWK_FLAP = 0.16f
     const val PADDLE_LEN = 0.20f
     const val PADDLE_THICK = 0.018f
     const val CHIP_COUNT = 6
@@ -1643,6 +1790,8 @@ class World(
     val CPU_FRONT_X: Float = cpuFrontX(PADDLE_LEN)
     val YOU_HIT_X: Float = YOU_FRONT_X - PADDLE_THICK
     val CPU_HIT_X: Float = CPU_FRONT_X
+    val HAWK_LEFT_CX: Float = YOU_FRONT_X + 0.14f
+    val HAWK_RIGHT_CX: Float = CPU_FRONT_X - 0.14f
     val TAIL_SPEED_MIN: Float = BALL_SPEED * SLICE_CENTER
     val TAIL_SPEED_MAX: Float = BALL_SPEED * SLICE_CAP
 

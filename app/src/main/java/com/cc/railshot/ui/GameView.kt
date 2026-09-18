@@ -653,6 +653,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     if (world.hexCarLive()) {
       drawHexCar(canvas, courtL, courtT, courtW, courtH)
     }
+    if (world.hawkLive()) {
+      drawHawk(canvas, courtL, courtT, courtW, courtH)
+    }
     for (chip in world.chips) {
       drawChip(
         canvas,
@@ -873,6 +876,29 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     canvas.save()
     canvas.clipRect(courtL, courtT, courtL + courtW, courtT + courtH)
     blitFill(canvas, keyed(UiArt.HEX_CAR), left, top, w, h)
+    canvas.restore()
+  }
+
+  private fun drawHawk(
+    canvas: Canvas,
+    courtL: Float,
+    courtT: Float,
+    courtW: Float,
+    courtH: Float,
+  ) {
+    val left = courtL + world.hawkX() * courtW
+    val top = courtT + world.hawkY() * courtH
+    val w = (world.hawkW() * courtW).coerceAtLeast(1f)
+    val h = (world.hawkH() * courtH).coerceAtLeast(1f)
+    canvas.save()
+    canvas.clipRect(courtL, courtT, courtL + courtW, courtT + courtH)
+    val bmp = keyed(UiArt.courtHawk(world.hawkFlapFrame()))
+    val cx = left + w / 2f
+    val cy = top + h / 2f
+    canvas.save()
+    canvas.rotate(world.hawkHeadingDeg(), cx, cy)
+    blitFill(canvas, bmp, left, top, w, h)
+    canvas.restore()
     canvas.restore()
   }
 
@@ -1154,6 +1180,14 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     pixel.alpha = alpha
     blit(canvas, bmp, l + (w - dw) / 2f, t + (h - dh) / 2f, dw, dh)
     pixel.alpha = prev
+  }
+
+  private fun blitFillFlipped(canvas: Canvas, bmp: Bitmap, l: Float, t: Float, w: Float, h: Float, alpha: Int = 255) {
+    val cx = l + w / 2f
+    canvas.save()
+    canvas.scale(-1f, 1f, cx, t + h / 2f)
+    blitFill(canvas, bmp, l, t, w, h, alpha)
+    canvas.restore()
   }
 
   private fun blitFitFlipped(canvas: Canvas, bmp: Bitmap, l: Float, t: Float, w: Float, h: Float, alpha: Int = 255) {

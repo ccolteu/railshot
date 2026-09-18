@@ -693,6 +693,87 @@ class WorldTest {
   }
 
   @Test
+  fun quillHawkStaysOffOnOtherCourts() {
+    val world = World(rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    world.placeHawk()
+    assertFalse(world.hawkLive())
+  }
+
+  @Test
+  fun quillHawkOrbitsTheRimAndSkipsTheX() {
+    val world = World(rival = Fighter.QUILL, cpuLevel = CpuLevel.EASY)
+    world.placeHawk(0f)
+    assertTrue(world.hawkLive())
+    var sawHigh = false
+    var sawLow = false
+    var sawLeft = false
+    var sawRight = false
+    repeat((World.HAWK_LAP / (1f / 60f)).toInt() + 8) {
+      world.step(1f / 60f)
+      val cx = world.hawkX() + World.HAWK_W / 2f
+      val cy = world.hawkY() + World.HAWK_H / 2f
+      val dx = cx - 0.5f
+      val dy = cy - 0.5f
+      assertTrue(dx * dx + dy * dy > 0.12f * 0.12f)
+      if (cy < World.HAWK_TOP_CY + 0.05f) sawHigh = true
+      if (cy > World.HAWK_BOT_CY - 0.05f) sawLow = true
+      if (cx < World.HAWK_LEFT_CX + 0.05f) sawLeft = true
+      if (cx > World.HAWK_RIGHT_CX - 0.05f) sawRight = true
+    }
+    assertTrue(sawHigh)
+    assertTrue(sawLow)
+    assertTrue(sawLeft)
+    assertTrue(sawRight)
+  }
+
+  @Test
+  fun quillHawkHeadingFollowsThePath() {
+    val world = World(rival = Fighter.QUILL, cpuLevel = CpuLevel.EASY)
+    world.placeHawk(0f)
+    assertEquals(0f, world.hawkHeadingDeg(), 8f)
+    world.placeHawk(0.52f)
+    val heading = world.hawkHeadingDeg()
+    val leftward = heading > 150f || heading < -150f
+    assertTrue(leftward)
+  }
+
+  @Test
+  fun quillHawkBouncesTheBallWithoutScoring() {
+    val world = World(rival = Fighter.QUILL, cpuLevel = CpuLevel.EASY)
+    world.placeHawk(0.58f)
+    val chips = world.cpuChipsLeft()
+    val y = world.hawkY() + World.HAWK_H / 2f
+    world.placeBall(world.hawkX() - World.BALL_R_X - 0.002f, y, 0.8f, 0f)
+    var guard = 0
+    while (world.ballVx() > 0f && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.ballVx() < 0f)
+    assertEquals(0, world.youScore)
+    assertEquals(chips, world.cpuChipsLeft())
+    val hawkSfx = world.drainSfx()
+    assertFalse(hawkSfx.contains(GameSfx.CHIP))
+    assertTrue(hawkSfx.contains(GameSfx.WALL))
+  }
+
+  @Test
+  fun quillHawkBouncesTheIceComet() {
+    val world = World(you = Fighter.ASH, rival = Fighter.QUILL, cpuLevel = CpuLevel.EASY)
+    world.placeHawk(0.58f)
+    world.placeBall(0.35f, 0.20f, -0.3f, 0f)
+    val y = world.hawkY() + World.HAWK_H / 2f
+    world.placeStar(world.hawkX() - World.STAR_R_X - 0.002f, y, 0.7f, 0f)
+    var guard = 0
+    while (world.starVx() > 0f && world.starLive() && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.starLive())
+    assertTrue(world.starVx() < 0f)
+    assertEquals(World.CHIP_COUNT, world.cpuChipsLeft())
+    assertTrue(world.drainSfx().contains(GameSfx.WALL))
+  }
+
+  @Test
   fun calledOrbMissesAShieldOffTheLine() {
     val world = World(you = Fighter.RIVET, cpuLevel = CpuLevel.EASY)
     world.placeBall(0.40f, 0.50f, -0.4f, 0f)

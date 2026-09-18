@@ -74,7 +74,7 @@ WAV clips live in `app/src/main/res/raw/` (16-bit PCM, 44.1 kHz, uncompressed). 
 | Shield hit | `sfx_shield.wav` | Ball bounces off a fighter |
 | Chip off | `sfx_chip.wav` | Ball kills a life tile |
 | Ice shatter | `sfx_ice.wav` | Ice comet smashed or flattening a gate |
-| Court bounce | `sfx_wall.wav` | Fireball or ice comet hits a rail, Ash wall, Rivet trace, or Hex car |
+| Court bounce | `sfx_wall.wav` | Fireball or ice comet hits a rail, Ash wall, Rivet trace, Hex car, or Quill hawk |
 | Match BGM | `bgm_match.wav` | Loops from app start |
 
 ## Produce a sprite (mandatory)
@@ -435,6 +435,8 @@ A **live trace** rides Rivet’s midline (`art/rivet/rivet_court_trace.png`, **4
 
 A **live hovercar** rides Hex’s street (`art/hex/hex_car.png`, keyed magenta `#FF00FF`). On **Hex’s floor** (2P) it enters from the bottom of the playfield, pauses on the gold X, then drives off through the top, and loops. Clip to the court hole. Fireball and ice comet **ricochet** off it while it is on screen (`sfx_wall.wav`) — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it. Other courts stay empty of this car.
 
+A **live hawk** rides Quill’s aerie (`art/quill/quill_court_hawk_{a,c,b}.png`, keyed magenta `#FF00FF`, packed **136×192**). On **Quill’s floor** (2P) it loops a **rounded square** around the playfield: high and low rails plus the lanes **in front of both fighters** (inset so it does not graze the paddles). Beak follows the path; corners rotate smoothly. Wingbeat ping-pongs open / mid / tucked. Never the gold X. No pause. Clip to the court hole. Fireball and ice comet **ricochet** (`sfx_wall.wav`) — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it. Other courts stay empty of this hawk.
+
 **Ice burst** (`art/ui_ice_burst_a.png`, `_b`, `_c`)
 
 Three keyed ice-shatter frames, 128×128. Overlay when the ice comet dies. Magenta `#FF00FF`.
@@ -692,6 +694,7 @@ Round win in-court is the `YOU WIN` / `YOU LOSE` overlay when a **set** is taken
 - Rising court wall (`ash/ash_court_wall_{a,b,c}.png`) in the live mid-line well on Ash’s court
 - Live center dash (`rivet/rivet_court_trace.png`) on Rivet’s court
 - Live street hovercar (`hex/hex_car.png`) on Hex’s court — bottom → pause on X → top, loop
+- Live aerie hawk (`quill/quill_court_hawk_{a,c,b}.png`) on Quill’s court — rounded square around the rims, skip the X
 - `ROUND` / `FIGHT` / `YOU WIN` / `YOU LOSE` banners
 - Select cursor (`ui_1p.png` / `ui_2p.png`), arrows (`ui_arrow_left.png` + flip), SELECT (`ui_btn_select.png`)
 - VS arrows cycle EASY/HARD; the EASY/HARD button starts the match

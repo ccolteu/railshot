@@ -67,6 +67,13 @@ object UiArt {
   const val COURT_TRACE = "rivet/rivet_court_trace.png"
   const val HEX_CAR = "hex/hex_car.png"
 
+  fun courtHawk(frame: Int): String =
+    when (frame.coerceIn(0, 2)) {
+      0 -> "quill/quill_court_hawk_a.png"
+      1 -> "quill/quill_court_hawk_c.png"
+      else -> "quill/quill_court_hawk_b.png"
+    }
+
   /** Packed KEY hole radius in every `ui_ball_tail_*.png`. */
   const val TAIL_HOLE_R = 56f
 
