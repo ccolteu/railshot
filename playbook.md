@@ -420,11 +420,11 @@ A **match** is **best of three sets** (first to **2** sets wins). Each set is on
 - **Names:** typeset in the name wells. Never `{name}_name_*.png` on the cabinet.
 - **Sets:** two dots per sets well. Match ends at two filled dots.
 
-Round result overlay on a set (`Phase.SET_WIN`): `YOU WIN` if P1 took the set, `YOU LOSE` if the CPU did. Match then the **result card** (not a game ending). Full-screen `ui_select_bg.png`. Right rail: winner `{name}_ending.png` at **full stage height**. Left rail: `{name}_wins.png` **right-aligned** and **vertically centered** on the stage, plus a non-flashing `ui_btn_continue.png` (same gold-bezel ivory chrome as SELECT) **lower on the card**, **centered in the left half**. Ignore taps for **0.8s**, then tap (or **10s** idle) → character select. Do not staff-roll or bonus-tally here.
+Round result overlay on a set (`Phase.SET_WIN`): `YOU WIN` if P1 took the set, `YOU LOSE` if the CPU did. Match then the **result card** (not a game ending). Full-screen `ui_select_bg.png`. Right rail: winner `{name}_ending.png` at **full stage height**. Left rail: `{name}_wins.png` **right-aligned** and **vertically centered** on the stage, plus a non-flashing `ui_btn_continue.png` (same gold-bezel ivory chrome as SELECT) **lower on the card**, **centered in the left half**. Ignore taps for **0.8s**, then tap (or **10s** idle). **VS:** → **title**. **Arcade:** win → next VS (or **title** if the ladder is done); lose → **title**. Do not staff-roll or bonus-tally here.
 
 Each set starts in `ROUND`: draw `ui_round.png` plus `ui_num_{1,2,3}.png` for ~1.8s, then `SERVE` with `ui_fight.png` for ~1.2s (it clears; the set stays on serve). Tap the playfield to serve (does not move the shield). Drag only starts if the thumb lands on P1’s sprite (fat-finger slop, grab offset held so the fighter does not teleport under the pad). Double-tap empty court in `PLAYING` (one thumb or a second thumb while holding the rail) calls that fighter’s **once-per-set** shot at a living gate near the second tap. Serve taps do not count. CPU HARD calls the same shot after three returns. Do not typeset FIGHT or TAP TO SERVE.
 
-**CPU** loads from the **2P fighter**. **Wall** (Maru, Hex): camps a living gate, smaller motion. **Slugger** (Rivet, Ash, Kite, Quill): chases, overcommits. VS opens on **EASY**; arrows cycle **EASY / HARD** buttons (`ui_btn_easy.png` / `ui_btn_hard.png`). Easy abandons high/low rails and reacts late. Hard predicts the bounce and cuts the line.
+**CPU** loads from the **2P fighter**. **Wall** (Maru, Hex): camps a living gate, smaller motion. **Slugger** (Rivet, Ash, Kite, Quill): chases, overcommits. **Difficulty** is set on **title** (EASY/HARD). Easy abandons high/low rails and reacts late. Hard predicts the bounce and cuts the line.
 
 **Fighter kits** (P1 and 2P, code): same sport, readable knobs. Rally creeps speed each paddle bounce (capped). HARD reacts earlier and closes faster. Signatures fire from the hit you already do — no extra button. Rivet stacks pop (hotter clang, at least a medium tail). Ash smash-swipe locks a long tail. Kite afterburn locks a long tail. Maru center dump locks a short tail and a dull clang. Quill dive rims lock a long tail. Court sprites **never** scale with hitbox — packed 192×233 at baseline paddle height for every fighter, including Hex.
 
@@ -599,10 +599,10 @@ Pixel words TARGET, PERFECT, STRAIGHT, TOTAL, blue-to-yellow gradient, outlined,
 
 ## Cabinet loop
 
-Two separate screens. Do **not** composite the CPU match under or over `ui_title.png`.
+Two separate screens. Do **not** composite the CPU match under or over the title.
 
-1. **Title.** Full start image only. Hold **5 seconds**, then go to demo. Tap anywhere → character select.
-2. **Demo.** A **CPU vs CPU** match for **10 seconds** (random roster pair each time, mirrors allowed, **HARD** on both rails, no SFX / announcer). Typeset **DEMO** in smaller red letters in the **center of the court**, flashing, no black outline. Then return to title (next demo rolls a new pair). Tap anywhere → character select.
+1. **Title.** Composited **in code** on `ui_select_bg.png`: select full-bodies **Ash, Kite, Rivet** on the left (flipped to face center); **Hex, Quill, Maru** on the right, with a little top/side margin. **V stagger:** Ash and Maru highest, Kite and Quill a step lower, Rivet and Hex lowest (and in front). Stacked **RAIL** / **SHOT** (`ui_rail.png`, `ui_shot.png`, 640×220, magenta `#FF00FF`) sit **in the V**, **horizontally centered** between the two groups. One **bottom** row: **ARCADE**, **EASY/HARD**, **VS**. Pressing the difficulty button swaps EASY↔HARD (and gameplay) and **restarts the 5s demo timer**. Packed chrome is 264×150; **on-screen dest height is 52.5/360 of stage height** for every chrome button and arrow (title, select, VS START, continue). Hold **5 seconds** with no press, then go to demo. Do not typeset ARCADE, VS, EASY, HARD, RAIL, or SHOT. Do not tap-anywhere-to-start. Do **not** bake a `ui_title.png` lineup. No difficulty arrows on title.
+2. **Demo.** A **CPU vs CPU** match for **10 seconds** (random roster pair each time, mirrors allowed, **HARD** on both rails, no SFX / announcer). Typeset **DEMO** in smaller red letters in the **center of the court**, flashing, no black outline. Then return to title (next demo rolls a new pair). Tap anywhere → **title** (mode buttons).
 
 **Select idle.** If nobody touches the screen for **45 seconds** while picking, return to **title** (cabinet that never got a confirm). Any tap on select resets the timer. After both fighters are locked (linger into VS), do **not** idle-kick.
 
@@ -640,11 +640,11 @@ Use on **VS**, under each bust. Missing file: placeholder.
 
 Same flow as a 90s arcade vs-select (Flip Shot layout language, original roster):
 
-1. **Roster strip** along the **bottom**, **full 4:3 width**: six face tiles in order **Rivet, Ash, Kite, Maru, Quill, Hex**. Missing **B** art is an empty framed placeholder with the name (or initial), same tile size.
+1. **Roster strip** along the **bottom**, **full 4:3 width**: six face tiles in title order **Ash, Kite, Rivet, Hex, Quill, Maru**. Missing **B** art is an empty framed placeholder with the name (or initial), same tile size.
 2. **Browse with on-screen arrows.** Arrows sit **left and right of the SELECT button**. They move the roster cursor. Wrap at the ends. Arrows do not confirm.
-3. **Confirm with SELECT.** The SELECT button (between the arrows, left stack) locks the highlighted fighter. First press = **first fighter** (left court, `vs_left`, P1 clothes). Second press = **second fighter** (right court, `vs_right`, 2P clothes). Same fighter twice is a legal mirror match.
+3. **Confirm with SELECT.** The SELECT button (between the arrows, left stack) locks the highlighted fighter. **VS mode:** first press = **first fighter** (left court, `vs_left`, P1 clothes); second press = **second fighter** (right court, `vs_right`, 2P clothes). Same fighter twice is a legal mirror match. **Arcade mode** (from the title **ARCADE** button): one SELECT locks 1P only; first CPU is the **next fighter** after 1P in select/title order (**Ash, Kite, Rivet, Hex, Quill, Maru**; Maru wraps to Ash). No 2P cursor. Linger into VS. **Win** → next VS vs the next fighter in that order (skip 1P). **Beat every other fighter** → title. **Lose** a match → title. Title EASY/HARD applies to the whole arcade run.
 4. **Full-body on the right.** Piece **A** for the **currently highlighted** tile is drawn on the **right**, **almost the full 4:3 height** (`FillHeight`, no crop-zoom of the face), with a **small margin** top and bottom so it does not clip the screen edge. A must be the **left-facing** select pose so they look toward the left stack. Missing **A** is an empty placeholder. Switching left/right updates this portrait immediately. Do not keep showing the already-locked first fighter while browsing for the second.
-5. **Cursor badges.** While picking the first fighter, show **1P** on the highlighted tile. After the first lock, **1P** stays on that tile; **2P** rides the cursor until the second lock. Tile frames: `ui_face_frame_on.png` when highlighted, `ui_face_frame_off.png` otherwise — not Compose borders.
+5. **Cursor badges.** While picking the first fighter, show **1P** on the highlighted tile. After the first lock, **1P** stays on that tile; **2P** rides the cursor until the second lock. **Arcade:** **1P** only — never **2P**. Tile frames: `ui_face_frame_on.png` when highlighted, `ui_face_frame_off.png` otherwise — not Compose borders.
 6. **Left stack.** Top to bottom: large `ui_player_select.png` (**SELECT FIGHTER** title), then `{name}_name_select.png`, then one **typeset flavor line** (`FighterKit.flavor`) for the highlighted fighter, then `ui_btn_select.png`. All on the **left**. Do not typeset SELECT FIGHTER, SELECT, or the fighter name. Do not bake the flavor into piece A.
 7. **Chrome sprites.** `ui_btn_select.png` and `ui_arrow_left.png` are **beveled arcade push buttons**, not floating letters. Right arrow = horizontal flip of the left button in code. Cursor badges are `ui_1p.png` / `ui_2p.png`. Do not typeset 1P, 2P, SELECT, or ◀▶.
 7. **After both are selected:** freeze input, linger **1.5 seconds**, then go to the **VS screen**. Do not skip the linger.
@@ -665,9 +665,9 @@ Wallpaper (`art/ui_vs_bg.png`): quiet dark navy with a faint center glow for the
 2. **Right slot** = second selected fighter’s `{name}_vs_right.png` (2P clothes, facing the center).
 3. Missing **C** art is an empty bust placeholder in that slot (same box).
 4. Draw `ui_vs.png` in the center. Under each bust draw `{name}_name_vs.png` (first pick left, second pick right). Missing name sprite: placeholder.
-5. Bottom bar is two rows: fighter `{name}_name_vs.png` plates on the first row (large, under each bust), then a gap, then left arrow / **EASY or HARD** / right arrow centered on the second row. Same gold-bezel ivory arcade button as SELECT/START (`ui_btn_easy.png` / `ui_btn_hard.png`, 264×150). VS opens on **EASY**. Arrows cycle EASY/HARD (arrow SFX). Pressing the EASY or HARD button starts the match (select confirm SFX). Do not typeset EASY/HARD.
-6. Stay on VS until the difficulty button is pressed. Left court then uses the first fighter’s `*_left` anims; right court uses the second’s `*_right` anims.
-7. **Intro:** EASY/HARD arrows are on from frame one. Busts (and their name plates) slide in from the left/right edges. After they land, `ui_vs.png` scales up from zero at its resting center.
+5. Bottom bar is two rows: fighter `{name}_name_vs.png` plates on the first row (large, under each bust), then a gap, then **START** (`ui_btn_start.png`, 264×150, same gold-bezel ivory chrome) centered on the second row. Pressing START starts the match (select confirm SFX) at the title difficulty. Do not typeset START. No EASY/HARD on this screen.
+6. Stay on VS until START is pressed. Left court then uses the first fighter’s `*_left` anims; right court uses the second’s `*_right` anims.
+7. **Intro:** START is on from frame one. Busts (and their name plates) slide in from the left/right edges. After they land, `ui_vs.png` scales up from zero at its resting center.
 
 ## Win / bonus / congratulations layout
 
@@ -706,7 +706,8 @@ Round win in-court is the `YOU WIN` / `YOU LOSE` overlay when a **set** is taken
 - Live chasm logs (`maru/maru_court_log.png`) on Maru’s court — three mixed sizes drift and weave the water
 - `ROUND` / `FIGHT` / `YOU WIN` / `YOU LOSE` banners
 - Select cursor (`ui_1p.png` / `ui_2p.png`), arrows (`ui_arrow_left.png` + flip), SELECT (`ui_btn_select.png`)
-- VS arrows cycle EASY/HARD; the EASY/HARD button starts the match
+- Title **ARCADE** / **EASY|HARD** / **VS**; stacked **RAIL** / **SHOT** (`ui_rail.png` / `ui_shot.png`); arcade is a roster ladder (skip 1P)
+- Title difficulty button swaps EASY↔HARD; VS **START** (`ui_btn_start.png`) begins the match
 - Select flavor line under the name sprite (`FighterKit`)
 - Linger-then-VS transition
 - Tally numbers

@@ -9,6 +9,8 @@ enum class SelectStep {
 const val SELECT_LINGER_MS = 1500L
 
 class SelectSession {
+  var arcade: Boolean = false
+    private set
   var cursorIndex: Int = 0
     private set
   var firstPick: Fighter? = null
@@ -25,34 +27,38 @@ class SelectSession {
       }
 
   val highlighted: Fighter
-    get() = Fighter.roster[cursorIndex]
+    get() = Fighter.selectOrder[cursorIndex]
 
   fun moveLeft() {
     if (step == SelectStep.LOCKED) return
-    cursorIndex = (cursorIndex + Fighter.roster.size - 1) % Fighter.roster.size
+    cursorIndex = (cursorIndex + Fighter.selectOrder.size - 1) % Fighter.selectOrder.size
   }
 
   fun moveRight() {
     if (step == SelectStep.LOCKED) return
-    cursorIndex = (cursorIndex + 1) % Fighter.roster.size
+    cursorIndex = (cursorIndex + 1) % Fighter.selectOrder.size
   }
 
   fun setCursor(index: Int) {
     if (step == SelectStep.LOCKED) return
-    cursorIndex = index.mod(Fighter.roster.size)
+    cursorIndex = index.mod(Fighter.selectOrder.size)
   }
 
   fun confirm(): Boolean {
     if (step == SelectStep.LOCKED) return true
     if (firstPick == null) {
       firstPick = highlighted
+      if (arcade) {
+        secondPick = Fighter.arcadeRival(highlighted)
+      }
     } else {
       secondPick = highlighted
     }
     return step == SelectStep.LOCKED
   }
 
-  fun reset() {
+  fun reset(arcade: Boolean = false) {
+    this.arcade = arcade
     cursorIndex = 0
     firstPick = null
     secondPick = null

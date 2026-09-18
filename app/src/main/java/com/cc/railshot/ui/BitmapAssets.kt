@@ -13,6 +13,29 @@ internal fun loadKeyedBitmap(
 internal fun loadOpaqueBitmap(context: Context, assetPath: String): Bitmap =
   decodeAssetBitmap(context, assetPath)
 
+internal fun cropOpaque(src: Bitmap): Bitmap {
+  val w = src.width
+  val h = src.height
+  val px = IntArray(w * h)
+  src.getPixels(px, 0, w, 0, 0, w, h)
+  var l = w
+  var t = h
+  var r = -1
+  var b = -1
+  for (y in 0 until h) {
+    val row = y * w
+    for (x in 0 until w) {
+      if ((px[row + x] ushr 24) <= 16) continue
+      if (x < l) l = x
+      if (x > r) r = x
+      if (y < t) t = y
+      if (y > b) b = y
+    }
+  }
+  if (r < l) return src
+  return Bitmap.createBitmap(src, l, t, r - l + 1, b - t + 1)
+}
+
 private fun decodeAssetBitmap(context: Context, assetPath: String): Bitmap {
   val opts =
     BitmapFactory.Options().apply {

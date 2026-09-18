@@ -20,6 +20,7 @@ import com.cc.railshot.game.Fighter
 import com.cc.railshot.game.FighterKit
 import com.cc.railshot.game.GameSfx
 import com.cc.railshot.game.PaddlePose
+import com.cc.railshot.game.PlayMode
 import com.cc.railshot.game.Phase
 import com.cc.railshot.game.SELECT_LINGER_MS
 import com.cc.railshot.game.SelectSession
@@ -54,6 +55,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private var resultCardT = 0f
   private var vsAnimT = 0f
   private val select = SelectSession()
+  private var playMode = PlayMode.VS
   private var you: Fighter = Fighter.RIVET
   private var rival: Fighter = Fighter.RIVET
   private var cpuLevel: CpuLevel = CpuLevel.EASY
@@ -76,7 +78,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private val rightArrow = RectF()
   private val selectBtn = RectF()
   private val startBtn = RectF()
-  private val faceTiles = Array(Fighter.roster.size) { RectF() }
+  private val arcadeBtn = RectF()
+  private val vsBtn = RectF()
+  private val diffBtn = RectF()
+  private val faceTiles = Array(Fighter.selectOrder.size) { RectF() }
+  private val titleSlots = Array(Fighter.selectOrder.size) { RectF() }
 
   private val pixel =
     Paint().apply {
@@ -171,7 +177,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       return true
     }
     when (screen) {
-      Screen.TITLE, Screen.DEMO -> if (event.actionMasked == MotionEvent.ACTION_DOWN) goSelect()
+      Screen.TITLE ->
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) touchTitle(x, y, sw, sh)
+      Screen.DEMO -> if (event.actionMasked == MotionEvent.ACTION_DOWN) goTitle()
       Screen.SELECT ->
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
           if (select.step != SelectStep.LOCKED) selectIdleT = 0f
@@ -208,22 +216,42 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     screen = Screen.DEMO
   }
 
-  private fun goSelect() {
+  private fun goSelect(mode: PlayMode? = null) {
     if (screen == Screen.SELECT) return
+    if (mode != null) playMode = mode
     screen = Screen.SELECT
-    select.reset()
+    select.reset(arcade = playMode == PlayMode.ARCADE)
     lingerT = 0f
     selectIdleT = 0f
     resultCardT = 0f
   }
 
-  private fun goVs() {
-    val first = select.firstPick ?: return
-    val second = select.secondPick ?: return
-    you = first
-    rival = second
+  private fun leaveMatchResult() {
+    if (playMode != PlayMode.ARCADE) {
+      goTitle()
+      return
+    }
+    if (world.phase != Phase.YOU_WIN) {
+      goTitle()
+      return
+    }
+    val next = Fighter.nextArcadeRival(you, rival)
+    if (next == null) {
+      goTitle()
+      return
+    }
+    rival = next
+    goVs(fromSelect = false)
+  }
+
+  private fun goVs(fromSelect: Boolean = true) {
+    if (fromSelect) {
+      val first = select.firstPick ?: return
+      val second = select.secondPick ?: return
+      you = first
+      rival = second
+    }
     lingerT = 0f
-    cpuLevel = CpuLevel.EASY
     vsAnimT = 0f
     screen = Screen.VS
   }
@@ -286,7 +314,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       resultCardT += dt
       if (resultCardT >= RESULT_IDLE_S) {
         SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
-        goSelect()
+        leaveMatchResult()
       }
     } else {
       resultCardT = 0f
@@ -326,11 +354,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
 
   private fun touchVs(x: Float, y: Float, sw: Float, sh: Float) {
     layoutVsHits(sw, sh)
-    if (leftArrow.contains(x, y) || rightArrow.contains(x, y)) {
-      cpuLevel = if (cpuLevel == CpuLevel.HARD) CpuLevel.EASY else CpuLevel.HARD
-      SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
-      return
-    }
     if (startBtn.contains(x, y)) {
       SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
       goMatch()
@@ -352,7 +375,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         if (world.phase == Phase.YOU_WIN || world.phase == Phase.CPU_WIN) {
           if (resultCardT >= RESULT_LOCK_S) {
             SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
-            goSelect()
+            leaveMatchResult()
           }
           return
         }
@@ -461,13 +484,126 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val sw = stage.width()
     val sh = stage.height()
     when (screen) {
-      Screen.TITLE -> blitFill(canvas, opaque(UiArt.TITLE), 0f, 0f, sw, sh)
+      Screen.TITLE -> drawTitle(canvas, sw, sh)
       Screen.DEMO -> drawDemo(canvas, sw, sh)
       Screen.SELECT -> drawSelect(canvas, sw, sh)
       Screen.VS -> drawVs(canvas, sw, sh)
       Screen.MATCH -> drawMatch(canvas, sw, sh)
     }
     canvas.restore()
+  }
+
+  private fun drawTitle(canvas: Canvas, sw: Float, sh: Float) {
+    blitFill(canvas, opaque(UiArt.SELECT_BG), 0f, 0f, sw, sh)
+    layoutTitleRoster(sw, sh)
+    layoutTitleHits(sw, sh)
+    TITLE_DRAW_ORDER.forEach { i ->
+      val path = Fighter.selectOrder[i].art().selectFullBody ?: return@forEach
+      val bmp = keyedCropped(path)
+      val box = titleSlots[i]
+      if (i < TITLE_LEFT) blitFitFlipped(canvas, bmp, box.left, box.top, box.width(), box.height())
+      else blitFit(canvas, bmp, box.left, box.top, box.width(), box.height())
+    }
+    val dp = sh / 360f
+    val gap = 5f * dp
+    val margin = 12f * dp
+    val rail = keyedCropped(UiArt.WORD_RAIL)
+    val shot = keyedCropped(UiArt.WORD_SHOT)
+    val rivet = titleSlots[2]
+    val hex = titleSlots[3]
+    // AABB inner edges are Rivet's axe / Hex's shield; the V opening is the torsos.
+    val leftClear = rivet.left + rivet.width() * 0.55f + margin
+    val rightClear = hex.left + hex.width() * 0.38f - margin
+    val cx = (leftClear + rightClear) / 2f
+    val availW = (rightClear - leftClear).coerceAtLeast(1f)
+    val aspect = maxOf(rail.width / rail.height.toFloat(), shot.width / shot.height.toFloat())
+    val pocketH = (titleSlots[2].top + titleSlots[2].height() * 0.18f - titleSlots[0].top).coerceAtLeast(1f)
+    var wordH = availW / aspect
+    val stack = wordH * 2f + gap
+    if (stack > pocketH) wordH = ((pocketH - gap) / 2f).coerceAtLeast(1f)
+    val railW = wordH * (rail.width / rail.height.toFloat())
+    val shotW = wordH * (shot.width / shot.height.toFloat())
+    val top = titleSlots[0].top
+    blitFit(canvas, rail, cx - railW / 2f, top, railW, wordH)
+    blitFit(
+      canvas,
+      shot,
+      cx - shotW / 2f + 3f * dp,
+      top + wordH + gap - 1f * dp,
+      shotW,
+      wordH,
+    )
+    blitFit(canvas, keyed(UiArt.BTN_ARCADE), arcadeBtn.left, arcadeBtn.top, arcadeBtn.width(), arcadeBtn.height())
+    blitFit(canvas, keyed(UiArt.BTN_VS), vsBtn.left, vsBtn.top, vsBtn.width(), vsBtn.height())
+    val diffArt = if (cpuLevel == CpuLevel.HARD) UiArt.BTN_HARD else UiArt.BTN_EASY
+    blitFit(canvas, keyed(diffArt), diffBtn.left, diffBtn.top, diffBtn.width(), diffBtn.height())
+  }
+
+  private fun layoutTitleRoster(sw: Float, sh: Float) {
+    val dp = sh / 360f
+    val btnH = chromeBtnH(sh)
+    val pad = 10f * dp
+    val step = 24f * dp
+    val charH = (sh - pad - step * 2f - btnH - 16f * dp).coerceAtLeast(1f)
+    val overlapL = 0.24f * charH
+    val overlapR = 0.17f * charH
+    val widths =
+      FloatArray(Fighter.selectOrder.size) { i ->
+        val path = Fighter.selectOrder[i].art().selectFullBody ?: return@FloatArray charH * 0.45f
+        val bmp = keyedCropped(path)
+        charH * (bmp.width / bmp.height.toFloat())
+      }
+    var x = pad
+    for (i in 0 until TITLE_LEFT) {
+      val y = pad + step * i
+      titleSlots[i].set(x, y, x + widths[i], y + charH)
+      x += overlapL
+    }
+    val maruX = sw - pad - widths[5]
+    titleSlots[5].set(maruX, pad, maruX + widths[5], pad + charH)
+    val quillX = maruX - overlapR
+    titleSlots[4].set(quillX, pad + step, quillX + widths[4], pad + step + charH)
+    val hexX = quillX - overlapR
+    titleSlots[3].set(hexX, pad + step * 2f, hexX + widths[3], pad + step * 2f + charH)
+  }
+
+  private fun touchTitle(x: Float, y: Float, sw: Float, sh: Float) {
+    layoutTitleHits(sw, sh)
+    if (arcadeBtn.contains(x, y)) {
+      SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
+      goSelect(PlayMode.ARCADE)
+      return
+    }
+    if (vsBtn.contains(x, y)) {
+      SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
+      goSelect(PlayMode.VS)
+      return
+    }
+    if (diffBtn.contains(x, y)) {
+      cpuLevel = if (cpuLevel == CpuLevel.HARD) CpuLevel.EASY else CpuLevel.HARD
+      SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
+      titleT = 0f
+    }
+  }
+
+  private fun chromeBtnH(sh: Float) = BTN_H_DP * (sh / 360f)
+
+  private fun chromeBtnW(sh: Float) = chromeBtnH(sh) * BTN_ASPECT
+
+  private fun layoutTitleHits(sw: Float, sh: Float) {
+    val dp = sh / 360f
+    val btnH = chromeBtnH(sh)
+    val btnW = chromeBtnW(sh)
+    val pad = 12f * dp
+    val gap = 14f * dp
+    val y = sh - pad - btnH
+    val rowW = btnW * 3f + gap * 2f
+    var x = (sw - rowW) / 2f
+    arcadeBtn.set(x, y, x + btnW, y + btnH)
+    x += btnW + gap
+    diffBtn.set(x, y, x + btnW, y + btnH)
+    x += btnW + gap
+    vsBtn.set(x, y, x + btnW, y + btnH)
   }
 
   private fun drawDemo(canvas: Canvas, sw: Float, sh: Float) {
@@ -509,13 +645,13 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val padV = 8f * dp
     val gapT = 6f * dp
     val rowWTiles = sw - padH * 2f
-    val tile = (rowWTiles - gapT * (Fighter.roster.size - 1)) / Fighter.roster.size
+    val tile = (rowWTiles - gapT * (Fighter.selectOrder.size - 1)) / Fighter.selectOrder.size
     val rowTop = sh - padV - tile
     val colH = (rowTop - colT - 10f * dp).coerceAtLeast(1f)
     val selectBmp = keyed(UiArt.PLAYER_SELECT)
     val nameH = 28f * dp
     val flavorH = 15f * dp
-    val ctrlH = 56f * dp
+    val ctrlH = chromeBtnH(sh)
     val minGap = 10f * dp
     val slots = 5f
     val bannerCap = (colH - nameH - flavorH - ctrlH - minGap * slots).coerceAtLeast(24f * dp)
@@ -531,9 +667,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     y += nameH + gap
     drawFlavorLine(canvas, FighterKit.of(highlighted).flavor, colL, y, colW, flavorH)
     y += flavorH + gap + 6f * dp
-    val arrow = 56f * dp
-    val btnH = 56f * dp
-    val btnW = btnH * (264f / 150f)
+    val btnH = chromeBtnH(sh)
+    val btnW = chromeBtnW(sh)
+    val arrow = btnH
     val rowW = arrow * 2f + btnW + 8f * dp
     var x = colL + (colW - rowW) / 2f
     val locked = select.step == SelectStep.LOCKED
@@ -547,7 +683,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     rightArrow.set(x, y, x + arrow, y + arrow)
     blitFitFlipped(canvas, keyed(UiArt.ARROW_LEFT), x, y, arrow, arrow, alpha)
 
-    Fighter.roster.forEachIndexed { i, fighter ->
+    Fighter.selectOrder.forEachIndexed { i, fighter ->
       val l = padH + i * (tile + gapT)
       faceTiles[i].set(l, rowTop, l + tile, rowTop + tile)
       drawFaceTile(canvas, fighter, i, faceTiles[i], dp)
@@ -566,6 +702,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     blitFit(canvas, keyed(frame, hole = true), box.left, box.top, box.width(), box.height())
     val badge =
       when {
+        select.arcade ->
+          if (select.firstPick == fighter || (select.firstPick == null && selected)) UiArt.BADGE_1P
+          else null
         (select.step == SelectStep.PICK_SECOND || select.step == SelectStep.LOCKED) &&
           (index == select.cursorIndex || select.secondPick == fighter) -> UiArt.BADGE_2P
         select.firstPick == fighter -> UiArt.BADGE_1P
@@ -583,7 +722,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     blitFill(canvas, opaque(UiArt.VS_BG), 0f, 0f, sw, sh)
     val barPadB = 16f * dp
     val barPadT = 8f * dp
-    val btnH = 56f * dp
+    val btnH = chromeBtnH(sh)
     val nameH = 40f * dp
     val nameBtnGap = 14f * dp
     val barH = barPadT + nameH + nameBtnGap + btnH + barPadB
@@ -623,10 +762,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       blitFit(canvas, keyed(path), leftW + vsW + namePad + fromRight, nameY, nw, nameH)
     }
     layoutVsHits(sw, sh)
-    blitFit(canvas, keyed(UiArt.ARROW_LEFT), leftArrow.left, leftArrow.top, leftArrow.width(), leftArrow.height())
-    val diffBtn = if (cpuLevel == CpuLevel.HARD) UiArt.BTN_HARD else UiArt.BTN_EASY
-    blitFit(canvas, keyed(diffBtn), startBtn.left, startBtn.top, startBtn.width(), startBtn.height())
-    blitFitFlipped(canvas, keyed(UiArt.ARROW_LEFT), rightArrow.left, rightArrow.top, rightArrow.width(), rightArrow.height())
+    blitFit(canvas, keyed(UiArt.BTN_START), startBtn.left, startBtn.top, startBtn.width(), startBtn.height())
   }
 
   private fun drawMatch(canvas: Canvas, vw: Float, vh: Float) {
@@ -782,8 +918,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val dp = vh / 360f
     val pad = 12f * dp
     val railW = vw * 0.48f
-    val btnH = 56f * dp
-    val btnW = btnH * (264f / 150f)
+    val btnH = chromeBtnH(vh)
+    val btnW = chromeBtnW(vh)
     val right = railW - pad
     winner.art().ending?.let { path ->
       blitFillHeightEnd(canvas, keyed(path), railW, 0f, vw - railW, vh)
@@ -1149,22 +1285,22 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val padV = 8f * dp
     val gapT = 6f * dp
     val rowWTiles = sw - padH * 2f
-    val tile = (rowWTiles - gapT * (Fighter.roster.size - 1)) / Fighter.roster.size
+    val tile = (rowWTiles - gapT * (Fighter.selectOrder.size - 1)) / Fighter.selectOrder.size
     val rowTop = sh - padV - tile
     val colH = (rowTop - colT - 10f * dp).coerceAtLeast(1f)
     val selectBmp = keyed(UiArt.PLAYER_SELECT)
     val nameH = 28f * dp
     val flavorH = 15f * dp
-    val ctrlH = 56f * dp
+    val ctrlH = chromeBtnH(sh)
     val minGap = 10f * dp
     val slots = 5f
     val bannerCap = (colH - nameH - flavorH - ctrlH - minGap * slots).coerceAtLeast(24f * dp)
     val bannerH = min(colW * (selectBmp.height / selectBmp.width.toFloat()), bannerCap)
     val gap = ((colH - bannerH - nameH - flavorH - ctrlH) / slots).coerceAtLeast(0f)
     val y = colT + gap + bannerH + gap + nameH + gap + flavorH + gap + 6f * dp
-    val arrow = 56f * dp
-    val btnH = 56f * dp
-    val btnW = btnH * (264f / 150f)
+    val btnH = chromeBtnH(sh)
+    val btnW = chromeBtnW(sh)
+    val arrow = btnH
     val rowW = arrow * 2f + btnW + 8f * dp
     var x = colL + (colW - rowW) / 2f
     leftArrow.set(x, y, x + arrow, y + arrow)
@@ -1172,7 +1308,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     selectBtn.set(x, y, x + btnW, y + btnH)
     x += btnW + 4f * dp
     rightArrow.set(x, y, x + arrow, y + arrow)
-    Fighter.roster.forEachIndexed { i, _ ->
+    Fighter.selectOrder.forEachIndexed { i, _ ->
       val l = padH + i * (tile + gapT)
       faceTiles[i].set(l, rowTop, l + tile, rowTop + tile)
     }
@@ -1182,21 +1318,15 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val dp = sh / 360f
     val barPadB = 16f * dp
     val barPadT = 8f * dp
-    val btnH = 56f * dp
-    val btnW = btnH * (264f / 150f)
+    val btnH = chromeBtnH(sh)
+    val btnW = chromeBtnW(sh)
     val nameH = 40f * dp
     val nameBtnGap = 14f * dp
     val barH = barPadT + nameH + nameBtnGap + btnH + barPadB
     val bustH = sh - barH
-    val arrow = 56f * dp
-    val rowW = arrow * 2f + btnW + 8f * dp
     val y = bustH + barPadT + nameH + nameBtnGap
-    var x = (sw - rowW) / 2f
-    leftArrow.set(x, y, x + arrow, y + arrow)
-    x += arrow + 4f * dp
+    val x = (sw - btnW) / 2f
     startBtn.set(x, y, x + btnW, y + btnH)
-    x += btnW + 4f * dp
-    rightArrow.set(x, y, x + arrow, y + arrow)
   }
 
   private fun layoutStage() {
@@ -1280,6 +1410,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     return bitmaps.getOrPut(key) { loadKeyedBitmap(context, path, hole) }
   }
 
+  private fun keyedCropped(path: String): Bitmap =
+    bitmaps.getOrPut("c:$path") { cropOpaque(loadKeyedBitmap(context, path)) }
+
   private fun keyedOrFallback(path: String, fallback: String, hole: Boolean = false): Bitmap {
     return try {
       keyed(path, hole)
@@ -1320,7 +1453,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
 
   private companion object {
     const val MAX_FRAME_NS = 50_000_000L
+    const val BTN_H_DP = 52.5f
+    const val BTN_ASPECT = 264f / 150f
     const val TITLE_HOLD_S = 5f
+    const val TITLE_LEFT = 3
+    val TITLE_DRAW_ORDER = intArrayOf(0, 1, 2, 5, 4, 3)
     const val DEMO_HOLD_S = 10f
     const val SELECT_IDLE_S = 45f
     const val RESULT_LOCK_S = 0.8f
