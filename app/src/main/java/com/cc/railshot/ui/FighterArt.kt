@@ -66,6 +66,7 @@ object UiArt {
 
   const val COURT_TRACE = "rivet/rivet_court_trace.png"
   const val HEX_CAR = "hex/hex_car.png"
+  const val KITE_X = "kite/kite_court_x.png"
 
   fun courtHawk(frame: Int): String =
     when (frame.coerceIn(0, 2)) {

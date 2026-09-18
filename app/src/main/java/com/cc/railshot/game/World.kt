@@ -96,6 +96,7 @@ class World(
   private val courtTrace: Boolean = rival == Fighter.RIVET
   private val courtCar: Boolean = rival == Fighter.HEX
   private val courtHawk: Boolean = rival == Fighter.QUILL
+  private val courtKiteX: Boolean = rival == Fighter.KITE
   private val youStyle: CpuStyle = CpuStyle.forFighter(you)
   var phase: Phase = Phase.ROUND
     private set
@@ -173,6 +174,7 @@ class World(
   private var hexCarT = 0f
   private var hawkT = 0f
   private var hawkAnimT = 0f
+  private var kiteXT = 0f
   private var tailLock: BallTailBand? = null
   private var shieldGain = 1.05f
   private var shieldRate = 1.22f
@@ -257,6 +259,7 @@ class World(
     ) {
       tickHexCar(clamped)
       tickHawk(clamped)
+      tickKiteX(clamped)
     }
     tickHits(clamped)
     tickJuice(clamped)
@@ -455,6 +458,27 @@ class World(
     if (!courtHawk) return
     hawkT = u.coerceIn(0f, 1f) * HAWK_LAP
     hawkAnimT = 0f
+  }
+
+  fun kiteXLive(): Boolean = courtKiteX
+
+  fun kiteXX(): Float = KITE_X_LEFT
+
+  fun kiteXY(): Float = KITE_X_TOP
+
+  fun kiteXW(): Float = KITE_X_W
+
+  fun kiteXH(): Float = KITE_X_H
+
+  fun kiteXDeg(): Float {
+    val u = ((kiteXT / KITE_X_SPIN) % 1f + 1f) % 1f
+    return u * 360f
+  }
+
+  internal fun placeKiteX(deg: Float = 0f) {
+    if (!courtKiteX) return
+    val u = ((deg / 360f) % 1f + 1f) % 1f
+    kiteXT = u * KITE_X_SPIN
   }
 
   fun iceBurstFrame(): Int {
@@ -676,6 +700,7 @@ class World(
       if (tPaddle <= 0f) break
       var tHit = tPaddle
       var kind = 0
+      var kiteFlipV = false
       if (svy > 0.001f) {
         val tWall = (hi - y) / svy
         if (tWall > 0.0001f && tWall < tHit) {
@@ -760,6 +785,14 @@ class World(
           kind = if (hit.vertical) 3 else 4
         }
       }
+      if (kiteXSolid()) {
+        val hit = rayKiteX(x, y, svx, svy)
+        if (hit != null && hit.t > 0.0001f && hit.t < tHit) {
+          tHit = hit.t
+          kind = 5
+          kiteFlipV = hit.vertical
+        }
+      }
       if (kind == 0) return (y + svy * tHit).coerceIn(lo, hi)
       x += svx * tHit
       y += svy * tHit
@@ -773,6 +806,11 @@ class World(
           svy = kotlin.math.abs(svy)
         }
         3 -> svx = -svx
+        5 -> {
+          val bounced = kiteXFlipVel(svx, svy, kiteFlipV)
+          svx = bounced.first
+          svy = bounced.second
+        }
         else -> svy = -svy
       }
     }
@@ -1167,6 +1205,16 @@ class World(
         hitAny = true
       }
     }
+    if (kiteXSolid()) {
+      val hit = bounceKiteX(x, y, vx, vy)
+      if (hit != null) {
+        x = hit.x
+        y = hit.y
+        vx = hit.vx
+        vy = hit.vy
+        hitAny = true
+      }
+    }
     return if (hitAny) AabbBounce(x, y, vx, vy) else null
   }
 
@@ -1328,6 +1376,110 @@ class World(
     hawkT += dt
     if (hawkT >= HAWK_LAP) hawkT -= HAWK_LAP
     hawkAnimT += dt
+  }
+
+  private fun kiteXSolid(): Boolean = kiteXLive()
+
+  private fun tickKiteX(dt: Float) {
+    if (!courtKiteX) {
+      kiteXT = 0f
+      return
+    }
+    kiteXT += dt
+    if (kiteXT >= KITE_X_SPIN) kiteXT -= KITE_X_SPIN
+  }
+
+  private fun kiteXArmRad(): Float =
+    Math.toRadians((kiteXDeg() + KITE_X_ARM_OFFSET_DEG).toDouble()).toFloat()
+
+  private fun worldToKiteLocal(x: Float, y: Float, ang: Float): Pair<Float, Float> {
+    val dx = x * COURT_ASPECT - KITE_X_CX * COURT_ASPECT
+    val dy = y - KITE_X_CY
+    val c = kotlin.math.cos(ang)
+    val s = kotlin.math.sin(ang)
+    return (dx * c + dy * s) to (-dx * s + dy * c)
+  }
+
+  private fun kiteLocalToWorld(lx: Float, ly: Float, ang: Float): Pair<Float, Float> {
+    val c = kotlin.math.cos(ang)
+    val s = kotlin.math.sin(ang)
+    val dx = lx * c - ly * s
+    val dy = lx * s + ly * c
+    return (KITE_X_CX + dx / COURT_ASPECT) to (KITE_X_CY + dy)
+  }
+
+  private fun worldVelToKiteLocal(vx: Float, vy: Float, ang: Float): Pair<Float, Float> {
+    val dx = vx * COURT_ASPECT
+    val dy = vy
+    val c = kotlin.math.cos(ang)
+    val s = kotlin.math.sin(ang)
+    return (dx * c + dy * s) to (-dx * s + dy * c)
+  }
+
+  private fun kiteLocalVelToWorld(lvx: Float, lvy: Float, ang: Float): Pair<Float, Float> {
+    val c = kotlin.math.cos(ang)
+    val s = kotlin.math.sin(ang)
+    val dx = lvx * c - lvy * s
+    val dy = lvx * s + lvy * c
+    return (dx / COURT_ASPECT) to dy
+  }
+
+  private fun kiteXFlipVel(vx: Float, vy: Float, vertical: Boolean): Pair<Float, Float> {
+    val ang = kiteXArmRad()
+    val local = worldVelToKiteLocal(vx, vy, ang)
+    val lvx = if (vertical) -local.first else local.first
+    val lvy = if (vertical) local.second else -local.second
+    return kiteLocalVelToWorld(lvx, lvy, ang)
+  }
+
+  private fun bounceKiteX(px: Float, py: Float, pvx: Float, pvy: Float): AabbBounce? {
+    val ang = kiteXArmRad()
+    val p = worldToKiteLocal(px, py, ang)
+    val v = worldVelToKiteLocal(pvx, pvy, ang)
+    var x = p.first
+    var y = p.second
+    var vx = v.first
+    var vy = v.second
+    var hitAny = false
+    val halfL = KITE_X_ARM_LEN / 2f
+    val halfT = KITE_X_ARM_T / 2f
+    val arms =
+      arrayOf(
+        floatArrayOf(-halfT, -halfL, KITE_X_ARM_T, KITE_X_ARM_LEN),
+        floatArrayOf(-halfL, -halfT, KITE_X_ARM_LEN, KITE_X_ARM_T),
+      )
+    for (arm in arms) {
+      val hit = bounceBox(arm[0], arm[1], arm[2], arm[3], x, y, vx, vy, BALL_R, BALL_R) ?: continue
+      x = hit.x
+      y = hit.y
+      vx = hit.vx
+      vy = hit.vy
+      hitAny = true
+    }
+    if (!hitAny) return null
+    val worldP = kiteLocalToWorld(x, y, ang)
+    val worldV = kiteLocalVelToWorld(vx, vy, ang)
+    return AabbBounce(worldP.first, worldP.second, worldV.first, worldV.second)
+  }
+
+  private fun rayKiteX(ox: Float, oy: Float, dx: Float, dy: Float): RayHit? {
+    val ang = kiteXArmRad()
+    val p = worldToKiteLocal(ox, oy, ang)
+    val v = worldVelToKiteLocal(dx, dy, ang)
+    val halfL = KITE_X_ARM_LEN / 2f
+    val halfT = KITE_X_ARM_T / 2f
+    val r = BALL_R
+    val arms =
+      arrayOf(
+        floatArrayOf(-halfT - r, -halfL - r, halfT + r, halfL + r),
+        floatArrayOf(-halfL - r, -halfT - r, halfL + r, halfT + r),
+      )
+    var best: RayHit? = null
+    for (arm in arms) {
+      val hit = rayAabb(p.first, p.second, v.first, v.second, arm[0], arm[1], arm[2], arm[3]) ?: continue
+      if (best == null || hit.t < best.t) best = hit
+    }
+    return best
   }
 
   private fun traceCy(): Float = TRACE_CY0 + traceU * (TRACE_CY1 - TRACE_CY0)
@@ -1726,6 +1878,28 @@ class World(
     const val HAWK_CORNER_R: Float = 0.10f
     const val HAWK_LAP = 12f
     const val HAWK_FLAP = 0.16f
+    /**
+     * Kite airfield gold X. Packed 192×192, drawn 156×156 on the painted mark
+     * (`kite_court.png` X at 719,529 — not geometric court center). Dest is
+     * a bit larger than the floor X so the live arms cover the paint.
+     * Collision is two arms (a plus rotated 45° from the sprite X).
+     */
+    const val KITE_X_W_PX = 156
+    const val KITE_X_H_PX = 156
+    const val KITE_X_CX_PX = 719
+    const val KITE_X_CY_PX = 529
+    const val KITE_X_ARM_LEN_PX = 148
+    const val KITE_X_ARM_T_PX = 26
+    const val KITE_X_W: Float = KITE_X_W_PX / 1440f
+    const val KITE_X_H: Float = KITE_X_H_PX / 1080f
+    const val KITE_X_CX: Float = KITE_X_CX_PX / 1440f
+    const val KITE_X_CY: Float = KITE_X_CY_PX / 1080f
+    const val KITE_X_LEFT: Float = KITE_X_CX - KITE_X_W / 2f
+    const val KITE_X_TOP: Float = KITE_X_CY - KITE_X_H / 2f
+    const val KITE_X_ARM_LEN: Float = KITE_X_ARM_LEN_PX / 1080f
+    const val KITE_X_ARM_T: Float = KITE_X_ARM_T_PX / 1080f
+    const val KITE_X_SPIN = 10f
+    const val KITE_X_ARM_OFFSET_DEG = 45f
     const val PADDLE_LEN = 0.20f
     const val PADDLE_THICK = 0.018f
     const val CHIP_COUNT = 6

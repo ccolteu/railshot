@@ -774,6 +774,63 @@ class WorldTest {
   }
 
   @Test
+  fun kiteXStaysOffOnOtherCourts() {
+    val world = World(rival = Fighter.ASH, cpuLevel = CpuLevel.EASY)
+    world.placeKiteX()
+    assertFalse(world.kiteXLive())
+  }
+
+  @Test
+  fun kiteXSpinsOnKiteCourt() {
+    val world = World(rival = Fighter.KITE, cpuLevel = CpuLevel.EASY)
+    world.placeKiteX(0f)
+    assertTrue(world.kiteXLive())
+    assertEquals(World.KITE_X_CX, world.kiteXX() + World.KITE_X_W / 2f, 0.0001f)
+    assertEquals(World.KITE_X_CY, world.kiteXY() + World.KITE_X_H / 2f, 0.0001f)
+    assertEquals(0f, world.kiteXDeg(), 0.01f)
+    repeat(20) { world.step(0.05f) }
+    assertEquals(36f, world.kiteXDeg(), 1.5f)
+  }
+
+  @Test
+  fun kiteXBouncesTheBallWithoutScoring() {
+    val world = World(rival = Fighter.KITE, cpuLevel = CpuLevel.EASY)
+    world.placeKiteX(-45f)
+    val chips = world.cpuChipsLeft()
+    val x =
+      World.KITE_X_CX - World.KITE_X_ARM_T / World.COURT_ASPECT / 2f - World.BALL_R_X - 0.002f
+    world.placeBall(x, World.KITE_X_CY, 0.8f, 0f)
+    var guard = 0
+    while (world.ballVx() > 0f && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.ballVx() < 0f)
+    assertEquals(0, world.youScore)
+    assertEquals(chips, world.cpuChipsLeft())
+    val sfx = world.drainSfx()
+    assertFalse(sfx.contains(GameSfx.CHIP))
+    assertTrue(sfx.contains(GameSfx.WALL))
+  }
+
+  @Test
+  fun kiteXBouncesTheIceComet() {
+    val world = World(you = Fighter.ASH, rival = Fighter.KITE, cpuLevel = CpuLevel.EASY)
+    world.placeKiteX(-45f)
+    world.placeBall(0.35f, 0.20f, -0.3f, 0f)
+    val x =
+      World.KITE_X_CX - World.KITE_X_ARM_T / World.COURT_ASPECT / 2f - World.STAR_R_X - 0.002f
+    world.placeStar(x, World.KITE_X_CY, 0.7f, 0f)
+    var guard = 0
+    while (world.starVx() > 0f && world.starLive() && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertTrue(world.starLive())
+    assertTrue(world.starVx() < 0f)
+    assertEquals(World.CHIP_COUNT, world.cpuChipsLeft())
+    assertTrue(world.drainSfx().contains(GameSfx.WALL))
+  }
+
+  @Test
   fun calledOrbMissesAShieldOffTheLine() {
     val world = World(you = Fighter.RIVET, cpuLevel = CpuLevel.EASY)
     world.placeBall(0.40f, 0.50f, -0.4f, 0f)

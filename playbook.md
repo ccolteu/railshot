@@ -35,6 +35,8 @@ Keep the 90s pixel look; just draw it on a phone-sized canvas. Do not generate 3
 | Ice burst | **128×128** | Magenta `#FF00FF` |
 | Court wall | **96×176** | Magenta `#FF00FF` |
 | Court trace | **48×192** | Magenta `#FF00FF` |
+| Court hawk | **136×192** | Magenta `#FF00FF` |
+| Court X | **192×192** | Magenta `#FF00FF` |
 | Life chips | standing **22×120**, down **48×120** | Magenta `#FF00FF` |
 | Nameplates | **480×90** | Magenta `#FF00FF` |
 | Ending still | **1440×840** letterboxed in 4:3 | Opaque |
@@ -74,7 +76,7 @@ WAV clips live in `app/src/main/res/raw/` (16-bit PCM, 44.1 kHz, uncompressed). 
 | Shield hit | `sfx_shield.wav` | Ball bounces off a fighter |
 | Chip off | `sfx_chip.wav` | Ball kills a life tile |
 | Ice shatter | `sfx_ice.wav` | Ice comet smashed or flattening a gate |
-| Court bounce | `sfx_wall.wav` | Fireball or ice comet hits a rail, Ash wall, Rivet trace, Hex car, or Quill hawk |
+| Court bounce | `sfx_wall.wav` | Fireball or ice comet hits a rail, Ash wall, Rivet trace, Hex car, Quill hawk, or Kite X |
 | Match BGM | `bgm_match.wav` | Loops from app start |
 
 ## Produce a sprite (mandatory)
@@ -437,6 +439,8 @@ A **live hovercar** rides Hex’s street (`art/hex/hex_car.png`, keyed magenta `
 
 A **live hawk** rides Quill’s aerie (`art/quill/quill_court_hawk_{a,c,b}.png`, keyed magenta `#FF00FF`, packed **136×192**). On **Quill’s floor** (2P) it loops a **rounded square** around the playfield: high and low rails plus the lanes **in front of both fighters** (inset so it does not graze the paddles). Beak follows the path; corners rotate smoothly. Wingbeat ping-pongs open / mid / tucked. Never the gold X. No pause. Clip to the court hole. Fireball and ice comet **ricochet** (`sfx_wall.wav`) — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it. Other courts stay empty of this hawk.
 
+A **live gold X** rides Kite’s tarmac (`art/kite/kite_court_x.png`, keyed magenta `#FF00FF`, packed **192×192**, dest **156×156**). On **Kite’s floor** (2P) it sits on the painted X (`World` `KITE_X_CX_PX` **719**, `KITE_X_CY_PX` **529** — the floor mark is high of geometric center) and **spins in place** (~10s per turn). Bounce off whichever arm you hit (`sfx_wall.wav`) — no freeze, no chip, no paddle lock. HARD’s intercept includes that bounce. Paddles ignore it. Other courts stay empty of this X.
+
 **Ice burst** (`art/ui_ice_burst_a.png`, `_b`, `_c`)
 
 Three keyed ice-shatter frames, 128×128. Overlay when the ice comet dies. Magenta `#FF00FF`.
@@ -695,6 +699,7 @@ Round win in-court is the `YOU WIN` / `YOU LOSE` overlay when a **set** is taken
 - Live center dash (`rivet/rivet_court_trace.png`) on Rivet’s court
 - Live street hovercar (`hex/hex_car.png`) on Hex’s court — bottom → pause on X → top, loop
 - Live aerie hawk (`quill/quill_court_hawk_{a,c,b}.png`) on Quill’s court — rounded square around the rims, skip the X
+- Live gold X (`kite/kite_court_x.png`) on Kite’s court — spins in place on the painted mark
 - `ROUND` / `FIGHT` / `YOU WIN` / `YOU LOSE` banners
 - Select cursor (`ui_1p.png` / `ui_2p.png`), arrows (`ui_arrow_left.png` + flip), SELECT (`ui_btn_select.png`)
 - VS arrows cycle EASY/HARD; the EASY/HARD button starts the match
