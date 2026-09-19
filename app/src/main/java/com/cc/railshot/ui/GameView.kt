@@ -1292,7 +1292,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     }
     if (resultCardT < RESULT_LOCK_S) return
     val size = vh * 0.042f
-    drawMenuItem(canvas, "[ CONTINUE ]", vw * 0.25f, vh - 32f * dp, size, focused = true)
+    drawMenuItem(canvas, "CONTINUE", vw * 0.25f, vh - 32f * dp, size, focused = true)
   }
 
   private fun drawFighter(

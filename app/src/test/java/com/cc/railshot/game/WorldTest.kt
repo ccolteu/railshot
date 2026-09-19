@@ -38,7 +38,7 @@ class WorldTest {
     assertEquals(World.CHIP_COUNT - 1, world.cpuChipsLeft())
     assertTrue(world.drainSfx().contains(GameSfx.CHIP))
     assertTrue(world.impactFrozen())
-    assertEquals(100, world.youSkill)
+    assertEquals(200, world.youSkill)
     val frozenX = world.ballX
     world.step(1f / 60f)
     assertEquals(frozenX, world.ballX, 0.0001f)
@@ -938,6 +938,8 @@ class WorldTest {
     assertEquals(200, World.skillPoints(0, ice = true))
     assertEquals(600, World.skillPoints(1, ice = true))
     assertEquals(1000, World.skillPoints(2, ice = true))
+    assertEquals(200, World.skillPoints(0, level = CpuLevel.HARD))
+    assertEquals(400, World.skillPoints(0, ice = true, level = CpuLevel.HARD))
   }
 
   @Test
@@ -957,6 +959,20 @@ class WorldTest {
     val popY = world.skillPopups[0].y
     world.step(1f / 60f)
     assertTrue(world.skillPopups[0].y < popY)
+  }
+
+  @Test
+  fun hardSkillIsDoubleEasy() {
+    val world = World(you = Fighter.RIVET, rival = Fighter.ASH, cpuLevel = CpuLevel.HARD)
+    val target = world.chips.first { it.side == Side.CPU && it.slot == 2 && it.alive }
+    world.armYouShot(0)
+    world.placeBall(target.x - World.BALL_R_X - 0.001f, target.y + target.h / 2f, 0.9f, 0f)
+    var guard = 0
+    while (world.youScore == 0 && world.phase == Phase.PLAYING && guard++ < 40) {
+      world.step(1f / 60f)
+    }
+    assertEquals(200, world.youSkill)
+    assertEquals(200, world.skillPopups[0].value)
   }
 
   @Test

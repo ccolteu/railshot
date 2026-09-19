@@ -1240,7 +1240,7 @@ class World(
   private fun awardChip(hit: Chip, ice: Boolean) {
     if (hit.side == Side.CPU) youScore += 1 else cpuScore += 1
     val n = if (ice) starBankBounces else bankBounces
-    val pts = skillPoints(n, ice)
+    val pts = skillPoints(n, ice, cpuLevel)
     spawnSkillPopup(hit, pts)
     if (attract) return
     val fromYou = if (ice) starFromYou else lastPaddle == Side.YOU
@@ -2033,7 +2033,7 @@ class World(
     const val SKILL_POP_SPEED = 90f / 864f
     const val SKILL_POP_LIFE = 0.75f
 
-    fun skillPoints(bounces: Int, ice: Boolean = false): Int {
+    fun skillPoints(bounces: Int, ice: Boolean = false, level: CpuLevel = CpuLevel.EASY): Int {
       val n = bounces.coerceAtLeast(0)
       val base =
         when (n) {
@@ -2041,7 +2041,8 @@ class World(
           1 -> 300
           else -> 500 + (n - 2) * 200
         }
-      return if (ice) base * 2 else base
+      val raw = if (ice) base * 2 else base
+      return raw * level.skillMul
     }
     /**
      * Ash court template on the 1440×1080 floor PNG.

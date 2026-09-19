@@ -30,4 +30,7 @@ enum class CpuLevel {
 
   /** 1-based EEPROM table id, same shape as WW2 Blitz. */
   val table: Int get() = ordinal + 1
+
+  /** Skill payout vs EASY. HARD is ×2 so the HARD ranking table is reachable. */
+  val skillMul: Int get() = if (this == HARD) 2 else 1
 }
