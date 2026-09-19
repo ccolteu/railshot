@@ -35,7 +35,6 @@ data class FighterArt(
 )
 
 object UiArt {
-  const val PLAYER_SELECT = "ui_player_select.png"
   const val VS = "ui_vs.png"
   const val SELECT_BG = "ui_select_bg.png"
   const val VS_BG = "ui_vs_bg.png"
@@ -49,16 +48,6 @@ object UiArt {
   const val WORD_FIGHTER = "ui_fighter.png"
   const val BADGE_1P = "ui_1p.png"
   const val BADGE_2P = "ui_2p.png"
-  const val BTN_SELECT = "ui_btn_select.png"
-  const val BTN_CONTINUE = "ui_btn_continue.png"
-  const val BTN_START = "ui_btn_start.png"
-  const val BTN_EASY = "ui_btn_easy.png"
-  const val BTN_HARD = "ui_btn_hard.png"
-  const val BTN_ARCADE = "ui_btn_arcade.png"
-  const val BTN_VS = "ui_btn_vs.png"
-  const val ARROW_LEFT = "ui_arrow_left.png"
-  const val FACE_FRAME_ON = "ui_face_frame_on.png"
-  const val FACE_FRAME_OFF = "ui_face_frame_off.png"
   const val BALL = "ui_ball.png"
   const val ICE_BALL = "ui_ice_ball.png"
 
