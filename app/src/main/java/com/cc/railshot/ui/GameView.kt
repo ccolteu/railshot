@@ -1211,7 +1211,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       courtH,
     )
     drawBall(canvas, courtL, courtT, courtW, courtH)
-    drawSkillPops(canvas, courtL, courtT, courtW, courtH)
     when (world.phase) {
       Phase.ROUND -> {
         val banner = keyed(UiArt.ROUND)
@@ -1263,6 +1262,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     drawSetDots(canvas, World.P2_SETS_INSET, world.cpuSets, CPU, vw, vh)
     drawWellText(canvas, World.P2_NAME_INSET, rival.displayName.uppercase(), CREAM, 0.42f, vw, vh)
     drawWellText(canvas, World.P2_SCORE_INSET, world.cpuScore.toString().padStart(2, '0'), CPU, 0.72f, vw, vh)
+    drawSkillPops(canvas, courtL, courtT, courtW, courtH, vw, vh)
     canvas.restore()
   }
 
@@ -1447,12 +1447,18 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     courtT: Float,
     courtW: Float,
     courtH: Float,
+    vw: Float,
+    vh: Float,
   ) {
     if (world.skillPopups.isEmpty()) return
     val size = courtH * (36f / 864f)
     val drop = courtH * (2f / 864f)
     popupPaint.textSize = size
     popupShadowPaint.textSize = size
+    val fm = popupPaint.fontMetrics
+    val padX = size * 0.12f
+    val minY = -fm.ascent + padX
+    val maxY = vh - fm.descent - padX
     for (pop in world.skillPopups) {
       val fade = (1f - pop.age / World.SKILL_POP_LIFE).coerceIn(0f, 1f)
       val alpha = (255f * fade).toInt()
@@ -1460,11 +1466,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       popupPaint.alpha = alpha
       popupShadowPaint.alpha = alpha
       val text = pop.value.toString()
-      val x = courtL + pop.x * courtW
-      val y = courtT + pop.y * courtH
       val w = popupPaint.measureText(text)
-      canvas.drawText(text, x - w * 0.5f + drop, y + drop, popupShadowPaint)
-      canvas.drawText(text, x - w * 0.5f, y, popupPaint)
+      val half = w * 0.5f
+      val x = (courtL + pop.x * courtW).coerceIn(half + padX, vw - half - padX)
+      val y = (courtT + pop.y * courtH).coerceIn(minY, maxY)
+      canvas.drawText(text, x - half + drop, y + drop, popupShadowPaint)
+      canvas.drawText(text, x - half, y, popupPaint)
     }
     popupPaint.alpha = 255
     popupShadowPaint.alpha = 255
