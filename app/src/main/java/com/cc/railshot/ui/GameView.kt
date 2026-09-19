@@ -182,14 +182,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       strokeWidth = 2f
       isAntiAlias = false
     }
-  private val uiSelectCornerPaint =
-    Paint().apply {
-      color = 0xFFFFD54A.toInt()
-      style = Paint.Style.STROKE
-      strokeWidth = 8f
-      strokeCap = Paint.Cap.SQUARE
-      isAntiAlias = false
-    }
   private var arcadeTypeface: Typeface? = null
   private var titleFocus = 2
   private var titleCommitT = -1f
@@ -823,40 +815,27 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     uiSelectIdleInnerPaint.strokeWidth = 2f * s
     uiSelectFocusStrokePaint.strokeWidth = 6f * s
     uiSelectFocusInnerPaint.strokeWidth = 2f * s
-    uiSelectCornerPaint.strokeWidth = 8f * s
     val outer = if (focused) uiSelectFocusStrokePaint else uiSelectIdleStrokePaint
     val inner = if (focused) uiSelectFocusInnerPaint else uiSelectIdleInnerPaint
     canvas.drawRect(rect, outer)
     val inset = 8f * s
     canvas.drawRect(rect.left + inset, rect.top + inset, rect.right - inset, rect.bottom - inset, inner)
-    uiSelectCornerPaint.color = if (focused) 0xFFFFD54A.toInt() else 0xFF6E6E6E.toInt()
-    val tick = 26f * s
-    val l = rect.left
-    val t = rect.top
-    val r = rect.right
-    val b = rect.bottom
-    canvas.drawLine(l, t, l + tick, t, uiSelectCornerPaint)
-    canvas.drawLine(l, t, l, t + tick, uiSelectCornerPaint)
-    canvas.drawLine(r, t, r - tick, t, uiSelectCornerPaint)
-    canvas.drawLine(r, t, r, t + tick, uiSelectCornerPaint)
-    canvas.drawLine(l, b, l + tick, b, uiSelectCornerPaint)
-    canvas.drawLine(l, b, l, b - tick, uiSelectCornerPaint)
-    canvas.drawLine(r, b, r - tick, b, uiSelectCornerPaint)
-    canvas.drawLine(r, b, r, b - tick, uiSelectCornerPaint)
   }
 
   private fun drawRanking(canvas: Canvas, sw: Float, sh: Float) {
     blitFill(canvas, opaque(UiArt.SELECT_BG), 0f, 0f, sw, sh)
     val cx = sw * 0.5f
     val dip = cpuLevel.table
-    drawGoldLine(canvas, "TOP SCORES", cx, sh * 0.10f, sh * 0.075f)
+    drawGoldLine(canvas, "TOP SCORES", cx, sh * 0.09f, sh * 0.055f)
     val diff = if (cpuLevel == CpuLevel.EASY) "EASY" else "HARD"
-    drawGoldLine(canvas, diff, cx, sh * 0.16f, sh * 0.045f, CREAM)
-    val rowStep = sh * 0.062f
-    val size = sh * 0.038f
+    drawGoldLine(canvas, diff, cx, sh * 0.148f, sh * 0.036f, CREAM)
+    val rowTop = sh * 0.22f
+    val rowStep = sh * 0.068f
+    val size = sh * 0.036f
     var i = 0
     while (i < HighScoreManager.SLOT_COUNT) {
       rankLine.setLength(0)
+      if (i < 9) rankLine.append(' ')
       rankLine.append(i + 1)
       rankLine.append(' ')
       val score = HighScoreManager.scoreAt(dip, i).coerceIn(0, 99_999_999)
@@ -878,11 +857,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       rankLine.append(HighScoreManager.nameChar(dip, i, 2))
       rankLine.append("  FT")
       rankLine.append(HighScoreManager.fightsAt(dip, i))
-      drawGoldLine(canvas, rankLine, cx, sh * 0.23f + i * rowStep, size, CREAM)
+      drawGoldLine(canvas, rankLine, cx, rowTop + i * rowStep, size, CREAM)
       i++
     }
     if ((System.currentTimeMillis() / 600L) % 2L == 0L) {
-      drawGoldLine(canvas, "1P START", cx, sh * 0.93f, sh * 0.042f)
+      drawGoldLine(canvas, "1P START", cx, sh * 0.94f, sh * 0.038f)
     }
   }
 

@@ -12,6 +12,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.cc.railshot.game.HighScoreManager
 import com.cc.railshot.ui.GameView
 
 class MainActivity : Activity() {
@@ -36,6 +37,7 @@ class MainActivity : Activity() {
 
   override fun onPause() {
     SoundManager.instance.pauseAll()
+    HighScoreManager.flush(this)
     super.onPause()
   }
 

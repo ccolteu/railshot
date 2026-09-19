@@ -1,8 +1,9 @@
 package com.cc.railshot.game
 
 import android.content.Context
+import java.io.File
 
-/** Two EEPROM tables (EASY / HARD) × top 10, WW2 Blitz shape. */
+/** Two EEPROM tables (EASY / HARD) × top 10, WW2 Blitz shape. Survives process death and APK updates. */
 object HighScoreManager {
 
   const val SLOT_COUNT = 10
@@ -15,6 +16,8 @@ object HighScoreManager {
   private var hydrated = false
 
   private const val PREFS_NAME = "arcade_leaderboard"
+  private const val EEPROM_FILE = "arcade_leaderboard.eeprom"
+  private const val EEPROM_MAGIC = "RS1"
 
   private val FALLBACK_NAMES =
     arrayOf("ASH", "KIT", "RIV", "HEX", "QUL", "MAR", "ACE", "AAA", "AAA", "AAA")
@@ -35,23 +38,32 @@ object HighScoreManager {
     topNames[slot(difficultyIndex, index) * 3 + charIndex]
 
   fun loadHighScores(context: Context) {
+    val app = context.applicationContext
     if (hydrated) return
-    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    var table = 0
-    while (table < DIFF_TABLES) {
-      val dip = table + 1
-      var i = 0
-      while (i < SLOT_COUNT) {
-        val si = slot(dip, i)
-        topScores[si] = prefs.getInt(scoreKey(dip, i), fallbackScore(table, i))
-        topFights[si] = prefs.getInt(fightKey(dip, i), fallbackFight(i))
-        writeName(si, prefs.getString(nameKey(dip, i), FALLBACK_NAMES[i]))
-        i++
+    val file = File(app.filesDir, EEPROM_FILE)
+    val fromFile = file.isFile && file.length() > 0L && readEepromFile(file)
+    if (!fromFile) {
+      val prefs = app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      var table = 0
+      while (table < DIFF_TABLES) {
+        val dip = table + 1
+        var i = 0
+        while (i < SLOT_COUNT) {
+          val si = slot(dip, i)
+          topScores[si] = prefs.getInt(scoreKey(dip, i), fallbackScore(table, i))
+          topFights[si] = prefs.getInt(fightKey(dip, i), fallbackFight(i))
+          writeName(si, prefs.getString(nameKey(dip, i), FALLBACK_NAMES[i]))
+          i++
+        }
+        table++
       }
-      table++
     }
     hydrated = true
-    persist(context)
+    persist(app)
+  }
+
+  fun flush(context: Context) {
+    if (hydrated) persist(context.applicationContext)
   }
 
   fun checkIfQualifies(newScore: Int, difficultyIndex: Int): Boolean {
@@ -69,7 +81,7 @@ object HighScoreManager {
     difficultyIndex: Int,
   ): Boolean {
     if (!insertInMemory(newScore, char1, char2, char3, fightsWon, difficultyIndex)) return false
-    persist(context)
+    persist(context.applicationContext)
     return true
   }
 
@@ -132,7 +144,8 @@ object HighScoreManager {
   }
 
   private fun persist(context: Context) {
-    val editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+    val app = context.applicationContext
+    val editor = app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
     var table = 0
     while (table < DIFF_TABLES) {
       val dip = table + 1
@@ -151,7 +164,76 @@ object HighScoreManager {
       }
       table++
     }
-    editor.apply()
+    editor.commit()
+    writeEepromFile(app)
+  }
+
+  private fun writeEepromFile(context: Context) {
+    val dest = File(context.filesDir, EEPROM_FILE)
+    val tmp = File(context.filesDir, "$EEPROM_FILE.tmp")
+    try {
+      tmp.outputStream().use { out ->
+        val body = StringBuilder(256)
+        body.append(EEPROM_MAGIC).append('\n')
+        var table = 0
+        while (table < DIFF_TABLES) {
+          val dip = table + 1
+          var i = 0
+          while (i < SLOT_COUNT) {
+            val si = slot(dip, i)
+            val base = si * 3
+            body.append(dip).append(' ')
+            body.append(i).append(' ')
+            body.append(topScores[si]).append(' ')
+            body.append(topFights[si]).append(' ')
+            body.append(topNames[base])
+            body.append(topNames[base + 1])
+            body.append(topNames[base + 2])
+            body.append('\n')
+            i++
+          }
+          table++
+        }
+        out.write(body.toString().toByteArray(Charsets.UTF_8))
+        out.flush()
+        out.fd.sync()
+      }
+      if (!tmp.renameTo(dest)) {
+        tmp.copyTo(dest, overwrite = true)
+        tmp.delete()
+      }
+    } catch (_: Exception) {
+      tmp.delete()
+    }
+  }
+
+  private fun readEepromFile(file: File): Boolean {
+    return try {
+      val lines = file.readLines(Charsets.UTF_8)
+      if (lines.isEmpty() || lines[0] != EEPROM_MAGIC) return false
+      var loaded = 0
+      var n = 1
+      while (n < lines.size) {
+        val parts = lines[n].trim().split(' ')
+        n++
+        if (parts.size < 5) continue
+        val dip = parts[0].toIntOrNull() ?: continue
+        val index = parts[1].toIntOrNull() ?: continue
+        val score = parts[2].toIntOrNull() ?: continue
+        val fights = parts[3].toIntOrNull() ?: continue
+        val name = parts[4]
+        if (dip < 1 || dip > DIFF_TABLES || index < 0 || index >= SLOT_COUNT) continue
+        if (name.length < 3) continue
+        val si = slot(dip, index)
+        topScores[si] = score.coerceIn(0, 99_999_999)
+        topFights[si] = fights.coerceAtLeast(0)
+        writeName(si, name)
+        loaded++
+      }
+      loaded == DIFF_TABLES * SLOT_COUNT
+    } catch (_: Exception) {
+      false
+    }
   }
 
   private fun seedTable(table: Int) {
