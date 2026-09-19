@@ -871,42 +871,52 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   }
 
   private fun layoutRegisterHits(sw: Float, sh: Float) {
-    registerLeft.set(0f, sh * 0.25f, sw * 0.45f, sh * 0.65f)
-    registerRight.set(sw * 0.55f, sh * 0.25f, sw, sh * 0.65f)
-    registerSet.set(sw * 0.10f, sh * 0.75f, sw * 0.90f, sh * 0.88f)
+    val letterY = sh * 0.52f
+    val letterSize = sh * 0.11f
+    registerLeft.set(0f, letterY - letterSize * 1.2f, sw * 0.42f, letterY + letterSize * 0.7f)
+    registerRight.set(sw * 0.58f, letterY - letterSize * 1.2f, sw, letterY + letterSize * 0.7f)
+    registerSet.set(sw * 0.08f, sh * 0.72f, sw * 0.92f, sh * 0.90f)
   }
 
   private fun drawRegister(canvas: Canvas, sw: Float, sh: Float) {
     blitFill(canvas, opaque(UiArt.SELECT_BG), 0f, 0f, sw, sh)
     layoutRegisterHits(sw, sh)
     val cx = sw * 0.5f
-    drawGoldLine(canvas, "REGISTRATION", cx, sh * 0.16f, sh * 0.07f, CPU)
-    drawGoldLine(canvas, "HI-SCORE ENTRY", cx, sh * 0.24f, sh * 0.04f, CREAM)
+    drawGoldLine(canvas, "REGISTRATION", cx, sh * 0.14f, sh * 0.058f, CPU)
+    drawGoldLine(canvas, "HI-SCORE ENTRY", cx, sh * 0.21f, sh * 0.032f, CREAM)
     val diff = if (cpuLevel == CpuLevel.EASY) "EASY" else "HARD"
-    drawGoldLine(canvas, diff, cx, sh * 0.30f, sh * 0.04f)
-    val letterSize = sh * 0.12f
-    val spacing = sh * 0.18f
+    drawGoldLine(canvas, diff, cx, sh * 0.275f, sh * 0.038f)
+    val letterSize = sh * 0.11f
+    goldPaint.textSize = letterSize
+    val letterW = goldPaint.measureText("W")
+    val markW = goldPaint.measureText(">")
+    val gap = letterSize * 0.22f
+    val spacing = letterW + markW * 2f + gap * 2.4f
     val startX = cx - spacing
-    val letterY = sh * 0.50f
+    val letterY = sh * 0.52f
     val blink = sin(registerT * 14f) * 0.5f + 0.5f
-    val blinkAlpha = (80f + blink * 175f).toInt()
-    val wing = sh * 0.08f
+    val blinkAlpha = (90f + blink * 165f).toInt()
     var idx = 0
     while (idx < 3) {
       val slotX = startX + idx * spacing
       val ch = if (idx == registerCharIndex) registerChar else registerName[idx]
+      val glyph = ch.toString()
       if (idx == registerCharIndex) {
         goldPaint.alpha = blinkAlpha
         goldShadowPaint.alpha = blinkAlpha
-        drawGoldLine(canvas, "<", slotX - wing, letterY, letterSize * 0.45f, CREAM)
-        drawGoldLine(canvas, ">", slotX + wing, letterY, letterSize * 0.45f, CREAM)
+        goldRimPaint.alpha = blinkAlpha
+        goldPaint.textSize = letterSize
+        val chW = goldPaint.measureText(glyph)
+        drawGoldLine(canvas, "<", slotX - chW * 0.5f - gap - markW * 0.5f, letterY, letterSize, CREAM)
+        drawGoldLine(canvas, ">", slotX + chW * 0.5f + gap + markW * 0.5f, letterY, letterSize, CREAM)
       }
-      drawGoldLine(canvas, ch.toString(), slotX, letterY, letterSize)
+      drawGoldLine(canvas, glyph, slotX, letterY, letterSize)
       goldPaint.alpha = 255
       goldShadowPaint.alpha = 255
+      goldRimPaint.alpha = 255
       idx++
     }
-    drawGoldLine(canvas, "[ TAP TO LOCK INITIAL ]", cx, sh * 0.82f, sh * 0.032f)
+    drawGoldLine(canvas, "TAP TO LOCK INITIAL", cx, sh * 0.78f, sh * 0.034f)
   }
 
   private fun touchRegister(x: Float, y: Float, sw: Float, sh: Float) {
