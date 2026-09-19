@@ -77,6 +77,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private var cpuLevel: CpuLevel = CpuLevel.EASY
   private var world = World()
   private var announced: Phase? = null
+  private var setWinSfxPlayed = false
   private var dragging = false
   private var grabOffsetY = 0f
   private var grabPointerId = -1
@@ -452,10 +453,20 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     if (phase != announced) {
       announced = phase
       when (phase) {
-        Phase.ROUND -> SoundManager.instance.playSFX(SoundManager.roundCall(world.roundNumber()))
+        Phase.ROUND -> SoundManager.instance.playRoundCall(world.roundNumber())
         Phase.SERVE -> SoundManager.instance.playSFX(SoundManager.SFX_FIGHT)
         else -> {}
       }
+    }
+    if (phase == Phase.SET_WIN && world.setWinBannerVisible()) {
+      if (!setWinSfxPlayed) {
+        setWinSfxPlayed = true
+        SoundManager.instance.playSFX(
+          if (world.setWinner == Side.YOU) SoundManager.SFX_WIN else SoundManager.SFX_LOSE,
+        )
+      }
+    } else {
+      setWinSfxPlayed = false
     }
     if (phase == Phase.YOU_WIN || phase == Phase.CPU_WIN) {
       resultCardT += dt

@@ -42,6 +42,8 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
       applyBgmVolumeLocked()
     }
   }
+  private var pendingRoundNumberId = -1
+  private val playRoundNumberRunnable = Runnable { playPendingRoundNumber() }
 
   private val onBgmComplete = MediaPlayer.OnCompletionListener { mp ->
     synchronized(lock) {
@@ -128,11 +130,38 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
         calloutDuck = true
         applyBgmVolumeLocked()
         bgmHandler.removeCallbacks(unduckCalloutRunnable)
-        val holdMs = if (id == SFX_FIGHT) 550L else 1200L
+        val holdMs =
+          when (id) {
+            SFX_FIGHT -> 550L
+            SFX_ROUND -> ROUND_WORD_MS + ROUND_NUMBER_MS
+            SFX_1, SFX_2, SFX_3 -> ROUND_NUMBER_MS
+            SFX_WIN -> 450L
+            SFX_LOSE -> 700L
+            else -> 1200L
+          }
         bgmHandler.postDelayed(unduckCalloutRunnable, holdMs)
       }
       pool.play(sid, out, out, priority, 0, playback)
     }
+  }
+
+  fun playRoundCall(roundNumber: Int) {
+    playSFX(SFX_ROUND)
+    synchronized(lock) {
+      pendingRoundNumberId = roundNumberId(roundNumber)
+      bgmHandler.removeCallbacks(playRoundNumberRunnable)
+      bgmHandler.postDelayed(playRoundNumberRunnable, ROUND_WORD_MS)
+    }
+  }
+
+  private fun playPendingRoundNumber() {
+    val id =
+      synchronized(lock) {
+        val pending = pendingRoundNumberId
+        pendingRoundNumberId = -1
+        pending
+      }
+    if (id >= 0) playSFX(id)
   }
 
   fun stopBGM() {
@@ -220,6 +249,8 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
       bgmWasPlaying = false
       cancelChainNextLoopLocked()
       bgmHandler.removeCallbacks(unduckCalloutRunnable)
+      bgmHandler.removeCallbacks(playRoundNumberRunnable)
+      pendingRoundNumberId = -1
       paused = false
       ducking = false
       calloutDuck = false
@@ -453,19 +484,24 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
   companion object {
     const val SFX_ARROW = 0
     const val SFX_SELECT = 1
-    const val SFX_ROUND1 = 2
-    const val SFX_ROUND2 = 3
-    const val SFX_ROUND3 = 4
-    const val SFX_FIGHT = 5
-    const val SFX_SHIELD = 6
-    const val SFX_CHIP = 7
-    const val SFX_ICE = 8
-    const val SFX_WALL = 9
+    const val SFX_ROUND = 2
+    const val SFX_1 = 3
+    const val SFX_2 = 4
+    const val SFX_3 = 5
+    const val SFX_FIGHT = 6
+    const val SFX_SHIELD = 7
+    const val SFX_CHIP = 8
+    const val SFX_ICE = 9
+    const val SFX_WALL = 10
+    const val SFX_WIN = 11
+    const val SFX_LOSE = 12
 
     val BGM_MATCH: Int
       get() = R.raw.bgm_match
 
-    private const val SFX_COUNT = 10
+    private const val SFX_COUNT = 13
+    private const val ROUND_WORD_MS = 832L
+    private const val ROUND_NUMBER_MS = 500L
     private const val MAX_SFX = 16
     private const val MAX_STREAMS = 12
     private const val DUCK_VOLUME = 0.45f
@@ -476,29 +512,38 @@ class SoundManager private constructor() : AudioManager.OnAudioFocusChangeListen
     private const val CHAIN_PREPARE_DELAY_MS = 16L
 
     private fun isCallout(id: Int): Boolean =
-      id == SFX_FIGHT || id == SFX_ROUND1 || id == SFX_ROUND2 || id == SFX_ROUND3
+      id == SFX_FIGHT ||
+        id == SFX_ROUND ||
+        id == SFX_1 ||
+        id == SFX_2 ||
+        id == SFX_3 ||
+        id == SFX_WIN ||
+        id == SFX_LOSE
 
     private val SFX_RAW =
       intArrayOf(
         R.raw.sfx_arrow,
         R.raw.sfx_select,
-        R.raw.sfx_round1,
-        R.raw.sfx_round2,
-        R.raw.sfx_round3,
+        R.raw.sfx_round,
+        R.raw.sfx_1,
+        R.raw.sfx_2,
+        R.raw.sfx_3,
         R.raw.sfx_fight,
         R.raw.sfx_shield,
         R.raw.sfx_chip,
         R.raw.sfx_ice,
         R.raw.sfx_wall,
+        R.raw.sfx_win,
+        R.raw.sfx_lose,
       )
 
     val instance: SoundManager by lazy { SoundManager() }
 
-    fun roundCall(roundNumber: Int): Int =
+    private fun roundNumberId(roundNumber: Int): Int =
       when (roundNumber) {
-        2 -> SFX_ROUND2
-        3 -> SFX_ROUND3
-        else -> SFX_ROUND1
+        2 -> SFX_2
+        3 -> SFX_3
+        else -> SFX_1
       }
   }
 }
