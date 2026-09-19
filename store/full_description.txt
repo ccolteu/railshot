@@ -2,8 +2,11 @@ Grab the shield. Serve the fireball.
 
 Rail Shot is a landscape arcade volley built like a cabinet: one credit, a 4:3 court in chrome, six original fighters. You drag your rail, you smash the shot, you flatten the other side’s life chips. Best of three sets. First to two wins the match.
 
-HOW TO PLAY
+HOW TO PLAY — PHONE
 Tap the court to serve. Drag only if the thumb lands on your fighter — the shield follows, it does not teleport. Rally until a gate falls. Double-tap empty court to call your once-per-set ice comet at a living chip near the tap. The fireball keeps going through shields. The ice comet does not: a smash shatters it.
+
+HOW TO PLAY — HANDHELD
+Landscape, same as a Retroid Pocket. Left stick (or D-pad) moves P1’s rail. A or Start serves and confirms menus. B calls the ice comet at your rail height. Stick left/right walks title (ARCADE / EASY-HARD / VS) and the select roster. Y toggles EASY/HARD. Phone thumb unchanged.
 
 A MATCH
 Each set is one rack of chips. ROUND, then FIGHT, then play. Time counts 99 to 00. At zero, more chips remaining takes the set; a tie is sudden death. Skill lives in the TIME well — wall bounces pay, ice pays double, HARD pays double. VS resets the credit. Arcade carries the score until you lose or clear the ladder.
@@ -27,7 +30,7 @@ Each 2P floor has its own furniture: Ash’s rising walls, Rivet’s gold trace,
 WHAT THIS APP IS NOT
 Not online. Not a live-service. No ads, no in-app purchases, no sign-in. Rankings live on this device.
 
-Landscape. Offline. One thumb.
+Landscape. Offline. Thumb or stick.
 
 Rail Shot. Insert one player.
 

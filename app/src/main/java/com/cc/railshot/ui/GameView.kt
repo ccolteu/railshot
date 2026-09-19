@@ -11,9 +11,11 @@ import android.graphics.Typeface
 import android.os.Build
 import android.os.SystemClock
 import android.view.Choreographer
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import com.cc.railshot.CabinetPad
 import com.cc.railshot.SoundManager
 import com.cc.railshot.game.CabinetInset
 import com.cc.railshot.game.CpuLevel
@@ -183,6 +185,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       strokeWidth = 2f
       isAntiAlias = false
     }
+  private val cabinetPad = CabinetPad()
   private var arcadeTypeface: Typeface? = null
   private val appVersionName: String
   private var titleFocus = 2
@@ -219,6 +222,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   override fun surfaceCreated(holder: SurfaceHolder) {
     running = true
     lastNanos = 0L
+    requestFocus()
     choreographer.postFrameCallback(this)
   }
 
@@ -241,6 +245,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       if (lastNanos == 0L) 0f
       else ((frameTimeNanos - lastNanos).coerceIn(0L, MAX_FRAME_NS) / 1_000_000_000f)
     lastNanos = frameTimeNanos
+    applyPadMenus(dt)
+    applyPadRail(dt)
     when (screen) {
       Screen.TITLE -> {
         if (titleCommitT >= 0f) {
@@ -315,6 +321,151 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
         if (event.actionMasked == MotionEvent.ACTION_DOWN) touchRegister(x, y, sw, sh)
     }
     return true
+  }
+
+  fun offerGenericMotion(event: MotionEvent): Boolean {
+    if (!cabinetPad.ingestMotion(event)) return false
+    if ((screen == Screen.DEMO || screen == Screen.RANKING) && cabinetPad.menuStickActive()) {
+      goTitle()
+    }
+    return true
+  }
+
+  fun offerKeyEvent(event: KeyEvent): Boolean {
+    val code = event.keyCode
+    if (CabinetPad.isVolumeOrSystem(code)) return false
+    val down = event.action == KeyEvent.ACTION_DOWN
+    if (event.repeatCount > 0) return true
+    cabinetPad.ingestKey(down, code)
+    if (down && (screen == Screen.DEMO || screen == Screen.RANKING)) {
+      goTitle()
+      return true
+    }
+    if (down) dispatchPadDown(code)
+    return true
+  }
+
+  private fun applyPadMenus(dt: Float) {
+    when (screen) {
+      Screen.TITLE -> {
+        if (titleCommitT >= 0f) return
+        val dx = cabinetPad.pollMenuX(dt)
+        if (dx != 0) nudgeTitleFocus(dx)
+      }
+      Screen.SELECT -> {
+        if (select.step == SelectStep.LOCKED) return
+        val dx = cabinetPad.pollMenuX(dt)
+        if (dx != 0) {
+          selectIdleT = 0f
+          selectFocus = if (dx < 0) 0 else 2
+          SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
+          if (dx < 0) select.moveLeft() else select.moveRight()
+        }
+      }
+      Screen.REGISTER -> {
+        val dx = cabinetPad.pollMenuX(dt)
+        val dy = cabinetPad.pollMenuY(dt)
+        if (dx != 0) bumpRegisterChar(dx > 0)
+        else if (dy != 0) bumpRegisterChar(dy < 0)
+      }
+      else -> {}
+    }
+  }
+
+  private fun applyPadRail(dt: Float) {
+    if (screen != Screen.MATCH || dragging) return
+    if (world.phase == Phase.YOU_WIN || world.phase == Phase.CPU_WIN) return
+    if (!cabinetPad.sampleSteer()) return
+    world.moveYouPaddle(world.youPaddleY + cabinetPad.steerY() * CabinetPad.PAD_RAIL_SPEED * dt)
+  }
+
+  private fun dispatchPadDown(code: Int) {
+    when (screen) {
+      Screen.TITLE -> {
+        titleT = 0f
+        when {
+          code == KeyEvent.KEYCODE_DPAD_LEFT -> nudgeTitleFocus(-1)
+          code == KeyEvent.KEYCODE_DPAD_RIGHT -> nudgeTitleFocus(1)
+          CabinetPad.isDifficultyKey(code) -> toggleDifficulty()
+          CabinetPad.isConfirmKey(code) || CabinetPad.isStartKey(code) -> confirmTitleFocus()
+        }
+      }
+      Screen.SELECT -> {
+        if (select.step == SelectStep.LOCKED) return
+        selectIdleT = 0f
+        when (code) {
+          KeyEvent.KEYCODE_DPAD_LEFT -> {
+            selectFocus = 0
+            SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
+            select.moveLeft()
+          }
+          KeyEvent.KEYCODE_DPAD_RIGHT -> {
+            selectFocus = 2
+            SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
+            select.moveRight()
+          }
+          else ->
+            if (CabinetPad.isConfirmKey(code) || CabinetPad.isStartKey(code)) {
+              selectFocus = 1
+              SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
+              select.confirm()
+              lingerT = 0f
+            }
+        }
+      }
+      Screen.VS ->
+        if (CabinetPad.isConfirmKey(code) || CabinetPad.isStartKey(code)) {
+          SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
+          goMatch()
+        }
+      Screen.MATCH -> {
+        if (world.phase == Phase.YOU_WIN || world.phase == Phase.CPU_WIN) {
+          if (resultCardT >= RESULT_LOCK_S && (CabinetPad.isConfirmKey(code) || CabinetPad.isStartKey(code))) {
+            SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
+            leaveMatchResult()
+          }
+          return
+        }
+        if (CabinetPad.isConfirmKey(code) || CabinetPad.isStartKey(code)) {
+          if (world.phase == Phase.SET_WIN) world.skipSetWin()
+          else world.launch()
+        } else if (CabinetPad.isIceKey(code) && world.phase == Phase.PLAYING) {
+          world.callYouSpecial(world.youPaddleY)
+        }
+      }
+      Screen.REGISTER -> {
+        when (code) {
+          KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_DOWN -> bumpRegisterChar(false)
+          KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_UP -> bumpRegisterChar(true)
+          else ->
+            if (CabinetPad.isConfirmKey(code) || CabinetPad.isStartKey(code)) confirmRegisterLetter()
+        }
+      }
+      else -> {}
+    }
+  }
+
+  private fun nudgeTitleFocus(dir: Int) {
+    if (titleCommitT >= 0f) return
+    titleFocus = (titleFocus + dir + 3) % 3
+    titleT = 0f
+    SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
+  }
+
+  private fun confirmTitleFocus() {
+    when (titleFocus) {
+      0 -> armTitleCommit(PlayMode.ARCADE, 0)
+      1 -> toggleDifficulty()
+      else -> armTitleCommit(PlayMode.VS, 2)
+    }
+  }
+
+  private fun toggleDifficulty() {
+    if (titleCommitT >= 0f) return
+    titleFocus = 1
+    cpuLevel = if (cpuLevel == CpuLevel.HARD) CpuLevel.EASY else CpuLevel.HARD
+    SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
+    titleT = 0f
   }
 
   private fun goTitle() {
@@ -750,10 +901,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     }
     if (titleCommitT >= 0f) return
     if (diffBtn.contains(x, y)) {
-      titleFocus = 1
-      cpuLevel = if (cpuLevel == CpuLevel.HARD) CpuLevel.EASY else CpuLevel.HARD
-      SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
-      titleT = 0f
+      toggleDifficulty()
     }
   }
 

@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.media.AudioManager
 import android.os.Bundle
+import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -16,6 +18,8 @@ import com.cc.railshot.game.HighScoreManager
 import com.cc.railshot.ui.GameView
 
 class MainActivity : Activity() {
+  private var gameView: GameView? = null
+
   override fun onCreate(savedInstanceState: Bundle?) {
     installSplashScreen()
     super.onCreate(savedInstanceState)
@@ -28,11 +32,24 @@ class MainActivity : Activity() {
     SoundManager.instance.switchBGM(SoundManager.BGM_MATCH)
     val root = FrameLayout(this)
     val game = GameView(this)
+    gameView = game
     root.addView(
       game,
       FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
     )
     setContentView(root)
+  }
+
+  override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    val view = gameView
+    if (view != null && view.offerKeyEvent(event)) return true
+    return super.dispatchKeyEvent(event)
+  }
+
+  override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+    val view = gameView
+    if (view != null && view.offerGenericMotion(event)) return true
+    return super.dispatchGenericMotionEvent(event)
   }
 
   override fun onPause() {
