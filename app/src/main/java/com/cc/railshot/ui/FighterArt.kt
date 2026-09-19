@@ -45,6 +45,8 @@ object UiArt {
   const val YOU_LOSE = "ui_you_lose.png"
   const val WORD_RAIL = "ui_rail.png"
   const val WORD_SHOT = "ui_shot.png"
+  const val WORD_SELECT = "ui_select.png"
+  const val WORD_FIGHTER = "ui_fighter.png"
   const val BADGE_1P = "ui_1p.png"
   const val BADGE_2P = "ui_2p.png"
   const val BTN_SELECT = "ui_btn_select.png"

@@ -657,34 +657,27 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       else blitFit(canvas, bmp, box.left, box.top, box.width(), box.height())
     }
     val dp = sh / 360f
-    val gap = 5f * dp
+    val wordGap = 4f * dp
     val margin = 12f * dp
     val rail = keyedCropped(UiArt.WORD_RAIL)
     val shot = keyedCropped(UiArt.WORD_SHOT)
-    val rivet = titleSlots[2]
-    val hex = titleSlots[3]
-    // AABB inner edges are Rivet's axe / Hex's shield; the V opening is the torsos.
-    val leftClear = rivet.left + rivet.width() * 0.55f + margin
-    val rightClear = hex.left + hex.width() * 0.38f - margin
-    val cx = (leftClear + rightClear) / 2f
+    val ash = titleSlots[0]
+    val maru = titleSlots[5]
+    val leftClear = ash.right + margin
+    val rightClear = maru.left - margin
     val availW = (rightClear - leftClear).coerceAtLeast(1f)
-    val aspect = maxOf(rail.width / rail.height.toFloat(), shot.width / shot.height.toFloat())
-    val pocketH = (titleSlots[2].top + titleSlots[2].height() * 0.18f - titleSlots[0].top).coerceAtLeast(1f)
-    var wordH = availW / aspect
-    val stack = wordH * 2f + gap
-    if (stack > pocketH) wordH = ((pocketH - gap) / 2f).coerceAtLeast(1f)
-    val railW = wordH * (rail.width / rail.height.toFloat())
-    val shotW = wordH * (shot.width / shot.height.toFloat())
-    val top = titleSlots[0].top
-    blitFit(canvas, rail, cx - railW / 2f, top, railW, wordH)
-    blitFit(
-      canvas,
-      shot,
-      cx - shotW / 2f + 3f * dp,
-      top + wordH + gap - 1f * dp,
-      shotW,
-      wordH,
-    )
+    val railAspect = rail.width / rail.height.toFloat()
+    val shotAspect = shot.width / shot.height.toFloat()
+    var wordH = ((availW - wordGap) / (railAspect + shotAspect)).coerceAtLeast(1f)
+    val capH = sh * 0.16f
+    if (wordH > capH) wordH = capH
+    val railW = wordH * railAspect
+    val shotW = wordH * shotAspect
+    val pairW = railW + wordGap + shotW
+    val x = (leftClear + rightClear - pairW) / 2f + 10f * dp
+    val top = ash.top
+    blitFit(canvas, rail, x, top, railW, wordH)
+    blitFit(canvas, shot, x + railW + wordGap, top, shotW, wordH)
     layoutTitleHits(sw, sh)
     val size = sh * 0.042f
     val modeY = sh - sh * 0.105f
@@ -831,12 +824,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     blitFill(canvas, opaque(UiArt.SELECT_BG), 0f, 0f, sw, sh)
     val cx = sw * 0.5f
     val dip = cpuLevel.table
-    drawGoldLine(canvas, "TOP SCORES", cx, sh * 0.09f, sh * 0.055f)
+    drawGoldLine(canvas, "TOP SCORES", cx, sh * 0.105f, sh * 0.038f)
     val diff = if (cpuLevel == CpuLevel.EASY) "EASY" else "HARD"
-    drawGoldLine(canvas, diff, cx, sh * 0.148f, sh * 0.036f, CREAM)
-    val rowTop = sh * 0.22f
-    val rowStep = sh * 0.068f
-    val size = sh * 0.036f
+    drawGoldLine(canvas, diff, cx, sh * 0.175f, sh * 0.026f, CREAM)
+    val rowTop = sh * 0.25f
+    val rowStep = sh * 0.070f
+    val size = sh * 0.028f
     var i = 0
     while (i < HighScoreManager.SLOT_COUNT) {
       rankLine.setLength(0)
@@ -866,7 +859,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       i++
     }
     if ((System.currentTimeMillis() / 600L) % 2L == 0L) {
-      drawGoldLine(canvas, "1P START", cx, sh * 0.94f, sh * 0.038f)
+      drawGoldLine(canvas, "1P START", cx, sh * 0.95f, sh * 0.032f)
     }
   }
 
@@ -1003,24 +996,35 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val colT = 14f * dp
     val colW = sw * 0.50f - colL - 12f * dp
     val padH = 8f * dp
-    val padV = 8f * dp
-    val gapT = 6f * dp
+    val padV = 18f * dp
+    val n = Fighter.selectOrder.size
     val rowWTiles = sw - padH * 2f
-    val tile = (rowWTiles - gapT * (Fighter.selectOrder.size - 1)) / Fighter.selectOrder.size
+    val tile = (rowWTiles - 6f * dp * (n - 1)) / n * 0.9f * 1.05f
+    val frameS = (tile * 12f / 1080f).coerceAtLeast(0.5f)
+    val gapT = 6f * frameS + 5f * dp
+    val rowW = n * tile + (n - 1) * gapT
+    val rowL = padH + (rowWTiles - rowW) * 0.5f
     val rowTop = sh - padV - tile
     val colH = (rowTop - colT - 10f * dp).coerceAtLeast(1f)
-    val selectBmp = keyed(UiArt.PLAYER_SELECT)
+    val wordSelect = keyedCropped(UiArt.WORD_SELECT)
+    val wordFighter = keyedCropped(UiArt.WORD_FIGHTER)
+    val wordGap = 2f * dp
     val nameH = 28f * dp
     val flavorH = 15f * dp
     val ctrlH = sh * 0.07f
     val minGap = 10f * dp
-    val slots = 5f
+    val slots = 6f
     val bannerCap = (colH - nameH - flavorH - ctrlH - minGap * slots).coerceAtLeast(24f * dp)
-    val bannerH = min(colW * (selectBmp.height / selectBmp.width.toFloat()), bannerCap)
+    val eachCap = ((bannerCap - wordGap) / 2f).coerceAtLeast(12f * dp)
+    val selectH = min(colW * (wordSelect.height / wordSelect.width.toFloat()), eachCap)
+    val fighterH = min(colW * (wordFighter.height / wordFighter.width.toFloat()), eachCap)
+    val bannerH = selectH + wordGap + fighterH
     val gap = ((colH - bannerH - nameH - flavorH - ctrlH) / slots).coerceAtLeast(0f)
     var y = colT + gap
-    blitFit(canvas, selectBmp, colL, y, colW, bannerH)
-    y += bannerH + gap
+    blitFit(canvas, wordSelect, colL, y, colW, selectH)
+    y += selectH + wordGap
+    blitFit(canvas, wordFighter, colL, y, colW, fighterH)
+    y += fighterH + gap
     highlighted.art().nameSelect?.let { path ->
       val nw = colW * 0.55f
       blitFit(canvas, keyed(path), colL + (colW - nw) / 2f, y, nw, nameH)
@@ -1044,7 +1048,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     placeMenuHit(rightArrow, "R", rightCx, labelY, size)
 
     Fighter.selectOrder.forEachIndexed { i, fighter ->
-      val l = padH + i * (tile + gapT)
+      val l = rowL + i * (tile + gapT)
       faceTiles[i].set(l, rowTop, l + tile, rowTop + tile)
       drawFaceTile(canvas, fighter, i, faceTiles[i], dp)
     }
@@ -1682,20 +1686,29 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val colT = 14f * dp
     val colW = sw * 0.50f - colL - 12f * dp
     val padH = 8f * dp
-    val padV = 8f * dp
-    val gapT = 6f * dp
+    val padV = 18f * dp
+    val n = Fighter.selectOrder.size
     val rowWTiles = sw - padH * 2f
-    val tile = (rowWTiles - gapT * (Fighter.selectOrder.size - 1)) / Fighter.selectOrder.size
+    val tile = (rowWTiles - 6f * dp * (n - 1)) / n * 0.9f * 1.05f
+    val frameS = (tile * 12f / 1080f).coerceAtLeast(0.5f)
+    val gapT = 6f * frameS + 5f * dp
+    val rowW = n * tile + (n - 1) * gapT
+    val rowL = padH + (rowWTiles - rowW) * 0.5f
     val rowTop = sh - padV - tile
     val colH = (rowTop - colT - 10f * dp).coerceAtLeast(1f)
-    val selectBmp = keyed(UiArt.PLAYER_SELECT)
+    val wordSelect = keyedCropped(UiArt.WORD_SELECT)
+    val wordFighter = keyedCropped(UiArt.WORD_FIGHTER)
+    val wordGap = 2f * dp
     val nameH = 28f * dp
     val flavorH = 15f * dp
     val ctrlH = sh * 0.07f
     val minGap = 10f * dp
-    val slots = 5f
+    val slots = 6f
     val bannerCap = (colH - nameH - flavorH - ctrlH - minGap * slots).coerceAtLeast(24f * dp)
-    val bannerH = min(colW * (selectBmp.height / selectBmp.width.toFloat()), bannerCap)
+    val eachCap = ((bannerCap - wordGap) / 2f).coerceAtLeast(12f * dp)
+    val selectH = min(colW * (wordSelect.height / wordSelect.width.toFloat()), eachCap)
+    val fighterH = min(colW * (wordFighter.height / wordFighter.width.toFloat()), eachCap)
+    val bannerH = selectH + wordGap + fighterH
     val gap = ((colH - bannerH - nameH - flavorH - ctrlH) / slots).coerceAtLeast(0f)
     val y = colT + gap + bannerH + gap + nameH + gap + flavorH + gap + 6f * dp
     val size = sh * 0.038f
@@ -1707,7 +1720,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     placeMenuHit(selectBtn, "SELECT", selCx, labelY, size)
     placeMenuHit(rightArrow, "R", rightCx, labelY, size)
     Fighter.selectOrder.forEachIndexed { i, _ ->
-      val l = padH + i * (tile + gapT)
+      val l = rowL + i * (tile + gapT)
       faceTiles[i].set(l, rowTop, l + tile, rowTop + tile)
     }
   }

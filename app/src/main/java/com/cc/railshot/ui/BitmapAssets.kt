@@ -71,7 +71,8 @@ internal fun chromaKeyMagenta(src: Bitmap, keyHoleBleed: Boolean = false): Bitma
 }
 
 internal fun isKeyMagenta(r: Int, g: Int, b: Int): Boolean {
-  return r >= 240 && b >= 240 && g <= 16
+  if (r >= 240 && b >= 240 && g <= 16) return true
+  return r >= 190 && b >= 180 && g <= 48 && kotlin.math.abs(r - b) <= 48
 }
 
 internal fun isCabinetHoleBleed(r: Int, g: Int, b: Int): Boolean {
