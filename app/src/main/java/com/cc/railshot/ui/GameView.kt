@@ -130,7 +130,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     }
   private val goldPaint =
     Paint().apply {
-      color = GOLD
+      color = Color.YELLOW
       typeface = Typeface.DEFAULT_BOLD
       isAntiAlias = false
       isFakeBoldText = true
@@ -144,9 +144,73 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       isFakeBoldText = true
       textAlign = Paint.Align.CENTER
     }
+  private val goldRimPaint =
+    Paint().apply {
+      color = 0xFFB35400.toInt()
+      typeface = Typeface.DEFAULT_BOLD
+      isAntiAlias = false
+      isFakeBoldText = true
+      textAlign = Paint.Align.CENTER
+    }
+  private val uiSelectIdleStrokePaint =
+    Paint().apply {
+      color = 0xFF6E6E6E.toInt()
+      style = Paint.Style.STROKE
+      strokeWidth = 5f
+      strokeJoin = Paint.Join.MITER
+      isAntiAlias = false
+    }
+  private val uiSelectIdleInnerPaint =
+    Paint().apply {
+      color = 0xFF3A3A3A.toInt()
+      style = Paint.Style.STROKE
+      strokeWidth = 2f
+      isAntiAlias = false
+    }
+  private val uiSelectFocusStrokePaint =
+    Paint().apply {
+      color = 0xFFFFD54A.toInt()
+      style = Paint.Style.STROKE
+      strokeWidth = 6f
+      strokeJoin = Paint.Join.MITER
+      isAntiAlias = false
+    }
+  private val uiSelectFocusInnerPaint =
+    Paint().apply {
+      color = 0xFF00E5FF.toInt()
+      style = Paint.Style.STROKE
+      strokeWidth = 2f
+      isAntiAlias = false
+    }
+  private val uiSelectCornerPaint =
+    Paint().apply {
+      color = 0xFFFFD54A.toInt()
+      style = Paint.Style.STROKE
+      strokeWidth = 8f
+      strokeCap = Paint.Cap.SQUARE
+      isAntiAlias = false
+    }
+  private var arcadeTypeface: Typeface? = null
+  private var titleFocus = 2
+  private var titleCommitT = -1f
+  private var titleCommitMode: PlayMode? = null
+  private var selectFocus = 1
+  private val vsPortraitL = RectF()
+  private val vsPortraitR = RectF()
 
   init {
     HighScoreManager.loadHighScores(context)
+    try {
+      arcadeTypeface = Typeface.createFromAsset(context.assets, "fonts/arcade_font.ttf")
+    } catch (_: Exception) {
+    }
+    val face = arcadeTypeface ?: Typeface.DEFAULT_BOLD
+    goldPaint.typeface = face
+    goldShadowPaint.typeface = face
+    goldRimPaint.typeface = face
+    textPaint.typeface = face
+    popupPaint.typeface = face
+    popupShadowPaint.typeface = face
     holder.addCallback(this)
     isFocusable = true
     isFocusableInTouchMode = true
@@ -180,8 +244,17 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     lastNanos = frameTimeNanos
     when (screen) {
       Screen.TITLE -> {
-        titleT += dt
-        if (titleT >= TITLE_HOLD_S) goDemo()
+        if (titleCommitT >= 0f) {
+          titleCommitT += dt
+          if (titleCommitT >= TITLE_COMMIT_S) {
+            goSelect(titleCommitMode)
+            titleCommitT = -1f
+            titleCommitMode = null
+          }
+        } else {
+          titleT += dt
+          if (titleT >= TITLE_HOLD_S) goDemo()
+        }
       }
       Screen.DEMO -> stepDemo(dt)
       Screen.RANKING -> {
@@ -248,6 +321,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private fun goTitle() {
     screen = Screen.TITLE
     titleT = 0f
+    titleFocus = 2
+    titleCommitT = -1f
+    titleCommitMode = null
     demoT = 0f
     lingerT = 0f
     selectIdleT = 0f
@@ -407,16 +483,19 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val locked = select.step == SelectStep.LOCKED
     if (locked) return
     if (leftArrow.contains(x, y)) {
+      selectFocus = 0
       SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
       select.moveLeft()
       return
     }
     if (rightArrow.contains(x, y)) {
+      selectFocus = 2
       SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
       select.moveRight()
       return
     }
     if (selectBtn.contains(x, y)) {
+      selectFocus = 1
       SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
       select.confirm()
       lingerT = 0f
@@ -616,18 +695,22 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       shotW,
       wordH,
     )
-    blitFit(canvas, keyed(UiArt.BTN_ARCADE), arcadeBtn.left, arcadeBtn.top, arcadeBtn.width(), arcadeBtn.height())
-    blitFit(canvas, keyed(UiArt.BTN_VS), vsBtn.left, vsBtn.top, vsBtn.width(), vsBtn.height())
-    val diffArt = if (cpuLevel == CpuLevel.HARD) UiArt.BTN_HARD else UiArt.BTN_EASY
-    blitFit(canvas, keyed(diffArt), diffBtn.left, diffBtn.top, diffBtn.width(), diffBtn.height())
+    layoutTitleHits(sw, sh)
+    val size = sh * 0.042f
+    val modeY = sh - sh * 0.105f
+    val dipY = sh - sh * 0.048f
+    drawMenuItem(canvas, "ARCADE", arcadeBtn.centerX(), modeY, size, titleFocus == 0)
+    drawMenuItem(canvas, "VS", vsBtn.centerX(), modeY, size, titleFocus == 2)
+    val dip = if (cpuLevel == CpuLevel.HARD) "HARD" else "EASY"
+    drawMenuItem(canvas, dip, diffBtn.centerX(), dipY, size, titleFocus == 1)
   }
 
   private fun layoutTitleRoster(sw: Float, sh: Float) {
     val dp = sh / 360f
-    val btnH = chromeBtnH(sh)
+    val menuBand = sh * 0.18f
     val pad = 10f * dp
     val step = 24f * dp
-    val charH = (sh - pad - step * 2f - btnH - 16f * dp).coerceAtLeast(1f)
+    val charH = (sh - pad - step * 2f - menuBand).coerceAtLeast(1f)
     val overlapL = 0.24f * charH
     val overlapR = 0.17f * charH
     val widths =
@@ -653,50 +736,113 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private fun touchTitle(x: Float, y: Float, sw: Float, sh: Float) {
     layoutTitleHits(sw, sh)
     if (arcadeBtn.contains(x, y)) {
-      SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
-      goSelect(PlayMode.ARCADE)
+      armTitleCommit(PlayMode.ARCADE, 0)
       return
     }
     if (vsBtn.contains(x, y)) {
-      SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
-      goSelect(PlayMode.VS)
+      armTitleCommit(PlayMode.VS, 2)
       return
     }
+    if (titleCommitT >= 0f) return
     if (diffBtn.contains(x, y)) {
+      titleFocus = 1
       cpuLevel = if (cpuLevel == CpuLevel.HARD) CpuLevel.EASY else CpuLevel.HARD
       SoundManager.instance.playSFX(SoundManager.SFX_ARROW)
       titleT = 0f
     }
   }
 
-  private fun chromeBtnH(sh: Float) = BTN_H_DP * (sh / 360f)
-
-  private fun chromeBtnW(sh: Float) = chromeBtnH(sh) * BTN_ASPECT
+  private fun armTitleCommit(mode: PlayMode, focus: Int) {
+    titleFocus = focus
+    if (titleCommitMode != mode) {
+      SoundManager.instance.playSFX(SoundManager.SFX_SELECT)
+    }
+    titleCommitMode = mode
+    titleCommitT = 0f
+    titleT = 0f
+  }
 
   private fun layoutTitleHits(sw: Float, sh: Float) {
-    val dp = sh / 360f
-    val btnH = chromeBtnH(sh)
-    val btnW = chromeBtnW(sh)
-    val pad = 12f * dp
-    val gap = 14f * dp
-    val y = sh - pad - btnH
-    val rowW = btnW * 3f + gap * 2f
-    var x = (sw - rowW) / 2f
-    arcadeBtn.set(x, y, x + btnW, y + btnH)
-    x += btnW + gap
-    diffBtn.set(x, y, x + btnW, y + btnH)
-    x += btnW + gap
-    vsBtn.set(x, y, x + btnW, y + btnH)
+    val size = sh * 0.042f
+    val modeY = sh - sh * 0.105f
+    val dipY = sh - sh * 0.048f
+    placeMenuHit(arcadeBtn, "ARCADE", sw * 0.28f, modeY, size)
+    placeMenuHit(vsBtn, "VS", sw * 0.72f, modeY, size)
+    val dip = if (cpuLevel == CpuLevel.HARD) "HARD" else "EASY"
+    placeMenuHit(diffBtn, dip, sw * 0.50f, dipY, size)
   }
 
   private fun drawGoldLine(canvas: Canvas, text: CharSequence, cx: Float, y: Float, size: Float, color: Int = GOLD) {
     goldShadowPaint.textSize = size
+    goldRimPaint.textSize = size
     goldPaint.textSize = size
     goldPaint.color = color
-    val drop = size * 0.06f
+    goldRimPaint.color = if (color == GOLD || color == Color.YELLOW) 0xFFB35400.toInt() else 0xFF3A3A3A.toInt()
+    val drop = size * 0.08f
+    val rim = size * 0.04f
     canvas.drawText(text, 0, text.length, cx + drop, y + drop, goldShadowPaint)
+    canvas.drawText(text, 0, text.length, cx + rim, y + rim, goldRimPaint)
     canvas.drawText(text, 0, text.length, cx, y, goldPaint)
     goldPaint.color = GOLD
+  }
+
+  private fun drawChevrons(canvas: Canvas, cx: Float, y: Float, textW: Float, size: Float) {
+    goldPaint.textSize = size
+    val markW = goldPaint.measureText(">")
+    val gap = size * 0.85f
+    drawGoldLine(canvas, ">", cx - textW * 0.5f - gap - markW * 0.5f, y, size)
+    drawGoldLine(canvas, "<", cx + textW * 0.5f + gap + markW * 0.5f, y, size)
+  }
+
+  private fun placeMenuHit(out: RectF, label: String, cx: Float, y: Float, size: Float) {
+    goldPaint.textSize = size
+    val w = goldPaint.measureText(label)
+    val fm = goldPaint.fontMetrics
+    out.set(cx - w * 0.5f, y + fm.ascent, cx + w * 0.5f, y + fm.descent)
+    out.inset(-size * 0.9f, -size * 0.5f)
+  }
+
+  private fun drawMenuItem(
+    canvas: Canvas,
+    label: String,
+    cx: Float,
+    y: Float,
+    size: Float,
+    focused: Boolean,
+    color: Int = GOLD,
+  ) {
+    goldPaint.textSize = size
+    val w = goldPaint.measureText(label)
+    drawGoldLine(canvas, label, cx, y, size, color)
+    if (focused) drawChevrons(canvas, cx, y, w, size)
+  }
+
+  private fun drawArcadeSelectFrame(canvas: Canvas, rect: RectF, focused: Boolean, sh: Float) {
+    val s = (sh / 1080f).coerceAtLeast(0.5f)
+    uiSelectIdleStrokePaint.strokeWidth = 5f * s
+    uiSelectIdleInnerPaint.strokeWidth = 2f * s
+    uiSelectFocusStrokePaint.strokeWidth = 6f * s
+    uiSelectFocusInnerPaint.strokeWidth = 2f * s
+    uiSelectCornerPaint.strokeWidth = 8f * s
+    val outer = if (focused) uiSelectFocusStrokePaint else uiSelectIdleStrokePaint
+    val inner = if (focused) uiSelectFocusInnerPaint else uiSelectIdleInnerPaint
+    canvas.drawRect(rect, outer)
+    val inset = 8f * s
+    canvas.drawRect(rect.left + inset, rect.top + inset, rect.right - inset, rect.bottom - inset, inner)
+    uiSelectCornerPaint.color = if (focused) 0xFFFFD54A.toInt() else 0xFF6E6E6E.toInt()
+    val tick = 26f * s
+    val l = rect.left
+    val t = rect.top
+    val r = rect.right
+    val b = rect.bottom
+    canvas.drawLine(l, t, l + tick, t, uiSelectCornerPaint)
+    canvas.drawLine(l, t, l, t + tick, uiSelectCornerPaint)
+    canvas.drawLine(r, t, r - tick, t, uiSelectCornerPaint)
+    canvas.drawLine(r, t, r, t + tick, uiSelectCornerPaint)
+    canvas.drawLine(l, b, l + tick, b, uiSelectCornerPaint)
+    canvas.drawLine(l, b, l, b - tick, uiSelectCornerPaint)
+    canvas.drawLine(r, b, r - tick, b, uiSelectCornerPaint)
+    canvas.drawLine(r, b, r, b - tick, uiSelectCornerPaint)
   }
 
   private fun drawRanking(canvas: Canvas, sw: Float, sh: Float) {
@@ -872,7 +1018,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val selectBmp = keyed(UiArt.PLAYER_SELECT)
     val nameH = 28f * dp
     val flavorH = 15f * dp
-    val ctrlH = chromeBtnH(sh)
+    val ctrlH = sh * 0.07f
     val minGap = 10f * dp
     val slots = 5f
     val bannerCap = (colH - nameH - flavorH - ctrlH - minGap * slots).coerceAtLeast(24f * dp)
@@ -888,21 +1034,20 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     y += nameH + gap
     drawFlavorLine(canvas, FighterKit.of(highlighted).flavor, colL, y, colW, flavorH)
     y += flavorH + gap + 6f * dp
-    val btnH = chromeBtnH(sh)
-    val btnW = chromeBtnW(sh)
-    val arrow = btnH
-    val rowW = arrow * 2f + btnW + 8f * dp
-    var x = colL + (colW - rowW) / 2f
+    val size = sh * 0.038f
     val locked = select.step == SelectStep.LOCKED
-    val alpha = if (locked) 102 else 255
-    leftArrow.set(x, y, x + arrow, y + arrow)
-    blitFit(canvas, keyed(UiArt.ARROW_LEFT), x, y, arrow, arrow, alpha)
-    x += arrow + 4f * dp
-    selectBtn.set(x, y, x + btnW, y + btnH)
-    blitFit(canvas, keyed(UiArt.BTN_SELECT), x, y, btnW, btnH, alpha)
-    x += btnW + 4f * dp
-    rightArrow.set(x, y, x + arrow, y + arrow)
-    blitFitFlipped(canvas, keyed(UiArt.ARROW_LEFT), x, y, arrow, arrow, alpha)
+    val selCx = colL + colW * 0.50f
+    val leftCx = colL + colW * 0.08f
+    val rightCx = colL + colW * 0.92f
+    val labelY = y + ctrlH * 0.55f
+    if (!locked) {
+      drawMenuItem(canvas, "L", leftCx, labelY, size, selectFocus == 0)
+      drawMenuItem(canvas, "SELECT", selCx, labelY, size, selectFocus == 1)
+      drawMenuItem(canvas, "R", rightCx, labelY, size, selectFocus == 2)
+    }
+    placeMenuHit(leftArrow, "L", leftCx, labelY, size)
+    placeMenuHit(selectBtn, "SELECT", selCx, labelY, size)
+    placeMenuHit(rightArrow, "R", rightCx, labelY, size)
 
     Fighter.selectOrder.forEachIndexed { i, fighter ->
       val l = padH + i * (tile + gapT)
@@ -912,15 +1057,16 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   }
 
   private fun drawFaceTile(canvas: Canvas, fighter: Fighter, index: Int, box: RectF, dp: Float) {
-    fillPaint.color = INK
+    fillPaint.color = Color.BLACK
     canvas.drawRect(box, fillPaint)
-    val inset = 8f * dp
     fighter.art().face?.let { path ->
-      blitCrop(canvas, keyed(path), box.left + inset, box.top + inset, box.width() - inset * 2f, box.height() - inset * 2f)
+      blitCrop(canvas, keyed(path), box.left, box.top, box.width(), box.height())
     }
     val selected = index == select.cursorIndex
-    val frame = if (selected) UiArt.FACE_FRAME_ON else UiArt.FACE_FRAME_OFF
-    blitFit(canvas, keyed(frame, hole = true), box.left, box.top, box.width(), box.height())
+    drawArcadeSelectFrame(canvas, box, focused = false, sh = box.height() * 3.2f)
+    if (selected && (System.currentTimeMillis() / 400L) % 2L == 0L) {
+      drawArcadeSelectFrame(canvas, box, focused = true, sh = box.height() * 3.2f)
+    }
     val badge =
       when {
         select.arcade ->
@@ -943,10 +1089,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     blitFill(canvas, opaque(UiArt.VS_BG), 0f, 0f, sw, sh)
     val barPadB = 16f * dp
     val barPadT = 8f * dp
-    val btnH = chromeBtnH(sh)
+    val startSize = sh * 0.045f
     val nameH = 40f * dp
-    val nameBtnGap = 14f * dp
-    val barH = barPadT + nameH + nameBtnGap + btnH + barPadB
+    val nameBtnGap = 18f * dp
+    val barH = barPadT + nameH + nameBtnGap + startSize * 1.8f + barPadB
     val bustH = sh - barH
     val totalW = 1f + 0.42f + 1f
     val leftW = sw * (1f / totalW)
@@ -954,8 +1100,16 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val enter = 1f - easeOutCubic((vsAnimT / VS_PORTRAIT_S).coerceIn(0f, 1f))
     val fromLeft = -enter * leftW
     val fromRight = enter * leftW
+    val boxPad = 10f * dp
+    vsPortraitL.set(boxPad + fromLeft, 10f * dp, leftW - boxPad + fromLeft, bustH - 10f * dp)
+    vsPortraitR.set(leftW + vsW + boxPad + fromRight, 10f * dp, sw - boxPad + fromRight, bustH - 10f * dp)
+    fillPaint.color = Color.BLACK
+    canvas.drawRect(vsPortraitL, fillPaint)
+    canvas.drawRect(vsPortraitR, fillPaint)
+    drawArcadeSelectFrame(canvas, vsPortraitL, focused = false, sh = sh)
+    drawArcadeSelectFrame(canvas, vsPortraitR, focused = false, sh = sh)
     you.art().vsLeft?.let { path ->
-      blitFit(canvas, keyed(path), 8f * dp + fromLeft, 12f * dp, leftW - 16f * dp, bustH - 24f * dp)
+      blitSelectPreview(canvas, keyed(path), vsPortraitL)
     }
     val vsBmp = keyed(UiArt.VS)
     val vsDrawH = min(140f * dp, bustH)
@@ -971,7 +1125,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       blitFit(canvas, vsBmp, cx - dw / 2f, cy - dh / 2f, dw, dh)
     }
     rival.art().vsRight?.let { path ->
-      blitFit(canvas, keyed(path), leftW + vsW + 8f * dp + fromRight, 12f * dp, leftW - 16f * dp, bustH - 24f * dp)
+      blitSelectPreview(canvas, keyed(path), vsPortraitR)
+    }
+    val blink = (System.currentTimeMillis() / 400L) % 2L == 0L
+    if (blink && vsAnimT >= VS_PORTRAIT_S) {
+      drawArcadeSelectFrame(canvas, vsPortraitL, focused = true, sh = sh)
+      drawArcadeSelectFrame(canvas, vsPortraitR, focused = true, sh = sh)
     }
     val nameY = bustH + barPadT
     val namePad = 10f * dp
@@ -983,7 +1142,20 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       blitFit(canvas, keyed(path), leftW + vsW + namePad + fromRight, nameY, nw, nameH)
     }
     layoutVsHits(sw, sh)
-    blitFit(canvas, keyed(UiArt.BTN_START), startBtn.left, startBtn.top, startBtn.width(), startBtn.height())
+    drawMenuItem(canvas, "START", startBtn.centerX(), startBtn.centerY(), startSize, focused = true)
+  }
+
+  private fun blitSelectPreview(canvas: Canvas, bmp: Bitmap, box: RectF) {
+    val maxW = box.width() * 0.78f
+    val maxH = box.height() * 0.78f
+    val srcW = bmp.width.toFloat().coerceAtLeast(1f)
+    val srcH = bmp.height.toFloat().coerceAtLeast(1f)
+    val scale = (maxW / srcW).coerceAtMost(maxH / srcH)
+    val dw = srcW * scale
+    val dh = srcH * scale
+    val px = box.centerX()
+    val py = box.centerY()
+    blitFit(canvas, bmp, px - dw * 0.5f, py - dh * 0.5f, dw, dh)
   }
 
   private fun drawMatch(canvas: Canvas, vw: Float, vh: Float) {
@@ -1141,8 +1313,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val dp = vh / 360f
     val pad = 12f * dp
     val railW = vw * 0.48f
-    val btnH = chromeBtnH(vh)
-    val btnW = chromeBtnW(vh)
     val right = railW - pad
     winner.art().ending?.let { path ->
       blitFillHeightEnd(canvas, keyed(path), railW, 0f, vw - railW, vh)
@@ -1163,9 +1333,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       blitFit(canvas, bmp, x, y, dw, dh)
     }
     if (resultCardT < RESULT_LOCK_S) return
-    val btnX = (vw * 0.5f - btnW) / 2f
-    val btnY = vh - 28f * dp - btnH
-    blitFit(canvas, keyed(UiArt.BTN_CONTINUE), btnX, btnY, btnW, btnH)
+    val size = vh * 0.042f
+    drawMenuItem(canvas, "[ CONTINUE ]", vw * 0.25f, vh - 32f * dp, size, focused = true)
   }
 
   private fun drawFighter(
@@ -1487,7 +1656,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
 
   private fun drawFlavorLine(canvas: Canvas, text: String, l: Float, t: Float, w: Float, h: Float) {
     textPaint.color = CREAM
-    textPaint.textSize = min(h * 0.68f, w / (text.length.coerceAtLeast(1) * 0.56f))
+    textPaint.textSize = min(h * 0.46f, w / (text.length.coerceAtLeast(1) * 0.62f))
     val fm = textPaint.fontMetrics
     canvas.drawText(text, l + w / 2f, t + h / 2f - (fm.ascent + fm.descent) / 2f, textPaint)
   }
@@ -1547,23 +1716,21 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val selectBmp = keyed(UiArt.PLAYER_SELECT)
     val nameH = 28f * dp
     val flavorH = 15f * dp
-    val ctrlH = chromeBtnH(sh)
+    val ctrlH = sh * 0.07f
     val minGap = 10f * dp
     val slots = 5f
     val bannerCap = (colH - nameH - flavorH - ctrlH - minGap * slots).coerceAtLeast(24f * dp)
     val bannerH = min(colW * (selectBmp.height / selectBmp.width.toFloat()), bannerCap)
     val gap = ((colH - bannerH - nameH - flavorH - ctrlH) / slots).coerceAtLeast(0f)
     val y = colT + gap + bannerH + gap + nameH + gap + flavorH + gap + 6f * dp
-    val btnH = chromeBtnH(sh)
-    val btnW = chromeBtnW(sh)
-    val arrow = btnH
-    val rowW = arrow * 2f + btnW + 8f * dp
-    var x = colL + (colW - rowW) / 2f
-    leftArrow.set(x, y, x + arrow, y + arrow)
-    x += arrow + 4f * dp
-    selectBtn.set(x, y, x + btnW, y + btnH)
-    x += btnW + 4f * dp
-    rightArrow.set(x, y, x + arrow, y + arrow)
+    val size = sh * 0.038f
+    val labelY = y + ctrlH * 0.55f
+    val selCx = colL + colW * 0.50f
+    val leftCx = colL + colW * 0.08f
+    val rightCx = colL + colW * 0.92f
+    placeMenuHit(leftArrow, "L", leftCx, labelY, size)
+    placeMenuHit(selectBtn, "SELECT", selCx, labelY, size)
+    placeMenuHit(rightArrow, "R", rightCx, labelY, size)
     Fighter.selectOrder.forEachIndexed { i, _ ->
       val l = padH + i * (tile + gapT)
       faceTiles[i].set(l, rowTop, l + tile, rowTop + tile)
@@ -1574,15 +1741,13 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     val dp = sh / 360f
     val barPadB = 16f * dp
     val barPadT = 8f * dp
-    val btnH = chromeBtnH(sh)
-    val btnW = chromeBtnW(sh)
+    val startSize = sh * 0.045f
     val nameH = 40f * dp
-    val nameBtnGap = 14f * dp
-    val barH = barPadT + nameH + nameBtnGap + btnH + barPadB
+    val nameBtnGap = 18f * dp
+    val barH = barPadT + nameH + nameBtnGap + startSize * 1.8f + barPadB
     val bustH = sh - barH
-    val y = bustH + barPadT + nameH + nameBtnGap
-    val x = (sw - btnW) / 2f
-    startBtn.set(x, y, x + btnW, y + btnH)
+    val y = bustH + barPadT + nameH + nameBtnGap + startSize * 0.35f
+    placeMenuHit(startBtn, "START", sw * 0.5f, y, startSize)
   }
 
   private fun layoutStage() {
@@ -1709,9 +1874,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
 
   private companion object {
     const val MAX_FRAME_NS = 50_000_000L
-    const val BTN_H_DP = 52.5f
-    const val BTN_ASPECT = 264f / 150f
     const val TITLE_HOLD_S = 5f
+    const val TITLE_COMMIT_S = 1f
     const val TITLE_LEFT = 3
     val TITLE_DRAW_ORDER = intArrayOf(0, 1, 2, 5, 4, 3)
     const val DEMO_HOLD_S = 10f
@@ -1724,7 +1888,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     const val CABINET = 0xFF0C1822.toInt()
     const val INK = 0xFF071018.toInt()
     const val CREAM = 0xFFF3EFE4.toInt()
-    const val GOLD = 0xFFE6C35A.toInt()
+    const val GOLD = 0xFFFFFF00.toInt()
     const val YOU = 0xFF5EE0C8.toInt()
     const val CPU = 0xFFFF6B6B.toInt()
     const val MUTE_DIM = 0x598FA3B0
