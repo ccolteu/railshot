@@ -184,6 +184,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       isAntiAlias = false
     }
   private var arcadeTypeface: Typeface? = null
+  private val appVersionName: String
   private var titleFocus = 2
   private var titleCommitT = -1f
   private var titleCommitMode: PlayMode? = null
@@ -202,6 +203,13 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     textPaint.typeface = face
     popupPaint.typeface = face
     popupShadowPaint.typeface = face
+    var ver = "1.0"
+    try {
+      val name = context.packageManager.getPackageInfo(context.packageName, 0).versionName
+      if (!name.isNullOrEmpty()) ver = name
+    } catch (_: Exception) {
+    }
+    appVersionName = ver
     holder.addCallback(this)
     isFocusable = true
     isFocusableInTouchMode = true
@@ -462,7 +470,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
       if (!setWinSfxPlayed) {
         setWinSfxPlayed = true
         SoundManager.instance.playSFX(
-          if (world.setWinner == Side.YOU) SoundManager.SFX_WIN else SoundManager.SFX_LOSE,
+          if (world.setWinner == Side.YOU) SoundManager.SFX_YOU_WIN else SoundManager.SFX_YOU_LOSE,
         )
       }
     } else {
@@ -692,11 +700,14 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
     layoutTitleHits(sw, sh)
     val size = sh * 0.042f
     val modeY = sh - sh * 0.105f
-    val dipY = sh - sh * 0.048f
-    drawMenuItem(canvas, "ARCADE", arcadeBtn.centerX(), modeY, size, titleFocus == 0)
-    drawMenuItem(canvas, "VS", vsBtn.centerX(), modeY, size, titleFocus == 2)
     val dip = if (cpuLevel == CpuLevel.HARD) "HARD" else "EASY"
-    drawMenuItem(canvas, dip, diffBtn.centerX(), dipY, size, titleFocus == 1)
+    drawMenuItem(canvas, "ARCADE", arcadeBtn.centerX(), modeY, size, titleFocus == 0)
+    drawMenuItem(canvas, dip, diffBtn.centerX(), modeY, size, titleFocus == 1)
+    drawMenuItem(canvas, "VS", vsBtn.centerX(), modeY, size, titleFocus == 2)
+    rankLine.setLength(0)
+    rankLine.append("2026 Claudiu Colteu. All rights reserved. VER ")
+    rankLine.append(appVersionName)
+    drawGoldLine(canvas, rankLine, sw * 0.5f, sh - sh * 0.038f, sh * 0.014f, CREAM)
   }
 
   private fun layoutTitleRoster(sw: Float, sh: Float) {
@@ -759,11 +770,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback,
   private fun layoutTitleHits(sw: Float, sh: Float) {
     val size = sh * 0.042f
     val modeY = sh - sh * 0.105f
-    val dipY = sh - sh * 0.048f
-    placeMenuHit(arcadeBtn, "ARCADE", sw * 0.28f, modeY, size)
-    placeMenuHit(vsBtn, "VS", sw * 0.72f, modeY, size)
     val dip = if (cpuLevel == CpuLevel.HARD) "HARD" else "EASY"
-    placeMenuHit(diffBtn, dip, sw * 0.50f, dipY, size)
+    placeMenuHit(arcadeBtn, "ARCADE", sw * 0.16f, modeY, size)
+    placeMenuHit(diffBtn, dip, sw * 0.50f, modeY, size)
+    placeMenuHit(vsBtn, "VS", sw * 0.84f, modeY, size)
   }
 
   private fun drawGoldLine(canvas: Canvas, text: CharSequence, cx: Float, y: Float, size: Float, color: Int = GOLD) {

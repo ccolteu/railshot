@@ -72,10 +72,10 @@ WAV clips live in `app/src/main/res/raw/` (16-bit PCM, 44.1 kHz, uncompressed). 
 | --- | --- | --- |
 | Arrow | `sfx_arrow.wav` | Select roster arrows |
 | Select | `sfx_select.wav` | SELECT confirm |
-| Round 1/2/3 | `sfx_round.wav` then `sfx_1.wav` / `sfx_2.wav` / `sfx_3.wav` | Enter `Phase.ROUND` (announcer) |
+| Round 1/2/3 | `sfx_round1.wav` … `sfx_round3.wav` | Enter `Phase.ROUND` (announcer) |
 | Fight | `sfx_fight.wav` | Enter `Phase.SERVE` |
-| You win | `sfx_win.wav` | `ui_you_win.png` on `Phase.SET_WIN` |
-| You lose | `sfx_lose.wav` | `ui_you_lose.png` on `Phase.SET_WIN` |
+| You win | `sfx_you_win.wav` | `ui_you_win.png` on `Phase.SET_WIN` |
+| You lose | `sfx_you_lose.wav` | `ui_you_lose.png` on `Phase.SET_WIN` |
 | Shield hit | `sfx_shield.wav` | Ball bounces off a fighter |
 | Chip off | `sfx_chip.wav` | Ball kills a life tile |
 | Ice shatter | `sfx_ice.wav` | Ice comet smashed or flattening a gate |

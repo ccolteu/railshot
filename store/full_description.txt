@@ -1,0 +1,36 @@
+Grab the shield. Serve the fireball.
+
+Rail Shot is a landscape arcade volley built like a cabinet: one credit, a 4:3 court in chrome, six original fighters. You drag your rail, you smash the shot, you flatten the other side’s life chips. Best of three sets. First to two wins the match.
+
+HOW TO PLAY
+Tap the court to serve. Drag only if the thumb lands on your fighter — the shield follows, it does not teleport. Rally until a gate falls. Double-tap empty court to call your once-per-set ice comet at a living chip near the tap. The fireball keeps going through shields. The ice comet does not: a smash shatters it.
+
+A MATCH
+Each set is one rack of chips. ROUND, then FIGHT, then play. Time counts 99 to 00. At zero, more chips remaining takes the set; a tie is sudden death. Skill lives in the TIME well — wall bounces pay, ice pays double, HARD pays double. VS resets the credit. Arcade carries the score until you lose or clear the ladder.
+
+ARCADE OR VS
+Title: ARCADE or VS, EASY or HARD.
+Arcade — pick one fighter, climb the roster. Win and the next rival walks in. Lose, or beat the table, and the credit ends.
+VS — pick both sides, one fight.
+Qualify on that dip and you enter three initials. The board is local. No account.
+
+THE ROSTER
+Rivet — teal mechanic, wrench shield, stacked pop.
+Ash — red jacket, round buckler, smash-swipe.
+Kite — flight suit, kite riot shield, afterburn.
+Maru — highland heavy, disc shield, center dump.
+Quill — feathered cape, kite shield, dive rims.
+Hex — violet leather, punk buckler, street car court.
+
+Each 2P floor has its own furniture: Ash’s rising walls, Rivet’s gold trace, Hex’s hovercar, Quill’s hawk, Kite’s spinning X, Maru’s logs. Fire and ice bounce. HARD reads the bounce.
+
+WHAT THIS APP IS NOT
+Not online. Not a live-service. No ads, no in-app purchases, no sign-in. Rankings live on this device.
+
+Landscape. Offline. One thumb.
+
+Rail Shot. Insert one player.
+
+CREDITS
+Round 1\2\3 Fight! Announcer Deep Voice by exe2be -- https://freesound.org/s/553600/ -- License: Attribution 4.0
+You Win You Loose Deep Voice by dersuperanton -- https://freesound.org/s/433707/ -- License: Attribution 4.0
