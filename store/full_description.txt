@@ -1,12 +1,26 @@
 Grab the shield. Serve the fireball.
 
-Rail Shot is a landscape arcade volley built like a cabinet: one credit, a 4:3 court in chrome, six original fighters. You drag your rail, you smash the shot, you flatten the other side’s life chips. Best of three sets. First to two wins the match.
+Rail Shot is a landscape arcade volley built like a cabinet: one credit, a 4:3 court in chrome, six original fighters. You drag your rail or take the stick, you smash the shot, you flatten the other side’s life chips. Best of three sets. First to two wins the match.
 
 HOW TO PLAY — PHONE
 Tap the court to serve. Drag only if the thumb lands on your fighter — the shield follows, it does not teleport. Rally until a gate falls. Double-tap empty court to call your once-per-set ice comet at a living chip near the tap. The fireball keeps going through shields. The ice comet does not: a smash shatters it.
 
 HOW TO PLAY — HANDHELD
-Landscape, same as a Retroid Pocket. Left stick (or D-pad) moves P1’s rail. A or Start serves and confirms menus. B calls the ice comet at your rail height. Stick left/right walks title (ARCADE / EASY-HARD / VS) and the select roster. Y toggles EASY/HARD. Phone thumb unchanged.
+Built for Retroid Pocket and similar Android cabinets. Hold the unit in landscape — same way the game is locked. No portrait stick remap.
+
+IN THE MATCH
+• Left stick or D-pad — slide P1’s rail. Nudge to track, rim to dash. Right stick if it is deflected more.
+• A or Start — serve. Also confirms the set banner and the result card.
+• B — ice comet, once per set, aimed at your rail height.
+
+MENUS
+• Stick or D-pad left / right — walk ARCADE, EASY/HARD, VS on title, and the select roster.
+• A or Start — lock the focused item (ARCADE, VS, SELECT, START).
+• Y — toggle EASY/HARD from title.
+• Name entry — stick or D-pad bumps the letter, A locks it.
+• Attract demo and TOP SCORES — any button or stick flick returns to title.
+
+USB Xbox-style pads use the same layout. Phone thumb unchanged.
 
 A MATCH
 Each set is one rack of chips. ROUND, then FIGHT, then play. Time counts 99 to 00. At zero, more chips remaining takes the set; a tie is sudden death. Skill lives in the TIME well — wall bounces pay, ice pays double, HARD pays double. VS resets the credit. Arcade carries the score until you lose or clear the ladder.
