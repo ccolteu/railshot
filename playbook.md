@@ -212,7 +212,7 @@ Large 1994 arcade standing portrait, [CHARACTER LOCK], full body, 3/4 view FACIN
 
 Must look like a close crop of **A**: same face, same hair (long hair on the women, male cut on the men), same eyes, same visor/hat if A has one, **same left-facing direction**. Use A as the reference image. If B faces right, horizontal-flip the bitmap. Do not GenerateImage a mirror.
 
-**No outline on the portrait.** Do **not** bake a frame into the face PNG. Roster tiles use a **drawn arcade rectangle** (idle grey, blinking gold + cyan inner when the cursor is on the tile; no corner ticks) Pack **192×192**. After removing any generator frame, the drawing must touch the **left, right, and bottom** edges — no magenta padding on those three sides. Magenta may sit **above** the hair only. Do not clip the face; if the crop is too tall, scale so width fills 192 and sit on the bottom (trim extra from the top field, not the chin).
+**No outline on the portrait.** Do **not** bake a frame into the face PNG. Roster tiles use a **drawn arcade rectangle** (idle grey, blinking gold when the cursor is on the tile; no inner ring, no corner ticks) Pack **192×192**. After removing any generator frame, the drawing must touch the **left, right, and bottom** edges — no magenta padding on those three sides. Magenta may sit **above** the hair only. Do not clip the face; if the crop is too tall, scale so width fills 192 and sit on the bottom (trim extra from the top field, not the chin).
 
 ```
 Square 1994 arcade face portrait cropped from the select full-body of [CHARACTER LOCK], identical face and hair, head and shoulders FACING LEFT (nose toward the left edge, same direction as the full-body), visor/hat only if the full-body has one, NO colored border, NO frame, NO outline rectangle, 192x192, magenta background #FF00FF
@@ -667,7 +667,7 @@ Wallpaper (`art/ui_vs_bg.png`): quiet dark navy with a faint center glow for the
 2. **Right slot** = second selected fighter’s `{name}_vs_right.png` (2P clothes, facing the center).
 3. Missing **C** art is an empty bust placeholder in that slot (same box).
 4. Draw `ui_vs.png` in the center. Under each bust draw `{name}_name_vs.png` (first pick left, second pick right). Missing name sprite: placeholder.
-5. Bottom bar is two rows: fighter `{name}_name_vs.png` plates on the first row (large, under each bust), then a gap, then typeset gold **START** with chevrons centered on the second row. Pressing START starts the match (select confirm SFX) at the title difficulty. No EASY/HARD on this screen. Each bust sits in a **drawn arcade rectangle** (same as Blitz plane select / roster tiles), not `ui_face_frame_*.png`.
+5. Bottom bar is two rows: fighter `{name}_name_vs.png` plates on the first row (large, under each bust), then a gap, then typeset gold **START** with chevrons centered on the second row. Pressing START starts the match (select confirm SFX) at the title difficulty. No EASY/HARD on this screen. Busts are unframed (arcade rectangles are select-tile only).
 6. Stay on VS until START is pressed. Left court then uses the first fighter’s `*_left` anims; right court uses the second’s `*_right` anims.
 7. **Intro:** START is on from frame one. Busts (and their name plates) slide in from the left/right edges. After they land, `ui_vs.png` scales up from zero at its resting center.
 
